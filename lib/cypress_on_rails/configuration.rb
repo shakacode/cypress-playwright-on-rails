@@ -8,6 +8,8 @@ module CypressOnRails
     attr_accessor :use_vcr_middleware
     attr_accessor :before_request
     attr_accessor :logger
+    attr_accessor :use_vcr
+    attr_accessor :vcr_record_mode
 
     # Attributes for backwards compatibility
     def cypress_folder
@@ -33,6 +35,8 @@ module CypressOnRails
       self.use_vcr_middleware = false
       self.before_request = -> (request) {}
       self.logger = Logger.new(STDOUT)
+      self.use_vcr = false
+      self.vcr_record_mode = :new_episodes
     end
 
     def tagged_logged
