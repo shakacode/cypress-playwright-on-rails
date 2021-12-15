@@ -2,6 +2,7 @@ require 'json'
 require 'rack'
 require 'cypress_on_rails/middleware_config'
 require 'cypress_on_rails/command_executor'
+require 'cypress_on_rails/vcr_wrapper'
 
 module CypressOnRails
   # Middleware to handle testing framework commands and eval
