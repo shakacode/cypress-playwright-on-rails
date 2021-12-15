@@ -11,13 +11,9 @@ module CypressOnRails
     end
 
     def run_with_cassette
-      if defined?(VCR) && configuration.use_vcr
-        VCR.use_cassette(cassette_name, { :record => configuration.vcr_record_mode }) do
-          logger.info "Handle request with cassette name: #{cassette_name}"
-          @app.call(env)
-        end
-      else
-        @app.call(env)
+      VCR.use_cassette(cassette_name, { :record => configuration.vcr_record_mode }) do
+        logger.info "Handle request with cassette name: #{cassette_name}"
+        @app.call(@env)
       end
     end
 
@@ -32,10 +28,10 @@ module CypressOnRails
     end
 
     def cassette_name
-      if request.path.start_with?('/graphql') && request.params.key?(:operation)
-        "#{request.path}/#{request.params[:operation]}"
+      if @request.path.start_with?('/graphql') && @request.params.key?('operation')
+        "#{@request.path}/#{@request.params['operation']}"
       else
-        request.path
+        @request.path
       end
     end
   end

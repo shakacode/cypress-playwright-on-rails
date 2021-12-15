@@ -21,8 +21,10 @@ module CypressOnRails
       elsif request.path.start_with?("#{configuration.api_prefix}/__cypress__/command")
         warn "/__cypress__/command is deprecated. Please use the install generator to use /__e2e__/command instead."
         configuration.tagged_logged { handle_command(request) }
+      elsif defined?(VCR) && configuration.use_vcr
+        VCRWrapper.new(app: @app, env: env).run_with_cassette 
       else
-        VCRWrapper.new(app: @app, env: @env).run_with_cassette
+        @app.call(env)
       end
     end
 
