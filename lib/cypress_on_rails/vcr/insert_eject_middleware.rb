@@ -27,8 +27,8 @@ module CypressOnRails
       def handle_insert(req)
         WebMock.enable! if defined?(WebMock)
         vcr.turn_on!
-        logger.info "vcr insert cassette: #{body}"
         body = parse_request_body(req)
+        logger.info "vcr insert cassette: #{body}"
         cassette_name, options = extract_cassette_info(body)
         vcr.insert_cassette(cassette_name, options)
         [201, { 'Content-Type' => 'application/json' }, [{ 'message': 'OK' }.to_json]]
