@@ -2,7 +2,6 @@ require 'json'
 require 'rack'
 require 'cypress_on_rails/middleware_config'
 require 'cypress_on_rails/command_executor'
-require 'cypress_on_rails/vcr_wrapper'
 
 module CypressOnRails
   # Middleware to handle testing framework commands and eval
@@ -22,8 +21,6 @@ module CypressOnRails
       elsif request.path.start_with?("#{configuration.api_prefix}/__cypress__/command")
         warn "/__cypress__/command is deprecated. Please use the install generator to use /__e2e__/command instead."
         configuration.tagged_logged { handle_command(request) }
-      elsif defined?(VCR) && configuration.use_vcr
-        VCRWrapper.new(app: @app, env: env).run_with_cassette 
       else
         @app.call(env)
       end
