@@ -9,7 +9,7 @@ module CypressOnRails
         app.middleware.use Middleware
       end
       if CypressOnRails.configuration.use_vcr_middleware?
-        require 'cypress_on_rails/vcr/insert_inject_middleware'
+        require 'cypress_on_rails/vcr/insert_eject_middleware'
         app.middleware.use Vcr::InsertEjectMiddleware
       end
       if CypressOnRails.configuration.use_vcr_use_cassette_middleware?
