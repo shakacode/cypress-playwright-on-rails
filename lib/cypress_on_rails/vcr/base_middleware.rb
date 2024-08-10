@@ -8,7 +8,7 @@ module CypressOnRails
     class BaseMiddleware
       include MiddlewareConfig
 
-      def initialize(_app, _vcr = nil)
+      def initialize(**_args)
         raise_not_implemented
       end
 

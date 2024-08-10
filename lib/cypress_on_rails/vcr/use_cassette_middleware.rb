@@ -11,6 +11,8 @@ module CypressOnRails
       end
 
       def call(env)
+        WebMock.enable! if defined?(WebMock)
+        vcr.turn_on!
         request = Rack::Request.new(env)
         cassette_name = fetch_request_cassette(request)
         vcr.use_cassette(cassette_name, { record: configuration.vcr_use_cassette_mode }) do
@@ -20,14 +22,6 @@ module CypressOnRails
       end
 
       private
-
-      def configuration
-        CypressOnRails.configuration
-      end
-
-      def logger
-        configuration.logger
-      end
 
       def fetch_request_cassette(request)
         if request.path.start_with?('/graphql') && request.params.key?('operation')
