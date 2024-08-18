@@ -39,6 +39,34 @@ module CypressOnRails
         expect(vcr).to have_received(:use_cassette)
           .with('/test/path', hash_including(record: :once))
       end
+
+      context 'when VCR cassette library directory does not match' do
+        before do
+          allow(VCR.configuration).to receive(:cassette_library_dir).and_return('/different/path')
+        end
+
+        it 'returns the application response without using VCR' do
+          env['PATH_INFO'] = '/test/path'
+
+          expect(response).to eq([200, {}, ['app did /test/path']])
+          expect(vcr).not_to have_received(:use_cassette)
+        end
+      end
+
+      context 'when VCR is not defined' do
+        before do
+          allow(subject).to receive(:vcr_defined?).and_return(false)
+        end
+
+        it 'returns the application response without error' do
+          env['PATH_INFO'] = '/graphql'
+          env['QUERY_STRING'] = 'operation=test'
+
+          expect(response).to eq([200, {}, ['app did /graphql']])
+          expect(vcr).to have_received(:use_cassette)
+            .with('/graphql/test', hash_including(record: :new_episodes))
+        end
+      end
     end
   end
 end

@@ -1,4 +1,3 @@
-require 'cypress_on_rails/configuration'
 require_relative 'base_middleware'
 
 module CypressOnRails
@@ -11,6 +10,11 @@ module CypressOnRails
       end
 
       def call(env)
+        vcr_initialized = vcr_defined? &&
+                          VCR.configuration.cassette_library_dir.present? &&
+                          VCR.configuration.cassette_library_dir != cassette_library_dir
+        return @app.call(env) if vcr_initialized
+
         WebMock.enable! if defined?(WebMock)
         vcr.turn_on!
         request = Rack::Request.new(env)
@@ -22,6 +26,10 @@ module CypressOnRails
       end
 
       private
+
+      def vcr_defined?
+        defined?(VCR) != nil
+      end
 
       def fetch_request_cassette(request)
         if request.path.start_with?('/graphql') && request.params.key?('operation')
