@@ -8,7 +8,7 @@ if defined?(CypressOnRails)
     <% unless options.experimental %># <% end %> c.use_vcr_middleware = !Rails.env.production?
     # Use this if you want to use use_cassette wrapper instead of manual insert/eject
     # c.use_vcr_use_cassette_middleware = !Rails.env.production?
-    # c.vcr_use_cassette_mode = :once # Use to choose VCR record mode (:new_episodes by default)
+    # c.vcr_record_mode = :once # Use to choose VCR record mode
     c.logger = Rails.logger
 
     # If you want to enable a before_request logic, such as authentication, logging, sending metrics, etc.

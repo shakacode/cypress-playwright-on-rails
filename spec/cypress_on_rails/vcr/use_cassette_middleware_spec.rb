@@ -31,7 +31,7 @@ module CypressOnRails
       end
 
       it 'returns the application response using default request path cassette' do
-        allow(CypressOnRails).to receive(:configuration).and_return(double(vcr_use_cassette_mode: :once,
+        allow(CypressOnRails).to receive(:configuration).and_return(double(vcr_record_mode: :once,
                                                                            logger: Logger.new(nil)))
         env['PATH_INFO'] = '/test/path'
 

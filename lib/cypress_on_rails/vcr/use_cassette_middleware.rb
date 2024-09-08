@@ -10,25 +10,36 @@ module CypressOnRails
       end
 
       def call(env)
-        vcr_initialized = vcr_defined? &&
-                          VCR.configuration.cassette_library_dir.present? &&
-                          VCR.configuration.cassette_library_dir != cassette_library_dir
-        return @app.call(env) if vcr_initialized
+        return @app.call(env) if should_not_use_vcr?
 
-        WebMock.enable! if defined?(WebMock)
-        vcr.turn_on!
-        request = Rack::Request.new(env)
-        cassette_name = fetch_request_cassette(request)
-        vcr.use_cassette(cassette_name, { record: configuration.vcr_use_cassette_mode }) do
-          logger.info "Handle request with cassette name: #{cassette_name}"
-          @app.call(env)
-        end
+        initialize_vcr
+        handle_request_with_vcr(env)
       end
 
       private
 
       def vcr_defined?
         defined?(VCR) != nil
+      end
+
+      def should_not_use_vcr?
+        vcr_defined? &&
+          VCR.configuration.cassette_library_dir.present? &&
+          VCR.configuration.cassette_library_dir != cassette_library_dir
+      end
+
+      def initialize_vcr
+        WebMock.enable! if defined?(WebMock)
+        vcr.turn_on!
+      end
+
+      def handle_request_with_vcr(env)
+        request = Rack::Request.new(env)
+        cassette_name = fetch_request_cassette(request)
+        vcr.use_cassette(cassette_name, { record: configuration.vcr_record_mode }) do
+          logger.info "Handle request with cassette name: #{cassette_name}"
+          @app.call(env)
+        end
       end
 
       def fetch_request_cassette(request)
