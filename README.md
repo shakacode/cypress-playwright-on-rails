@@ -495,7 +495,7 @@ Add to your `cypress/support/on-rails.js`, to `beforeEach`:
 
 #### use_cassette usage
 
-There's nothing special to be called during Cypress scenario. Each request will be wrapped with `VCR.use_cassette`.
+There is nothing special to be called during the Cypress scenario. Each request is wrapped with `VCR.use_cassette`.
 Consider VCR configuration in `cypress_helper.rb` to ignore hosts.
 
 All cassettes will be recorded and saved automatically, using the pattern `<vcs_cassettes_path>/graphql/<operation_name>`
