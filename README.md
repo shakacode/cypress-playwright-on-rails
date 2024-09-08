@@ -382,8 +382,11 @@ yarn add cypress-on-rails --dev
 ### for VCR
 
 This only works when you start the Rails server with a single worker and single thread
+It can be used in two modes:
+- with separate insert/eject calls (more general, recommended way)
+- with use_cassette wrapper (supports only GraphQL integration)
 
-#### setup
+#### basic setup
 
 Add your VCR configuration to your `cypress_helper.rb`
 
@@ -408,13 +411,16 @@ VCR.turn_off!
 WebMock.disable! if defined?(WebMock)
 ```
 
+#### insert/eject setup
+
 Add to your `config/cypress_on_rails.rb`:
 
 ```ruby
   c.use_vcr_middleware = !Rails.env.production? && ENV['CYPRESS'].present?
+  # c.use_vcr_use_cassette_middleware = !Rails.env.production? && ENV['CYPRESS'].present?
 ```
 
-#### usage
+#### insert/eject usage
 
 You have `vcr_insert_cassette` and `vcr_eject_cassette` available. https://www.rubydoc.info/github/vcr/vcr/VCR:insert_cassette
 
@@ -440,6 +446,60 @@ describe('My First Test', () => {
   })
 })
 ```
+
+#### use_cassette setup
+
+Add to your `config/cypress_on_rails.rb`:
+
+```ruby
+  # c.use_vcr_middleware = !Rails.env.production? && ENV['CYPRESS'].present?
+  c.use_vcr_use_cassette_middleware = !Rails.env.production? && ENV['CYPRESS'].present?
+```
+
+Adjust record mode in `config/cypress_on_rails.rb` if needed:
+
+```ruby
+  c.vcr_record_mode = :once # Use to choose VCR record mode 
+```
+
+Add to your `cypress/support/command.js`:
+
+```js
+  // Add proxy-like mock to add operation name into query string
+  Cypress.Commands.add('mockGraphQL', () => {
+    cy.on('window:before:load', (win) => {
+      const originalFetch = win.fetch;
+      const fetch = (path, options, ...rest) => {
+        if (options && options.body) {
+          try {
+            const body = JSON.parse(options.body);
+            if (body.operationName) {
+              return originalFetch(`${path}?operation=${body.operationName}`, options, ...rest);
+            }
+          } catch (e) {
+            return originalFetch(path, options, ...rest);
+          }
+        }
+        return originalFetch(path, options, ...rest);
+      };
+      cy.stub(win, 'fetch', fetch);
+    });
+  });
+```
+
+Add to your `cypress/support/on-rails.js`, to `beforeEach`:
+
+```js
+  cy.mockGraphQL() // for GraphQL usage with use_cassette, see cypress/support/commands.rb
+```
+
+#### use_cassette usage
+
+There's nothing special to be called during Cypress scenario. Each request will be wrapped with `VCR.use_cassette`.
+Consider VCR configuration in `cypress_helper.rb` to ignore hosts.
+
+All cassettes will be recorded and saved automatically, using the pattern `<vcs_cassettes_path>/graphql/<operation_name>`
+
 
 ## `before_request` configuration
 
