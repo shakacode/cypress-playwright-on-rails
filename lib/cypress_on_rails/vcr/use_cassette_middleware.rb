@@ -1,13 +1,10 @@
-require_relative 'base_middleware'
+require_relative 'middleware_helpers'
 
 module CypressOnRails
   module Vcr
     # Middleware to handle vcr with use_cassette
-    class UseCassetteMiddleware < BaseMiddleware
-      def initialize(app, vcr = nil)
-        @app = app
-        @vcr = vcr
-      end
+    class UseCassetteMiddleware
+      include MiddlewareHelpers
 
       def call(env)
         return @app.call(env) if should_not_use_vcr?

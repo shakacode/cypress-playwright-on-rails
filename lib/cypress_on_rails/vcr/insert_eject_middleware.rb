@@ -1,12 +1,13 @@
-require_relative 'base_middleware'
+require_relative 'middleware_helpers'
 
 module CypressOnRails
   module Vcr
     # Middleware to handle vcr with insert/eject endpoints
-    class InsertEjectMiddleware < BaseMiddleware
+    class InsertEjectMiddleware
+      include MiddlewareHelpers
+
       def initialize(app, vcr = nil)
-        @app = app
-        @vcr = vcr
+        super(app, vcr)
         @first_call = false
       end
 
