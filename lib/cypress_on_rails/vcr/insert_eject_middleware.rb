@@ -34,7 +34,7 @@ module CypressOnRails
         vcr.insert_cassette(cassette_name, options)
         [201, { 'Content-Type' => 'application/json' }, [{ 'message': 'OK' }.to_json]]
       rescue LoadError, ArgumentError => e
-        [501, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
+        [500, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
       end
 
       def parse_request_body(req)
@@ -57,7 +57,7 @@ module CypressOnRails
         do_first_call
         [201, { 'Content-Type' => 'application/json' }, [{ 'message': 'OK' }.to_json]]
       rescue LoadError, ArgumentError => e
-        [501, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
+        [500, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
       end
 
       def do_first_call

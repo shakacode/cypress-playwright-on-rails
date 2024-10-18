@@ -77,6 +77,30 @@ module CypressOnRails
             expect(vcr).to have_received(:insert_cassette).with('cas1', persist_with: :file_system)
           end
         end
+
+        context 'when an error occurs' do
+          it 'returns a 500 error with the error message' do
+            env['rack.input'] = rack_input(['cas1'])
+            allow(vcr).to receive(:insert_cassette).and_raise(ArgumentError.new('Invalid cassette name'))
+
+            expect(response).to eq([
+                                     500,
+                                     { 'Content-Type' => 'application/json' },
+                                     ['{"message":"Invalid cassette name"}']
+                                   ])
+          end
+
+          it 'returns a 500 error when LoadError occurs' do
+            env['rack.input'] = rack_input(['cas1'])
+            allow(vcr).to receive(:insert_cassette).and_raise(LoadError.new('Cannot load VCR'))
+
+            expect(response).to eq([
+                                     500,
+                                     { 'Content-Type' => 'application/json' },
+                                     ['{"message":"Cannot load VCR"}']
+                                   ])
+          end
+        end
       end
 
       describe '/__e2e__/vcr/eject' do
@@ -91,6 +115,28 @@ module CypressOnRails
                                     ['{"message":"OK"}']])
             expect(vcr).to have_received(:turn_off!)
             expect(vcr).to have_received(:eject_cassette)
+          end
+        end
+
+        context 'when an error occurs' do
+          it 'returns a 500 error with the error message' do
+            allow(vcr).to receive(:eject_cassette).and_raise(ArgumentError.new('No cassette to eject'))
+
+            expect(response).to eq([
+                                     500,
+                                     { 'Content-Type' => 'application/json' },
+                                     ['{"message":"No cassette to eject"}']
+                                   ])
+          end
+
+          it 'returns a 500 error when LoadError occurs' do
+            allow(vcr).to receive(:eject_cassette).and_raise(LoadError.new('Cannot load VCR'))
+
+            expect(response).to eq([
+                                     500,
+                                     { 'Content-Type' => 'application/json' },
+                                     ['{"message":"Cannot load VCR"}']
+                                   ])
           end
         end
       end
