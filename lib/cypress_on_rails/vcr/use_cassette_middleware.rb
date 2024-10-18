@@ -6,6 +6,11 @@ module CypressOnRails
     class UseCassetteMiddleware
       include MiddlewareHelpers
 
+      def initialize(app, vcr = nil)
+        @app = app
+        @vcr = vcr
+      end
+
       def call(env)
         return @app.call(env) if should_not_use_vcr?
 

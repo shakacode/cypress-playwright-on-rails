@@ -6,11 +6,6 @@ module CypressOnRails
     module MiddlewareHelpers
       include MiddlewareConfig
 
-      def initialize(app, vcr = nil)
-        @app = app
-        @vcr = vcr
-      end
-
       def vcr
         @vcr ||= configure_vcr
       end

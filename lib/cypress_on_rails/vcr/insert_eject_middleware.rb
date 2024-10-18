@@ -7,7 +7,8 @@ module CypressOnRails
       include MiddlewareHelpers
 
       def initialize(app, vcr = nil)
-        super(app, vcr)
+        @app = app
+        @vcr = vcr
         @first_call = false
       end
 
@@ -33,6 +34,8 @@ module CypressOnRails
         cassette_name, options = extract_cassette_info(body)
         vcr.insert_cassette(cassette_name, options)
         [201, { 'Content-Type' => 'application/json' }, [{ 'message': 'OK' }.to_json]]
+      rescue JSON::ParserError => e
+        [400, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
       rescue LoadError, ArgumentError => e
         [500, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
       end

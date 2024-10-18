@@ -101,6 +101,16 @@ module CypressOnRails
                                    ])
           end
         end
+
+        it 'returns a 400 error when JSON parsing fails' do
+          env['rack.input'] = StringIO.new('invalid json')
+
+          expect(response).to eq([
+                                   400,
+                                   { 'Content-Type' => 'application/json' },
+                                   ['{"message":"unexpected token at \'invalid json\'"}']
+                                 ])
+        end
       end
 
       describe '/__e2e__/vcr/eject' do
