@@ -14,7 +14,7 @@ module CypressOnRails
       def call(env)
         return @app.call(env) if should_not_use_vcr?
 
-        initialize_vcr
+        # initialize_vcr
         handle_request_with_vcr(env)
       end
 
