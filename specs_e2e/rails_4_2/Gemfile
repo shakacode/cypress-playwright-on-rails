@@ -3,6 +3,9 @@ source 'https://rubygems.org'
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 gem 'rails', '~> 4.2.10'
 gem 'sprockets', '~> 3.7.2'
+# Solution for issue: NoMethodError: undefined method `new' for BigDecimal:Class
+# https://github.com/ruby/bigdecimal?tab=readme-ov-file#which-version-should-you-select
+gem 'bigdecimal', '1.3.5'
 
 group :development, :test do
   gem 'vcr'
