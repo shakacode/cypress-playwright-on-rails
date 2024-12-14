@@ -50,11 +50,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Install sqlite3
+      run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: 2.6
         bundler-cache: true
+    - name: Update RubyGems
+      run: |
+        gem update --system 3.2.3
+        gem install bundler
     - name: Run tests
       run: bundle exec rake
     - name: Run interaction tests
