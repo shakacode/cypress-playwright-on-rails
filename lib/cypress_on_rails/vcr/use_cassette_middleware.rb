@@ -38,7 +38,7 @@ module CypressOnRails
       def handle_request_with_vcr(env)
         request = Rack::Request.new(env)
         cassette_name = fetch_request_cassette(request)
-        vcr.use_cassette(cassette_name, { record: configuration.vcr_record_mode }) do
+        vcr.use_cassette(cassette_name) do
           logger.info "Handle request with cassette name: #{cassette_name}"
           @app.call(env)
         end

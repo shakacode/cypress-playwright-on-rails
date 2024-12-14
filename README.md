@@ -388,13 +388,13 @@ It can be used in two modes:
 
 #### basic setup
 
-Add your VCR configuration to your `cypress_helper.rb`
+Add your VCR configuration to your `config/cypress_on_rails.rb`
 
 ```ruby
-require 'vcr'
-VCR.configure do |config|
-  config.hook_into :webmock
-end
+c.vcr_options = {
+  hook_into: :webmock,
+  default_cassette_options: { record: :once },
+}
 ```
 
 Add to your `cypress/support/index.js`:
@@ -459,7 +459,10 @@ Add to your `config/cypress_on_rails.rb`:
 Adjust record mode in `config/cypress_on_rails.rb` if needed:
 
 ```ruby
-  c.vcr_record_mode = :once # Use to choose VCR record mode 
+c.vcr_options = {
+  hook_into: :webmock,
+  default_cassette_options: { record: :once },
+} 
 ```
 
 Add to your `cypress/support/command.js`:

@@ -26,18 +26,15 @@ module CypressOnRails
         env['QUERY_STRING'] = 'operation=test'
 
         expect(response).to eq([200, {}, ['app did /graphql']])
-        expect(vcr).to have_received(:use_cassette)
-          .with('/graphql/test', hash_including(record: :new_episodes))
+        expect(vcr).to have_received(:use_cassette).with('/graphql/test')
       end
 
       it 'returns the application response using default request path cassette' do
-        allow(CypressOnRails).to receive(:configuration).and_return(double(vcr_record_mode: :once,
-                                                                           logger: Logger.new(nil)))
+        allow(CypressOnRails).to receive(:configuration).and_return(double(logger: Logger.new(nil)))
         env['PATH_INFO'] = '/test/path'
 
         expect(response).to eq([200, {}, ['app did /test/path']])
-        expect(vcr).to have_received(:use_cassette)
-          .with('/test/path', hash_including(record: :once))
+        expect(vcr).to have_received(:use_cassette).with('/test/path')
       end
 
       context 'when VCR cassette library directory does not match' do
@@ -63,8 +60,7 @@ module CypressOnRails
           env['QUERY_STRING'] = 'operation=test'
 
           expect(response).to eq([200, {}, ['app did /graphql']])
-          expect(vcr).to have_received(:use_cassette)
-            .with('/graphql/test', hash_including(record: :new_episodes))
+          expect(vcr).to have_received(:use_cassette).with('/graphql/test')
         end
       end
     end
