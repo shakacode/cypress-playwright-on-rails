@@ -11,7 +11,9 @@ module CypressOnRails
       end
 
       def cassette_library_dir
-        "#{configuration.install_folder}/fixtures/vcr_cassettes"
+        configuration.vcr_options&.fetch(:cassette_library_dir) do
+          "#{configuration.install_folder}/fixtures/vcr_cassettes"
+        end
       end
 
       private

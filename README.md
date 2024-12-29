@@ -394,6 +394,8 @@ Add your VCR configuration to your `config/cypress_on_rails.rb`
 c.vcr_options = {
   hook_into: :webmock,
   default_cassette_options: { record: :once },
+  # It's possible to override cassette_library_dir using install_folder
+  cassette_library_dir: File.expand_path("#{__dir__}/../../spec/cypress/fixtures/vcr_cassettes")
 }
 ```
 
