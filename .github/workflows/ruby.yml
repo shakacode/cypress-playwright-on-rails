@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  rails_6_1_7:
+  rails_6_1:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,7 +20,7 @@ jobs:
     - name: Run tests
       run: bundle exec rake
     - name: Run interaction tests
-      run: ./specs_e2e/rails_6_1_7/test.sh
+      run: ./specs_e2e/rails_6_1/test.sh
       env:
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
