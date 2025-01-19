@@ -1,9 +1,0 @@
-.bundle
-node_modules
-cypress.config.js
-package-lock.json
-cypress/
-config/initializers/cypress_on_rails.rb
-vendor/bundle
-tmp/pids
-tmp/cache

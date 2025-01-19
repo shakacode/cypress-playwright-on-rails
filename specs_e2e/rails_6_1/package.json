@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "cypress": "^13.17.0",
+    "cypress-on-rails": "^0.1.0",
+    "playwright": "^1.49.1"
+  }
+}

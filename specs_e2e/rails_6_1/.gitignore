@@ -1,0 +1,16 @@
+.bundle
+test/node_modules
+test/cypress.config.js
+test/playwright.config.js
+test/package.json
+test/yarn.lock
+test/cypress/
+test/playwright/
+test/playwright-report/
+config/initializers/cypress_on_rails.rb
+vendor/bundle
+db/*.sqlite3
+db/schema.rb
+tmp/*
+log/*
+specs_e2e/server.pid
