@@ -7,21 +7,19 @@ on:
     branches: [ master ]
 
 jobs:
-  rails_3_2:
+  rails_6_1:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 2.3
+        ruby-version: 2.7.6
         bundler-cache: true
     - name: Run tests
       run: bundle exec rake
-    - run: gem uninstall -v '>= 2' -ax bundler || true
-    - run: gem install bundler -v '< 2'
     - name: Run interaction tests
-      run: ./specs_e2e/rails_3_2/test.sh
+      run: ./specs_e2e/rails_6_1/test.sh
       env:
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
