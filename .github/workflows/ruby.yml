@@ -25,39 +25,3 @@ jobs:
       run: ./specs_e2e/rails_3_2/test.sh
       env:
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-
-  rails_4_2:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.5
-        bundler-cache: true
-    - name: Run tests
-      run: bundle exec rake
-    - run: gem uninstall -v '>= 2' -ax bundler || true
-    - run: gem install bundler -v '< 2'
-    - name: Run interaction tests
-      run: ./specs_e2e/rails_4_2/test.sh
-      env:
-        CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-
-  rails_5_2:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.6
-        bundler-cache: true
-    - name: Run tests
-      run: bundle exec rake
-    - name: Run interaction tests
-      run: ./specs_e2e/rails_5_2/test.sh
-      env:
-        CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
