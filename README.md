@@ -1,4 +1,4 @@
-# CypressOnRails
+# Cypress and Playwright on Rails
 
 ![Build Status](https://github.com/shakacode/cypress-on-rails/actions/workflows/ruby.yml/badge.svg)
 [![cypress-on-rails](https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/2b6cjr/master&style=plastic&logo=cypress)](https://dashboard.cypress.io/projects/2b6cjr/runs)
