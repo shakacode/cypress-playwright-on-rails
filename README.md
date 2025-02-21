@@ -117,24 +117,6 @@ If you are not using `factory_bot` look at `e2e/cypress/app_commands/factory_bot
 
 Now you can create scenarios and commands that are plain Ruby files that get loaded through middleware, the ruby sky is your limit.
 
-### Update your database.yml
-
-When writing and running tests on your local computer, it's recommended to start your server in development mode so that changes you
-make are picked up without having to restart your local server.
-
-It's recommended you update your `database.yml` to check if the `CYPRESS` environment variable is set and switch it to the test database
-otherwise, cypress will keep clearing your development database.
-
-For example:
-```yaml
-development:
-  <<: *default
-  database: <%= ENV['CYPRESS'] ? 'my_db_test' : 'my_db_development' %>
-test:
-  <<: *default
-  database: my_db_test
-```
-
 ### WARNING
 *WARNING!!:* cypress-on-rails can execute arbitrary ruby code
 Please use with extra caution if starting your local server on 0.0.0.0 or running the gem on a hosted server
@@ -144,8 +126,8 @@ Please use with extra caution if starting your local server on 0.0.0.0 or runnin
 Getting started on your local environment
 
 ```shell
-# start rails
-CYPRESS=1 bin/rails server -p 5017
+# start rails with test environment
+CYPRESS=1 RAILS_ENV=test bin/rails server -p 5017
 
 # in separate window start cypress
 yarn cypress open --project ./e2e
