@@ -117,6 +117,14 @@ If you are not using `factory_bot` look at `e2e/cypress/app_commands/factory_bot
 
 Now you can create scenarios and commands that are plain Ruby files that get loaded through middleware, the ruby sky is your limit.
 
+## If you want to use live reload from rails
+
+Change the below setting in test.rb
+
+```ruby
+config.enable_reloading = ENV['CYPRESS'].present?
+```
+
 ### WARNING
 *WARNING!!:* cypress-on-rails can execute arbitrary ruby code
 Please use with extra caution if starting your local server on 0.0.0.0 or running the gem on a hosted server
