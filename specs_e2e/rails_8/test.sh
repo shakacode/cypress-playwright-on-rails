@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-echo '--- testing rails 7.2.2'
+echo '--- testing rails 8'
 
 echo '-- setting environment'
 export DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
