@@ -42,3 +42,22 @@ jobs:
       run: ./specs_e2e/rails_7_2/test.sh
       env:
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+
+  rails_8:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.2.2
+        bundler-cache: true
+    - name: Run tests
+      run: bundle exec rake
+    - run: gem uninstall -v '>= 2' -ax bundler || true
+    - run: gem install bundler -v '< 2'
+    - name: Run interaction tests
+      run: ./specs_e2e/rails_8/test.sh
+      env:
+        CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
