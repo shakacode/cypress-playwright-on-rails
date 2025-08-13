@@ -123,6 +123,8 @@ Change the below setting in test.rb
 
 ```ruby
 config.enable_reloading = ENV['CYPRESS'].present?
+...
+config.action_controller.allow_forgery_protection = ENV["CYPRESS"].present?
 ```
 
 ### WARNING
@@ -133,6 +135,7 @@ Please use with extra caution if starting your local server on 0.0.0.0 or runnin
 
 Getting started on your local environment
 
+Also anywhere in configuartion, if port `3000` exists, simply add ENV['CYPRESS'].present? ? `5017` : `3000`
 ```shell
 # start rails with test environment
 CYPRESS=1 RAILS_ENV=test bin/rails server -p 5017
