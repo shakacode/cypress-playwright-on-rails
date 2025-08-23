@@ -6,14 +6,14 @@ if defined?(CypressOnRails)
     # please use with extra caution if enabling on hosted servers or starting your local server on 0.0.0.0
     c.use_middleware = !Rails.env.production?
     <% unless options.experimental %># <% end %> c.use_vcr_middleware = !Rails.env.production?
-    # Use this if you want to use use_cassette wrapper instead of manual insert/eject
-    # c.use_vcr_use_cassette_middleware = !Rails.env.production?
-    # Pass custom VCR options
-    # c.vcr_options = {
-    #   hook_into: :webmock,
-    #   default_cassette_options: { record: :once },
-    #   cassette_library_dir: File.expand_path("#{__dir__}/../../<%= options.install_folder %>/<%= options.framework %>/fixtures/vcr_cassettes")
-    # }
+    <% unless options.experimental %># <% end %> # Use this if you want to use use_cassette wrapper instead of manual insert/eject
+    <% unless options.experimental %># <% end %> # c.use_vcr_use_cassette_middleware = !Rails.env.production?
+    <% unless options.experimental %># <% end %> # Pass custom VCR options
+    <% unless options.experimental %># <% end %> c.vcr_options = {
+    <% unless options.experimental %># <% end %>   hook_into: :webmock,
+    <% unless options.experimental %># <% end %>   default_cassette_options: { record: :once },
+    <% unless options.experimental %># <% end %>   cassette_library_dir: File.expand_path("#{__dir__}/../../<%= options.install_folder %>/<%= options.framework %>/fixtures/vcr_cassettes")
+    <% unless options.experimental %># <% end %> }
     c.logger = Rails.logger
 
     # If you want to enable a before_request logic, such as authentication, logging, sending metrics, etc.

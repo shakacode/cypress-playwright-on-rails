@@ -13,6 +13,10 @@ module CypressOnRails
         app.middleware.use Vcr::InsertEjectMiddleware
       end
       if CypressOnRails.configuration.use_vcr_use_cassette_middleware?
+        if CypressOnRails.configuration.use_vcr_middleware?
+          raise 'Configure only one VCR middleware at a time: use_vcr_middleware OR use_vcr_use_cassette_middleware'
+        end
+
         require 'cypress_on_rails/vcr/use_cassette_middleware'
         app.middleware.use Vcr::UseCassetteMiddleware
       end
