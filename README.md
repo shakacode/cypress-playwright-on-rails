@@ -117,22 +117,14 @@ If you are not using `factory_bot` look at `e2e/cypress/app_commands/factory_bot
 
 Now you can create scenarios and commands that are plain Ruby files that get loaded through middleware, the ruby sky is your limit.
 
-### Update your database.yml
+## If you want to use live reload from rails
 
-When writing and running tests on your local computer, it's recommended to start your server in development mode so that changes you
-make are picked up without having to restart your local server.
+Change the below setting in test.rb
 
-It's recommended you update your `database.yml` to check if the `CYPRESS` environment variable is set and switch it to the test database
-otherwise, cypress will keep clearing your development database.
-
-For example:
-```yaml
-development:
-  <<: *default
-  database: <%= ENV['CYPRESS'] ? 'my_db_test' : 'my_db_development' %>
-test:
-  <<: *default
-  database: my_db_test
+```ruby
+config.enable_reloading = ENV['CYPRESS'].present?
+...
+config.action_controller.allow_forgery_protection = ENV["CYPRESS"].present?
 ```
 
 ### WARNING
@@ -143,9 +135,10 @@ Please use with extra caution if starting your local server on 0.0.0.0 or runnin
 
 Getting started on your local environment
 
+Also anywhere in configuartion, if port `3000` exists, simply add ENV['CYPRESS'].present? ? `5017` : `3000`
 ```shell
-# start rails
-CYPRESS=1 bin/rails server -p 5017
+# start rails with test environment
+CYPRESS=1 RAILS_ENV=test bin/rails server -p 5017
 
 # in separate window start cypress
 yarn cypress open --project ./e2e
