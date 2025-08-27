@@ -1,245 +1,391 @@
-## [1.17.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.16.0...v1.17.0
+# Changelog
 
-### Changed
-* Removed the update generator and reduced options for install generator [PR 149](https://github.com/shakacode/cypress-on-rails/pull/149)
+All notable changes to this project will be documented in this file.  
+This project adheres to [Semantic Versioning](https://semver.org/).
 
-### Fixed
-* fix update index.js in install generator [PR 147](https://github.com/shakacode/cypress-on-rails/pull/147) by [Judahmeek]
-* Support rails 7.1 by adding content-type header to generated on-rails.js file [PR 148](https://github.com/shakacode/cypress-on-rails/pull/148) by [anark]
-* Rewind body before reading it [PR 150](https://github.com/shakacode/cypress-on-rails/pull/150) 
+---
 
-## [1.16.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.15.1...v1.16.0
+## [1.18.0] — 2025-08-27
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.17.0...v1.18.0
 
 ### Added
-* Add support for `before_request` options on the middleware, for authentication [PR 138](https://github.com/shakacode/cypress-on-rails/pull/138) by [RomainEndelin]
+* **VCR middleware (use_cassette)**: optional middleware that wraps each request with `VCR.use_cassette` (GraphQL supported). Includes configuration via `config/cypress_on_rails.rb` and Cypress commands. [PR 167]
+* **Rails 8 example app & CI job** to validate against the newest framework version. [PR 174]
+
+### Changed
+* **Rails 7.2 example app** updates and CI wiring. [PR 171]
+* Updated JetBrains logo/assets in README. [PR 177]
+
+### Removed
+* Dropped Rails 4 and 5 from CI matrix. [PR 172]
+
+---
+
+## [1.17.0] — 2024-01-28
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.16.0...v1.17.0
+
+### Changed
+* Removed the update generator and reduced options for install generator [PR 149]
+
+### Fixed
+* Fix update `index.js` in install generator [PR 147] by [Judahmeek]
+* Support Rails 7.1 by adding `content-type` header to generated `on-rails.js` file [PR 148] by [anark]
+* Rewind body before reading it [PR 150]
+
+---
+
+## [1.16.0]
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.15.1...v1.16.0
+
+### Added
+* Add support for `before_request` options on the middleware, for authentication [PR 138] by [RomainEndelin]
+
+---
 
 ## [1.15.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.15.0...v1.15.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.15.0...v1.15.1
 
 ### Fixed
-* fix cypress_folder deprecation warning by internal code [PR 136](https://github.com/shakacode/cypress-on-rails/pull/136)
+* Fix `cypress_folder` deprecation warning by internal code [PR 136]
+
+---
 
 ## [1.15.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.14.0...v1.15.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.14.0...v1.15.0
 
 ### Changed
-* Add support for any e2e testing framewrok starting with Playwright [PR 131](https://github.com/shakacode/cypress-on-rails/pull/131) by [KhaledEmaraDev]
+* Add support for any e2e testing framework starting with Playwright [PR 131] by [KhaledEmaraDev]
+
+---
 
 ## [1.14.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.13.1...v1.14.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.13.1...v1.14.0
 
 ### Changed
-* Add support for proxy routes through `api_prefix` [PR 130](https://github.com/shakacode/cypress-on-rails/pull/130) by [RomainEndelin]
+* Add support for proxy routes through `api_prefix` [PR 130] by [RomainEndelin]
 
 ### Fixed
-* Properly copies the cypress_helper file when running the update generator [PR 117](https://github.com/shakacode/cypress-on-rails/pull/117) by [alvincrespo]
+* Properly copies the cypress_helper file when running the update generator [PR 117] by [alvincrespo]
 
 ### Tasks
-* pass cypress record key to github action [PR 110](https://github.com/shakacode/cypress-on-rails/pull/110)
+* Pass Cypress record key to GitHub Action [PR 110]
+
+---
 
 ## [1.13.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.13.0...v1.13.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.13.0...v1.13.1
 
 ### Fixed
-* use_vcr_middleware disabled by default [PR 109](https://github.com/shakacode/cypress-on-rails/pull/109)
+* `use_vcr_middleware` disabled by default [PR 109]
+
+---
 
 ## [1.13.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.12.1...v1.13.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.12.1...v1.13.0
 
 ### Changed
 * Add support for matching npm package and VCR
-* generate for cypress 10 [PR 108](https://github.com/shakacode/cypress-on-rails/pull/108)
+* Generate for Cypress 10 [PR 108]
+
+---
 
 ## [1.12.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.12.0...v1.12.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.12.0...v1.12.1
 
 ### Tasks
-* Documenting how to setup Factory Associations [PR 100](https://github.com/shakacode/cypress-on-rails/pull/100)
+* Document how to setup Factory Associations [PR 100]
 
 ### Fixed
-* keep track of factory manual reloads to prevent auto_reload from reloading again [PR 98](https://github.com/shakacode/cypress-on-rails/pull/98)
+* Keep track of factory manual reloads to prevent auto_reload from reloading again [PR 98]
+
+---
 
 ## [1.12.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.11.0...v1.12.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.11.0...v1.12.0
 
 ### Changed
-* only reload factories on clean instead of every factory create request [PR 95](https://github.com/shakacode/cypress-on-rails/pull/95)
-* alternative command added for get tail of logs [PR 89](https://github.com/shakacode/cypress-on-rails/pull/89) by [ccrockett]
+* Only reload factories on clean instead of every factory create request [PR 95]
+* Alternative command added for get tail of logs [PR 89] by [ccrockett]
 
 ### Tasks
-* switch from travis to github actions [PR 96]
+* Switch from Travis to GitHub Actions [PR 96]
+
+---
 
 ## [1.11.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.10.1...v1.11.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.10.1...v1.11.0
 
 ### Changed
-* improve app command logging on cypress
-* Allow build and build_list commands to be executed against factory bot [PR 87](https://github.com/shakacode/cypress-on-rails/pull/87) by [Alexander-Blair]
+* Improve app command logging on Cypress
+* Allow build and build_list commands to be executed against FactoryBot [PR 87] by [Alexander-Blair]
+
+---
 
 ## [1.10.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.9.1...v1.10.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.9.1...v1.10.1
 
 ### Changed
-* improve error message received from failed command
+* Improve error message received from failed command
+
+---
 
 ## [1.9.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.9.0...v1.9.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.9.0...v1.9.1
 
 ### Fixed
-* fix using `load` in command files
+* Fix using `load` in command files
+
+---
 
 ## [1.9.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.8.1...v1.9.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.8.1...v1.9.0
 
 ### Changed
-* Update default generated folder to cypress instead of spec/cypress
-* Add a generator option to not install cypress
-* generator by default does not include examples
-* default on local to run cypress in development mode
+* Update default generated folder to `cypress` instead of `spec/cypress`
+* Add a generator option to not install Cypress
+* Generator by default does not include examples
+* Default on local to run Cypress in development mode
+
+---
 
 ## [1.8.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.8.0...v1.8.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.8.0...v1.8.1
 
 ### Fixed
-* remove "--silent" option when adding cypress [PR 76](https://github.com/shakacode/cypress-on-rails/pull/76)
-* update cypress examples to use "preserve" instead of "whitelist" [PR 75](https://github.com/shakacode/cypress-on-rails/pull/75) by [alvincrespo](https://github.com/alvincrespo)
+* Remove `--silent` option when adding Cypress [PR 76]
+* Update Cypress examples to use "preserve" instead of "whitelist" [PR 75] by [alvincrespo]
+
+---
 
 ## [1.8.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.7.0...v1.8.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.7.0...v1.8.0
 
 ### Changed
-* Use `FactoryBo#reload` to reset factory bot
+* Use `FactoryBo#reload` to reset FactoryBot
+
+---
 
 ## [1.7.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.6.0...v1.7.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.6.0...v1.7.0
 
 ### Changed
-*  Improve eval() in command executor [PR 46](https://github.com/shakacode/cypress-on-rails/pull/46) by [Systho](https://github.com/Systho)
+* Improve eval() in command executor [PR 46] by [Systho]
 
 ### Fixed
-* Add middleware after load_config_initializers [PR 62](https://github.com/shakacode/cypress-on-rails/pull/62) by [duytd](https://github.com/duytd)
+* Add middleware after load_config_initializers [PR 62] by [duytd]
+
+---
 
 ## [1.6.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.5.1...v1.6.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.5.1...v1.6.0
 
 ### Changed
-* Change default port to 5017 [PR 49](https://github.com/shakacode/cypress-on-rails/pull/49) by [vfonic](https://github/vfonic)
+* Change default port to 5017 [PR 49] by [vfonic]
 
 ### Fixed
-* fix file location warning message in clean.rb [PR 54](https://github.com/shakacode/cypress-on-rails/pull/54) by [ootoovak](https://github.com/ootoovak)
+* Fix file location warning message in clean.rb [PR 54] by [ootoovak]
+
+---
 
 ## [1.5.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.5.0...v1.5.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.5.0...v1.5.1
 
 ### Fixed
-* fix FactoryBot Trait not registered error [PR 43](https://github.com/shakacode/cypress-on-rails/pull/43)
+* Fix FactoryBot Trait not registered error [PR 43]
+
+---
 
 ## [1.5.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.4.2...v1.5.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.4.2...v1.5.0
 
 ### Added
-* Serialize and return responses to be used in tests [PR 34](https://github.com/shakacode/cypress-on-rails/pull/34).
-* Update generator to make it easier to update core generated files [PR 35](https://github.com/shakacode/cypress-on-rails/pull/35).
+* Serialize and return responses to be used in tests [PR 34]
+* Update generator to make it easier to update core generated files [PR 35]
 
 ### Tasks
-* Update integration tests [PR 36](https://github.com/shakacode/cypress-on-rails/pull/36).
+* Update integration tests [PR 36]
+
+---
 
 ## [1.4.2]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.4.1...v1.4.2
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.4.1...v1.4.2
 
 ### Fixed
-* update generator to use full paths for Factory files [PR 33](https://github.com/shakacode/cypress-on-rails/pull/33).
+* Update generator to use full paths for Factory files [PR 33]
+
+---
 
 ## [1.4.1]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.4.0...v1.4.1
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.4.0...v1.4.1
 
 ### Fixed
-* fix install generator when using npm [PR 22](https://github.com/shakacode/cypress-on-rails/pull/22) by [josephan](https://github.com/josephan).
+* Fix install generator when using npm [PR 22] by [josephan]
 
 ### Tasks
-* Fix typo in authentication docs [PR 29](https://github.com/shakacode/cypress-on-rails/pull/27) by [badimalex](https://github.com/badimalex)
-* Gemspec: Drop EOL'd property rubyforge_project [PR 27](https://github.com/shakacode/cypress-on-rails/pull/27) by [olleolleolle](https://github.com/olleolleolle)
-* Update Travis CI badge in README [PR 31](https://github.com/shakacode/cypress-on-rails/pull/31)
-* Fix CI by Installing cypress dependencies on Travis CI [PR 31](https://github.com/shakacode/cypress-on-rails/pull/31)
+* Fix typo in authentication docs [PR 29] by [badimalex]
+* Gemspec: Drop EOL'd property `rubyforge_project` [PR 27] by [olleolleolle]
+* Update Travis CI badge in README [PR 31]
+* Fix CI by installing Cypress dependencies on Travis CI [PR 31]
+
+---
 
 ## [1.4.0]
-[Compare]: https://github.com/shakacode/cypress-on-rails/compare/v1.3.0...v1.4.0
+[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.3.0...v1.4.0
 
-* Accept an options argument for scenarios. [PR 18](https://github.com/shakacode/cypress-on-rails/pull/18) by [ericraio](https://github.com/ericraio).
+* Accept an options argument for scenarios [PR 18] by [ericraio]
 
 ### Changed
-* renamed CypressDev to CypressOnRails
+* Renamed CypressDev to CypressOnRails
+
+---
 
 ## [1.3.0]
 ### Added
-* Send any arguments to simple rails factory, not only hashes by [grantspeelman](https://github.com/grantspeelman).
+* Send any arguments to simple Rails factory, not only hashes by [grantspeelman]
 
 ### Improved
-* stop running cypress examples on CI
+* Stop running Cypress examples on CI
+
+---
 
 ## [1.2.1]
 ### Fixed
-* simple factory fails silently, changed to use create!
+* Simple factory fails silently, changed to use `create!`
+
+---
 
 ## [1.2.0]
 ### Tasks
-* adding additional log failure logging
+* Add additional log failure logging
+
+---
 
 ## [1.1.1]
 ### Fixed
-* smart factory wrapper can handle when factory files get deleted
+* Smart factory wrapper can handle when factory files get deleted
+
+---
 
 ## [1.1.0]
 ### Tasks
-* add cypress examples to install generator
-* add active record integration specs
+* Add Cypress examples to install generator
+* Add ActiveRecord integration specs
+
+---
 
 ## 1.0.1
 ### Fixed
-* install generator adding on-rails.js to import.js
+* Install generator adding `on-rails.js` to `import.js`
+
+---
 
 ## 1.0.0
-* renamed to CypressDev
-* middleware stripped down to make it more flexible and generic
-* concept of generic commands introduced that can have any ruby in it
-* and lots of other changes
+* Renamed to CypressDev
+* Middleware stripped down to make it more flexible and generic
+* Concept of generic commands introduced that can have any Ruby in it
+* And lots of other changes
+
+---
 
 ## 0.2.2 (2018-03-24)
 ### Fixed
-* fix major bug when using scenarios
+* Fix major bug when using scenarios
+
+---
 
 ## 0.2.1 (2017-11-05)
 ### Fixed
-* fix failure in api tests
+* Fix failure in API tests
+
+---
 
 ## 0.2.0 (2017-11-05)
 ### Changed
-* remove the need for a seperate port for the setup calls. Requires rerunning `cypress:install` generator
+* Remove the need for a separate port for the setup calls. Requires rerunning `cypress:install` generator
+
+---
 
 ## 0.1.5 (2017-11-01)
-
 ### Added
-* `cy.rails` command for executing raw ruby on the backend
+* `cy.rails` command for executing raw Ruby on the backend
 * `cy.setupRails` command for resetting application state
 * `cypress:install` generator now adds a `beforeEach` call to `cy.setupRails`
 * `cypress:install` generator configures the `cache_classes` setting in `config/environments/test.rb`
-* configuration option to include further modules in your runcontext
+* Configuration option to include further modules in your runcontext
+
+---
 
 ## 0.1.2 (2017-10-31)
 * First release.
 
-[1.8.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.7.0...v1.8.0
-[1.7.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.6.0...v1.7.0
-[1.6.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.5.1...v1.6.0
-[1.5.1]: https://github.com/shakacode/cypress-on-rails/compare/v1.5.0...v1.5.1
-[1.5.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.4.2...v1.5.0
-[1.4.2]: https://github.com/shakacode/cypress-on-rails/compare/v1.4.1...v1.4.2
-[1.4.1]: https://github.com/shakacode/cypress-on-rails/compare/v1.4.0...v1.4.1
-[1.4.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.3.0...v1.4.0
-[1.3.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.2.1...v1.3.0
-[1.2.1]: https://github.com/shakacode/cypress-on-rails/compare/v1.2.0...v1.2.1
-[1.2.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.1.1...v1.2.0
-[1.1.1]: https://github.com/shakacode/cypress-on-rails/compare/v1.1.0...v1.1.1
-[1.1.0]: https://github.com/shakacode/cypress-on-rails/compare/v1.0.0...v1.1.0
+---
+
+[PR 167]: https://github.com/shakacode/cypress-playwright-on-rails/pull/167
+[PR 174]: https://github.com/shakacode/cypress-playwright-on-rails/pull/174
+[PR 171]: https://github.com/shakacode/cypress-playwright-on-rails/pull/171
+[PR 177]: https://github.com/shakacode/cypress-playwright-on-rails/pull/177
+[PR 172]: https://github.com/shakacode/cypress-playwright-on-rails/pull/172
+[PR 149]: https://github.com/shakacode/cypress-playwright-on-rails/pull/149
+[PR 147]: https://github.com/shakacode/cypress-playwright-on-rails/pull/147
+[PR 148]: https://github.com/shakacode/cypress-playwright-on-rails/pull/148
+[PR 150]: https://github.com/shakacode/cypress-playwright-on-rails/pull/150
+[PR 138]: https://github.com/shakacode/cypress-playwright-on-rails/pull/138
+[PR 136]: https://github.com/shakacode/cypress-playwright-on-rails/pull/136
+[PR 131]: https://github.com/shakacode/cypress-playwright-on-rails/pull/131
+[PR 130]: https://github.com/shakacode/cypress-playwright-on-rails/pull/130
+[PR 117]: https://github.com/shakacode/cypress-playwright-on-rails/pull/117
+[PR 110]: https://github.com/shakacode/cypress-playwright-on-rails/pull/110
+[PR 109]: https://github.com/shakacode/cypress-playwright-on-rails/pull/109
+[PR 108]: https://github.com/shakacode/cypress-playwright-on-rails/pull/108
+[PR 100]: https://github.com/shakacode/cypress-playwright-on-rails/pull/100
+[PR 98]: https://github.com/shakacode/cypress-playwright-on-rails/pull/98
+[PR 95]: https://github.com/shakacode/cypress-playwright-on-rails/pull/95
+[PR 89]: https://github.com/shakacode/cypress-playwright-on-rails/pull/89
+[PR 96]: https://github.com/shakacode/cypress-playwright-on-rails/pull/96
+[PR 87]: https://github.com/shakacode/cypress-playwright-on-rails/pull/87
+[PR 76]: https://github.com/shakacode/cypress-playwright-on-rails/pull/76
+[PR 75]: https://github.com/shakacode/cypress-playwright-on-rails/pull/75
+[PR 46]: https://github.com/shakacode/cypress-playwright-on-rails/pull/46
+[PR 62]: https://github.com/shakacode/cypress-playwright-on-rails/pull/62
+[PR 49]: https://github.com/shakacode/cypress-playwright-on-rails/pull/49
+[PR 54]: https://github.com/shakacode/cypress-playwright-on-rails/pull/54
+[PR 43]: https://github.com/shakacode/cypress-playwright-on-rails/pull/43
+[PR 34]: https://github.com/shakacode/cypress-playwright-on-rails/pull/34
+[PR 35]: https://github.com/shakacode/cypress-playwright-on-rails/pull/35
+[PR 36]: https://github.com/shakacode/cypress-playwright-on-rails/pull/36
+[PR 33]: https://github.com/shakacode/cypress-playwright-on-rails/pull/33
+[PR 22]: https://github.com/shakacode/cypress-playwright-on-rails/pull/22
+[PR 29]: https://github.com/shakacode/cypress-playwright-on-rails/pull/29
+[PR 27]: https://github.com/shakacode/cypress-playwright-on-rails/pull/27
+[PR 31]: https://github.com/shakacode/cypress-playwright-on-rails/pull/31
+[PR 18]: https://github.com/shakacode/cypress-playwright-on-rails/pull/18
+
+<!-- Version diff reference list -->
+[1.18.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.17.0...v1.18.0
+[1.17.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.16.0...v1.17.0
+[1.16.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.15.1...v1.16.0
+[1.15.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.15.0...v1.15.1
+[1.15.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.14.0...v1.15.0
+[1.14.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.13.1...v1.14.0
+[1.13.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.13.0...v1.13.1
+[1.13.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.12.1...v1.13.0
+[1.12.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.12.0...v1.12.1
+[1.12.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.11.0...v1.12.0
+[1.11.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.10.1...v1.11.0
+[1.10.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.9.1...v1.10.1
+[1.9.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.9.0...v1.9.1
+[1.9.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.8.1...v1.9.0
+[1.8.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.8.0...v1.8.1
+[1.8.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.5.1...v1.6.0
+[1.5.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.5.0...v1.5.1
+[1.5.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.4.2...v1.5.0
+[1.4.2]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.4.1...v1.4.2
+[1.4.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.4.0...v1.4.1
+[1.4.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.2.1...v1.3.0
+[1.2.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.0.0...v1.1.0
