@@ -5,6 +5,23 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+* **Rake tasks for test execution**: Added `cypress:open` and `cypress:run` rake tasks for seamless test execution, similar to cypress-rails functionality. Also added `playwright:open` and `playwright:run` tasks.
+* **Server lifecycle hooks**: Added configuration hooks for test server management:
+  - `before_server_start`: Run code before Rails server starts
+  - `after_server_start`: Run code after Rails server is ready
+  - `after_transaction_start`: Run code after database transaction begins
+  - `after_state_reset`: Run code after application state is reset
+  - `before_server_stop`: Run code before Rails server stops
+* **State reset endpoint**: Added `/cypress_rails_reset_state` and `/__cypress__/reset_state` endpoints for compatibility with cypress-rails
+* **Transactional test mode**: Added support for automatic database transaction rollback between tests
+* **Environment configuration**: Support for `CYPRESS_RAILS_HOST` and `CYPRESS_RAILS_PORT` environment variables
+* **Automatic server management**: Test server automatically starts and stops with test execution
+
+---
+
 ## [1.18.0] — 2025-08-27
 [Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.17.0...v1.18.0
 

@@ -143,6 +143,29 @@ Please use with extra caution if starting your local server on 0.0.0.0 or runnin
 
 Getting started on your local environment
 
+### Using Rake Tasks (Recommended)
+
+The easiest way to run tests is using the provided rake tasks, which automatically manage the Rails server:
+
+```shell
+# For Cypress
+bin/rails cypress:open  # Opens Cypress test runner UI
+bin/rails cypress:run   # Runs Cypress tests in headless mode
+
+# For Playwright
+bin/rails playwright:open  # Opens Playwright test runner UI
+bin/rails playwright:run   # Runs Playwright tests in headless mode
+```
+
+These tasks will:
+- Start the Rails test server automatically
+- Execute your tests
+- Stop the server when done
+
+### Manual Server Management
+
+You can also manage the server manually:
+
 ```shell
 # start rails
 CYPRESS=1 bin/rails server -p 5017
@@ -505,6 +528,44 @@ Consider VCR configuration in `cypress_helper.rb` to ignore hosts.
 
 All cassettes will be recorded and saved automatically, using the pattern `<vcs_cassettes_path>/graphql/<operation_name>`
 
+
+## Server Hooks Configuration
+
+When using the rake tasks (`cypress:open`, `cypress:run`, `playwright:open`, `playwright:run`), you can configure lifecycle hooks to customize test server behavior:
+
+```ruby
+CypressOnRails.configure do |c|
+  # Run code before Rails server starts
+  c.before_server_start = -> { 
+    puts "Preparing test environment..."
+  }
+  
+  # Run code after Rails server is ready
+  c.after_server_start = -> {
+    puts "Server is ready for testing!"
+  }
+  
+  # Run code after database transaction begins (transactional mode only)
+  c.after_transaction_start = -> {
+    # Load seed data that should be rolled back after tests
+  }
+  
+  # Run code after application state is reset
+  c.after_state_reset = -> {
+    Rails.cache.clear
+  }
+  
+  # Run code before Rails server stops
+  c.before_server_stop = -> {
+    puts "Cleaning up test environment..."
+  }
+  
+  # Configure server settings
+  c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
+  c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
+  c.transactional_server = true  # Enable automatic transaction rollback
+end
+```
 
 ## `before_request` configuration
 
