@@ -161,7 +161,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 [Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.7.0...v1.8.0
 
 ### Changed
-* Use `FactoryBo#reload` to reset FactoryBot
+* Use `FactoryBot#reload` to reset FactoryBot
 
 ---
 
