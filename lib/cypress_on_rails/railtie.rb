@@ -3,10 +3,17 @@ require 'cypress_on_rails/configuration'
 
 module CypressOnRails
   class Railtie < Rails::Railtie
+    rake_tasks do
+      load 'tasks/cypress.rake'
+    end
     initializer :setup_cypress_middleware, after: :load_config_initializers do |app|
       if CypressOnRails.configuration.use_middleware?
         require 'cypress_on_rails/middleware'
         app.middleware.use Middleware
+        
+        # Add state reset middleware for compatibility with cypress-rails
+        require 'cypress_on_rails/state_reset_middleware'
+        app.middleware.use StateResetMiddleware
       end
       if CypressOnRails.configuration.use_vcr_middleware?
         require 'cypress_on_rails/vcr/insert_eject_middleware'
