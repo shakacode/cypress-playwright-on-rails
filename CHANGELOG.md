@@ -20,6 +20,64 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 * **Environment configuration**: Support for `CYPRESS_RAILS_HOST` and `CYPRESS_RAILS_PORT` environment variables
 * **Automatic server management**: Test server automatically starts and stops with test execution
 
+### Migration Guide
+
+#### From Manual Server Management (Old Way)
+If you were previously running tests manually:
+
+**Before (Manual Process):**
+```bash
+# Terminal 1: Start Rails server
+CYPRESS=1 bin/rails server -p 5017
+
+# Terminal 2: Run tests
+yarn cypress open --project ./e2e
+# or
+npx cypress run --project ./e2e
+```
+
+**After (Automated with Rake Tasks):**
+```bash
+# Single command - server managed automatically!
+bin/rails cypress:open
+# or
+bin/rails cypress:run
+```
+
+#### From cypress-rails Gem
+If migrating from the `cypress-rails` gem:
+
+1. Update your Gemfile:
+   ```ruby
+   # Remove
+   gem 'cypress-rails'
+   
+   # Add
+   gem 'cypress-on-rails', '~> 1.0'
+   ```
+
+2. Run bundle and generator:
+   ```bash
+   bundle install
+   rails g cypress_on_rails:install
+   ```
+
+3. Configure hooks in `config/initializers/cypress_on_rails.rb` (optional):
+   ```ruby
+   CypressOnRails.configure do |c|
+     # These hooks match cypress-rails functionality
+     c.before_server_start = -> { DatabaseCleaner.clean }
+     c.after_server_start = -> { Rails.application.load_seed }
+     c.transactional_server = true
+   end
+   ```
+
+4. Use the same commands you're familiar with:
+   ```bash
+   bin/rails cypress:open
+   bin/rails cypress:run
+   ```
+
 ---
 
 ## [1.18.0] — 2025-08-27
