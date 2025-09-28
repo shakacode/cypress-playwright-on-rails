@@ -51,7 +51,7 @@ If migrating from the `cypress-rails` gem:
    ```ruby
    # Remove
    gem 'cypress-rails'
-   
+
    # Add
    gem 'cypress-on-rails', '~> 1.0'
    ```
@@ -77,7 +77,6 @@ If migrating from the `cypress-rails` gem:
    bin/rails cypress:open
    bin/rails cypress:run
    ```
-
 ---
 
 ## [1.18.0] — 2025-08-27

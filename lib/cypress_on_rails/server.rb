@@ -102,9 +102,9 @@ module CypressOnRails
       end
 
       server_args = rails_args + ['server', '-p', port.to_s, '-b', host]
-      
+
       puts "Starting Rails server: #{server_args.join(' ')}"
-      
+
       spawn(*server_args, out: $stdout, err: $stderr)
     end
 
