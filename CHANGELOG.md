@@ -77,6 +77,7 @@ If migrating from the `cypress-rails` gem:
    bin/rails cypress:open
    bin/rails cypress:run
    ```
+
 ---
 
 ## [1.18.0] — 2025-08-27
