@@ -47,6 +47,28 @@ Consider first learning the basics of Playwright before attempting to integrate 
 
 * [Good start Here](https://playwright.dev/docs/writing-tests)
 
+## Quick Start
+
+```bash
+# 1. Add to Gemfile
+gem 'cypress-on-rails', '~> 1.0'
+
+# 2. Install and generate
+bundle install
+bin/rails g cypress_on_rails:install
+
+# 3. Run tests (new rake tasks!)
+bin/rails cypress:open    # Open Cypress UI
+bin/rails cypress:run     # Run headless
+```
+
+For Playwright:
+```bash
+bin/rails g cypress_on_rails:install --framework playwright
+bin/rails playwright:open  # Open Playwright UI
+bin/rails playwright:run   # Run headless
+```
+
 ## Overview
 
 Gem for using [cypress.io](http://github.com/cypress-io/) or [playwright.dev](https://playwright.dev/) in Rails and Ruby Rack applications to control state as mentioned in [Cypress Best Practices](https://docs.cypress.io/guides/references/best-practices.html#Organizing-Tests-Logging-In-Controlling-State). 
@@ -64,7 +86,16 @@ Has examples of setting up state with:
 * scenarios
 * custom commands
 
-## Resources
+## Documentation
+
+### 📚 Essential Guides
+* **[Best Practices Guide](docs/BEST_PRACTICES.md)** - Recommended patterns and practices
+* **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Solutions to common issues
+* **[Playwright Guide](docs/PLAYWRIGHT_GUIDE.md)** - Complete Playwright documentation
+* **[VCR Integration Guide](docs/VCR_GUIDE.md)** - HTTP recording and mocking
+* **[DX Improvements](docs/DX_IMPROVEMENTS.md)** - Recent improvements based on user feedback
+
+### 🎥 Resources
 * [Video of getting started with this gem](https://grant-ps.blog/2018/08/10/getting-started-with-cypress-io-and-ruby-on-rails/)
 * [Article: Introduction to Cypress on Rails](https://www.shakacode.com/blog/introduction-to-cypress-on-rails/)
 
