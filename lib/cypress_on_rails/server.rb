@@ -1,5 +1,6 @@
 require 'socket'
 require 'timeout'
+require 'fileutils'
 require 'cypress_on_rails/configuration'
 
 module CypressOnRails
@@ -25,7 +26,7 @@ module CypressOnRails
 
     def run
       start_server do
-        result = run_command(run_command_str, "Running #{framework} tests")
+        result = run_command(run_command_args, "Running #{framework} tests")
         exit(result ? 0 : 1)
       end
     end
@@ -40,7 +41,7 @@ module CypressOnRails
     def detect_install_folder
       # Check common locations for cypress/playwright installation
       possible_folders = ['e2e', 'spec/e2e', 'spec/cypress', 'spec/playwright', 'cypress', 'playwright']
-      folder = possible_folders.find { |f| File.exist?(f) }
+      folder = possible_folders.find { |f| File.exist?(File.expand_path(f)) }
       folder || 'e2e'
     end
 
@@ -94,17 +95,17 @@ module CypressOnRails
     end
 
     def spawn_server
-      rails_command = if File.exist?('bin/rails')
-        'bin/rails'
+      rails_args = if File.exist?('bin/rails')
+        ['bin/rails']
       else
-        'bundle exec rails'
+        ['bundle', 'exec', 'rails']
       end
 
-      server_command = "#{rails_command} server -p #{port} -b #{host}"
+      server_args = rails_args + ['server', '-p', port.to_s, '-b', host]
       
-      puts "Starting Rails server: #{server_command}"
+      puts "Starting Rails server: #{server_args.join(' ')}"
       
-      spawn(server_command, out: $stdout, err: $stderr)
+      spawn(*server_args, out: $stdout, err: $stderr)
     end
 
     def wait_for_server(timeout = 30)
@@ -140,47 +141,47 @@ module CypressOnRails
       case framework
       when :cypress
         if command_exists?('yarn')
-          "yarn cypress open --project #{install_folder} --config baseUrl=#{base_url}"
+          ['yarn', 'cypress', 'open', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         elsif command_exists?('npx')
-          "npx cypress open --project #{install_folder} --config baseUrl=#{base_url}"
+          ['npx', 'cypress', 'open', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         else
-          "cypress open --project #{install_folder} --config baseUrl=#{base_url}"
+          ['cypress', 'open', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
         if command_exists?('yarn')
-          "yarn playwright test --ui"
+          ['yarn', 'playwright', 'test', '--ui']
         elsif command_exists?('npx')
-          "npx playwright test --ui"
+          ['npx', 'playwright', 'test', '--ui']
         else
-          "playwright test --ui"
+          ['playwright', 'test', '--ui']
         end
       end
     end
 
-    def run_command_str
+    def run_command_args
       case framework
       when :cypress
         if command_exists?('yarn')
-          "yarn cypress run --project #{install_folder} --config baseUrl=#{base_url}"
+          ['yarn', 'cypress', 'run', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         elsif command_exists?('npx')
-          "npx cypress run --project #{install_folder} --config baseUrl=#{base_url}"
+          ['npx', 'cypress', 'run', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         else
-          "cypress run --project #{install_folder} --config baseUrl=#{base_url}"
+          ['cypress', 'run', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
         if command_exists?('yarn')
-          "yarn playwright test"
+          ['yarn', 'playwright', 'test']
         elsif command_exists?('npx')
-          "npx playwright test"
+          ['npx', 'playwright', 'test']
         else
-          "playwright test"
+          ['playwright', 'test']
         end
       end
     end
 
-    def run_command(command, description)
-      puts "#{description}: #{command}"
-      system(command)
+    def run_command(command_args, description)
+      puts "#{description}: #{command_args.join(' ')}"
+      system(*command_args)
     end
 
     def command_exists?(command)
