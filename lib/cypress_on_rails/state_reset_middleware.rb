@@ -18,16 +18,26 @@ module CypressOnRails
     def reset_application_state
       config = CypressOnRails.configuration
       
-      # Run after_state_reset hook if configured
-      run_hook(config.after_state_reset)
-      
       # Default state reset actions
       if defined?(DatabaseCleaner)
         DatabaseCleaner.clean_with(:truncation)
       elsif defined?(ActiveRecord::Base)
-        ActiveRecord::Base.connection.tables.each do |table|
-          next if table == 'schema_migrations' || table == 'ar_internal_metadata'
-          ActiveRecord::Base.connection.execute("DELETE FROM #{table}")
+        connection = ActiveRecord::Base.connection
+        
+        # Use disable_referential_integrity if available for safer table clearing
+        if connection.respond_to?(:disable_referential_integrity)
+          connection.disable_referential_integrity do
+            connection.tables.each do |table|
+              next if table == 'schema_migrations' || table == 'ar_internal_metadata'
+              connection.execute("DELETE FROM #{connection.quote_table_name(table)}")
+            end
+          end
+        else
+          # Fallback to regular deletion with proper table name quoting
+          connection.tables.each do |table|
+            next if table == 'schema_migrations' || table == 'ar_internal_metadata'
+            connection.execute("DELETE FROM #{connection.quote_table_name(table)}")
+          end
         end
       end
       
@@ -36,6 +46,9 @@ module CypressOnRails
       
       # Reset any class-level state
       ActiveSupport::Dependencies.clear if defined?(ActiveSupport::Dependencies)
+      
+      # Run after_state_reset hook after cleanup is complete
+      run_hook(config.after_state_reset)
     end
     
     def run_hook(hook)
