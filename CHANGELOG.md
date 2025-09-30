@@ -51,7 +51,7 @@ If migrating from the `cypress-rails` gem:
    ```ruby
    # Remove
    gem 'cypress-rails'
-   
+
    # Add
    gem 'cypress-on-rails', '~> 1.0'
    ```

@@ -17,13 +17,13 @@ module CypressOnRails
     
     def reset_application_state
       config = CypressOnRails.configuration
-      
+
       # Default state reset actions
       if defined?(DatabaseCleaner)
         DatabaseCleaner.clean_with(:truncation)
       elsif defined?(ActiveRecord::Base)
         connection = ActiveRecord::Base.connection
-        
+
         # Use disable_referential_integrity if available for safer table clearing
         if connection.respond_to?(:disable_referential_integrity)
           connection.disable_referential_integrity do
@@ -40,13 +40,13 @@ module CypressOnRails
           end
         end
       end
-      
+
       # Clear Rails cache
       Rails.cache.clear if defined?(Rails) && Rails.cache
-      
+
       # Reset any class-level state
       ActiveSupport::Dependencies.clear if defined?(ActiveSupport::Dependencies)
-      
+
       # Run after_state_reset hook after cleanup is complete
       run_hook(config.after_state_reset)
     end
