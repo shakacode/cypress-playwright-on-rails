@@ -5,6 +5,81 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+* **Rake tasks for test execution**: Added `cypress:open` and `cypress:run` rake tasks for seamless test execution, similar to cypress-rails functionality. Also added `playwright:open` and `playwright:run` tasks.
+* **Server lifecycle hooks**: Added configuration hooks for test server management:
+  - `before_server_start`: Run code before Rails server starts
+  - `after_server_start`: Run code after Rails server is ready
+  - `after_transaction_start`: Run code after database transaction begins
+  - `after_state_reset`: Run code after application state is reset
+  - `before_server_stop`: Run code before Rails server stops
+* **State reset endpoint**: Added `/cypress_rails_reset_state` and `/__cypress__/reset_state` endpoints for compatibility with cypress-rails
+* **Transactional test mode**: Added support for automatic database transaction rollback between tests
+* **Environment configuration**: Support for `CYPRESS_RAILS_HOST` and `CYPRESS_RAILS_PORT` environment variables
+* **Automatic server management**: Test server automatically starts and stops with test execution
+
+### Migration Guide
+
+#### From Manual Server Management (Old Way)
+If you were previously running tests manually:
+
+**Before (Manual Process):**
+```bash
+# Terminal 1: Start Rails server
+CYPRESS=1 bin/rails server -p 5017
+
+# Terminal 2: Run tests
+yarn cypress open --project ./e2e
+# or
+npx cypress run --project ./e2e
+```
+
+**After (Automated with Rake Tasks):**
+```bash
+# Single command - server managed automatically!
+bin/rails cypress:open
+# or
+bin/rails cypress:run
+```
+
+#### From cypress-rails Gem
+If migrating from the `cypress-rails` gem:
+
+1. Update your Gemfile:
+   ```ruby
+   # Remove
+   gem 'cypress-rails'
+   
+   # Add
+   gem 'cypress-on-rails', '~> 1.0'
+   ```
+
+2. Run bundle and generator:
+   ```bash
+   bundle install
+   rails g cypress_on_rails:install
+   ```
+
+3. Configure hooks in `config/initializers/cypress_on_rails.rb` (optional):
+   ```ruby
+   CypressOnRails.configure do |c|
+     # These hooks match cypress-rails functionality
+     c.before_server_start = -> { DatabaseCleaner.clean }
+     c.after_server_start = -> { Rails.application.load_seed }
+     c.transactional_server = true
+   end
+   ```
+
+4. Use the same commands you're familiar with:
+   ```bash
+   bin/rails cypress:open
+   bin/rails cypress:run
+   ```
+
+---
+
 ## [1.18.0] — 2025-08-27
 [Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.17.0...v1.18.0
 

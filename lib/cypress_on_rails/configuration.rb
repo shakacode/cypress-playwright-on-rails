@@ -10,6 +10,18 @@ module CypressOnRails
     attr_accessor :before_request
     attr_accessor :logger
     attr_accessor :vcr_options
+    
+    # Server hooks for managing test lifecycle
+    attr_accessor :before_server_start
+    attr_accessor :after_server_start
+    attr_accessor :after_transaction_start
+    attr_accessor :after_state_reset
+    attr_accessor :before_server_stop
+    
+    # Server configuration
+    attr_accessor :server_host
+    attr_accessor :server_port
+    attr_accessor :transactional_server
 
     # Attributes for backwards compatibility
     def cypress_folder
@@ -38,6 +50,18 @@ module CypressOnRails
       self.before_request = -> (request) {}
       self.logger = Logger.new(STDOUT)
       self.vcr_options = {}
+      
+      # Server hooks
+      self.before_server_start = nil
+      self.after_server_start = nil
+      self.after_transaction_start = nil
+      self.after_state_reset = nil
+      self.before_server_stop = nil
+      
+      # Server configuration
+      self.server_host = ENV.fetch('CYPRESS_RAILS_HOST', 'localhost')
+      self.server_port = ENV.fetch('CYPRESS_RAILS_PORT', nil)
+      self.transactional_server = true
     end
 
     def tagged_logged
