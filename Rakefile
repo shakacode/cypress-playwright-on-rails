@@ -7,6 +7,22 @@ end
 
 task default: %w[spec build]
 
+# Remove bundler's default 'release' task to avoid confusion
+Rake::Task['release'].clear if Rake::Task.task_defined?('release')
+
+desc "Release gem (use release:prepare first to bump version)"
+task :release do
+  puts "⚠️  Direct 'rake release' is disabled."
+  puts ""
+  puts "To release a new version:"
+  puts "  1. rake release:prepare[VERSION]  # Bump version and update CHANGELOG"
+  puts "  2. git commit and push"
+  puts "  3. rake release:publish           # Build and publish gem"
+  puts ""
+  puts "Example:"
+  puts "  rake release:prepare[1.19.0]"
+end
+
 namespace :release do
   desc "Prepare release: bump version and update changelog"
   task :prepare, [:version] do |_t, args|

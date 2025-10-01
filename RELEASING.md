@@ -12,14 +12,23 @@ This document describes how to release a new version of cypress-playwright-on-ra
 
 ## Release Tasks
 
-The project uses rake tasks with `gem-release` to automate the release process (similar to react_on_rails and other ShakaCode gems):
+The project uses rake tasks with `gem-release` to automate the release process (similar to react_on_rails and other ShakaCode gems).
+
+**⚠️ Important:** Use `rake release:prepare` and `rake release:publish` commands.
+Do NOT use `rake release` directly - it will try to release the current version without bumping!
 
 ### Quick Release
 
 ```bash
-# Prepare and publish in one command
+# 1. Prepare: bump version and update changelog
 rake release:prepare[1.19.0]
-# Review changes, commit
+
+# 2. Review and commit
+git diff
+git add -A && git commit -m "Bump version to 1.19.0"
+git push origin master
+
+# 3. Publish: tag, build, and push to RubyGems
 rake release:publish
 ```
 
