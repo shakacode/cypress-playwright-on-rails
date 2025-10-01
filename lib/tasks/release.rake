@@ -4,7 +4,8 @@ desc("Releases the gem using the given version.
 
 IMPORTANT: the gem version must be in valid rubygem format (no dashes).
 
-This task depends on the gem-release ruby gem which is installed via `bundle install`
+This task depends on the gem-release ruby gem. Install it globally with:
+  gem install gem-release
 
 1st argument: The new version in rubygem format (no dashes). Pass no argument to
               automatically perform a patch version bump.
@@ -19,6 +20,11 @@ task :release, %i[gem_version dry_run] do |_t, args|
 
   def gem_root
     File.expand_path('..', __dir__)
+  end
+
+  # Check if gem-release is installed
+  unless system("gem list -i gem-release > /dev/null 2>&1")
+    raise "gem-release is not installed. Please run: gem install gem-release"
   end
 
   # Check if there are uncommitted changes
