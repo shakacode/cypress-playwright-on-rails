@@ -70,6 +70,7 @@ Follow [Semantic Versioning](https://semver.org/):
 - **Major version** (X.0.0): Breaking changes
 - **Minor version** (0.X.0): New features, backwards compatible
 - **Patch version** (0.0.X): Bug fixes, backwards compatible
+- **Pre-release versions**: Use dot notation, not dashes (e.g., `2.0.0.beta.1`, not `2.0.0-beta.1`)
 
 ## What the Release Task Does
 
