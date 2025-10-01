@@ -84,12 +84,13 @@ The release task automates the following steps:
 
 1. Checks for uncommitted changes (will abort if found)
 2. Pulls the latest changes from the repository
-3. Bumps the version number in `lib/cypress_on_rails/version.rb`
-4. Creates a git commit with the version bump
-5. Creates a git tag for the new version
-6. Pushes the commit and tag to GitHub
-7. Builds the gem
-8. Publishes the gem to RubyGems
+3. Bumps the version number in `lib/cypress_on_rails/version.rb` using `gem bump`
+4. Creates a git commit with the version bump message
+5. Creates a git tag for the new version (e.g., `v1.19.0`)
+6. Pushes the commit to GitHub
+7. Pushes the tag to GitHub
+8. Builds the gem
+9. Publishes the gem to RubyGems (requires OTP)
 
 ## Troubleshooting
 
