@@ -39,9 +39,10 @@ task :release, %i[gem_version dry_run] do |_t, args|
   sh_in_dir(gem_root, "gem release") unless is_dry_run
 
   msg = <<~MSG
-    Once you have successfully published, manually update CHANGELOG.md:
+    Once you have successfully published, update CHANGELOG.md:
 
-    # Edit CHANGELOG.md to document the new release
+    bundle exec rake update_changelog
+    # Edit CHANGELOG.md to move unreleased changes to the new version section
     git commit -a -m 'Update CHANGELOG.md'
     git push
   MSG
