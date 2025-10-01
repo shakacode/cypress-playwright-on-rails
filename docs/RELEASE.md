@@ -55,10 +55,10 @@ If you get an error during gem publishing, you can run `gem release` manually to
 
 ### 5. Update the CHANGELOG
 
-After successfully publishing the gem, update the CHANGELOG:
+After successfully publishing the gem, manually update the CHANGELOG:
 
 ```bash
-bundle exec rake update_changelog
+# Edit CHANGELOG.md to document the new release
 git commit -a -m 'Update CHANGELOG.md'
 git push
 ```
