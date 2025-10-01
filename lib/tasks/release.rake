@@ -32,10 +32,19 @@ task :release, %i[gem_version dry_run] do |_t, args|
 
   # See https://github.com/svenfuchs/gem-release
   sh_in_dir(gem_root, "git pull --rebase")
-  sh_in_dir(gem_root, "gem bump --no-commit #{%(--version #{gem_version}) unless gem_version.strip.empty?}")
 
-  # Release the new gem version
-  puts "Carefully add your OTP for Rubygems. If you get an error, run 'gem release' again."
+  # Bump version, commit, and tag (gem bump does all of this)
+  bump_command = "gem bump"
+  bump_command << " --version #{gem_version}" unless gem_version.strip.empty?
+  bump_command << " --skip-ci" # Skip CI on version bump commit
+  sh_in_dir(gem_root, bump_command)
+
+  # Push the commit and tag
+  sh_in_dir(gem_root, "git push") unless is_dry_run
+  sh_in_dir(gem_root, "git push --tags") unless is_dry_run
+
+  # Release the new gem version to RubyGems
+  puts "\nCarefully add your OTP for Rubygems. If you get an error, run 'gem release' again."
   sh_in_dir(gem_root, "gem release") unless is_dry_run
 
   msg = <<~MSG
