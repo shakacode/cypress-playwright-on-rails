@@ -1,14 +1,13 @@
 require 'cypress_on_rails/middleware'
 
 RSpec.describe CypressOnRails::Middleware do
-  let(:app) { ->(env) { [200, {}, ["app did #{env['PATH_INFO']}"]] } }
-  let(:command_executor) { class_double(CypressOnRails::CommandExecutor) }
-  let(:file) { class_double(File) }
   subject { described_class.new(app, command_executor, file) }
 
+  let(:app) { ->(env) { [200, {}, ["app did #{env['PATH_INFO']}"]] } }
   let(:env) { {} }
-
   let(:response) { subject.call(env) }
+  let(:command_executor) { class_double(CypressOnRails::CommandExecutor) }
+  let(:file) { class_double(File) }
 
   def rack_input(json_value)
     StringIO.new(JSON.generate(json_value))
@@ -28,8 +27,8 @@ RSpec.describe CypressOnRails::Middleware do
 
       aggregate_failures do
         expect(response).to eq([201,
-                                {"Content-Type"=>"application/json"},
-                                ["[{\"id\":1,\"title\":\"some result\"}]"]])
+                                { 'Content-Type' => 'application/json' },
+                                ['[{"id":1,"title":"some result"}]']])
         expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/seed.rb', nil)
       end
     end
@@ -40,8 +39,8 @@ RSpec.describe CypressOnRails::Middleware do
 
       aggregate_failures do
         expect(response).to eq([201,
-                                {"Content-Type"=>"application/json"},
-                                ["[{\"id\":1,\"title\":\"some result\"}]"]])
+                                { 'Content-Type' => 'application/json' },
+                                ['[{"id":1,"title":"some result"}]']])
         expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/seed.rb', ['my_options'])
       end
     end
@@ -54,8 +53,8 @@ RSpec.describe CypressOnRails::Middleware do
 
       aggregate_failures do
         expect(response).to eq([201,
-                                {"Content-Type"=>"application/json"},
-                                ["{\"message\":\"Cannot convert to json\"}"]])
+                                { 'Content-Type' => 'application/json' },
+                                ['{"message":"Cannot convert to json"}']])
         expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/seed.rb', nil)
       end
     end
@@ -66,37 +65,37 @@ RSpec.describe CypressOnRails::Middleware do
 
       aggregate_failures do
         expect(response).to eq([201,
-                                {"Content-Type"=>"application/json"},
-                                ["[{\"id\":1,\"title\":\"some result\"}]"]])
+                                { 'Content-Type' => 'application/json' },
+                                ['[{"id":1,"title":"some result"}]']])
         expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/seed.rb', nil)
       end
     end
 
     it 'running multiple commands' do
-      env['rack.input'] = rack_input([{name: 'load_user'},
-                                      {name: 'load_sample', options: {'all' => 'true'}}])
+      env['rack.input'] = rack_input([{ name: 'load_user' },
+                                      { name: 'load_sample', options: { 'all' => 'true' } }])
       allow(file).to receive(:exist?).with('spec/e2e/app_commands/load_user.rb').and_return(true)
       allow(file).to receive(:exist?).with('spec/e2e/app_commands/load_sample.rb').and_return(true)
 
       aggregate_failures do
         expect(response).to eq([201,
-                                {"Content-Type"=>"application/json"},
-                                ["[{\"id\":1,\"title\":\"some result\"},{\"id\":1,\"title\":\"some result\"}]"]])
+                                { 'Content-Type' => 'application/json' },
+                                ['[{"id":1,"title":"some result"},{"id":1,"title":"some result"}]']])
         expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/load_user.rb', nil)
-        expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/load_sample.rb', {'all' => 'true'})
+        expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/load_sample.rb', { 'all' => 'true' })
       end
     end
 
     it 'running multiple commands but one missing' do
-      env['rack.input'] = rack_input([{name: 'load_user'}, {name: 'load_sample'}])
+      env['rack.input'] = rack_input([{ name: 'load_user' }, { name: 'load_sample' }])
       allow(file).to receive(:exist?).with('spec/e2e/app_commands/load_user.rb').and_return(true)
       allow(file).to receive(:exist?).with('spec/e2e/app_commands/load_sample.rb').and_return(false)
 
       aggregate_failures do
         expect(response).to eq([404,
-                                {"Content-Type"=>"application/json"},
-                                ["{\"message\":\"could not find command file: spec/e2e/app_commands/load_sample.rb\"}"]])
-        expect(command_executor).to_not have_received(:perform)
+                                { 'Content-Type' => 'application/json' },
+                                ['{"message":"could not find command file: spec/e2e/app_commands/load_sample.rb"}']])
+        expect(command_executor).not_to have_received(:perform)
       end
     end
   end
@@ -104,7 +103,7 @@ RSpec.describe CypressOnRails::Middleware do
   context '"Other paths"' do
     it 'runs app' do
       aggregate_failures do
-        %w(/ /__e2e__/login command /e2e_command /).each do |path|
+        %w[/ /__e2e__/login command /e2e_command /].each do |path|
           env['PATH_INFO'] = path
 
           response = subject.call(env)
@@ -123,7 +122,7 @@ RSpec.describe CypressOnRails::Middleware do
 
       response = subject.call(env)
 
-      expect(response).to eq([200, {}, ["app did /test"]])
+      expect(response).to eq([200, {}, ['app did /test']])
     end
   end
 end

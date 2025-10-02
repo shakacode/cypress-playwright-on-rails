@@ -7,7 +7,7 @@ module CypressOnRails
 
     def self.create_list(type, amount, *params)
       amount.to_i.times do
-        create(type,*params)
+        create(type, *params)
       end
     end
 

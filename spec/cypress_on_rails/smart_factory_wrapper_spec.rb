@@ -8,11 +8,19 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
     end
   end
 
+  subject do
+    described_class.new(files: files,
+                        factory: factory_double,
+                        kernel: kernel_double,
+                        file_system: file_double,
+                        dir_system: dir_double)
+  end
+
   let(:time_now) { Time.now }
-  let(:mtime_hash) { {'file1.rb' => time_now, 'file2.rb' => time_now } }
-  let(:files) { %w(file1.rb file2.rb) }
+  let(:mtime_hash) { { 'file1.rb' => time_now, 'file2.rb' => time_now } }
+  let(:files) { %w[file1.rb file2.rb] }
   let(:factory_double) do
-    class_double(FactoryBot, create: nil, create_list: nil, build: nil, build_list: nil, "definition_file_paths=": nil, reload: nil)
+    class_double(FactoryBot, create: nil, create_list: nil, build: nil, build_list: nil, 'definition_file_paths=': nil, reload: nil)
   end
   let(:kernel_double) { class_double(Kernel, load: true) }
   let(:file_double) { FileSystemDummy.new(mtime_hash) }
@@ -22,47 +30,39 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
     allow(Dir).to receive(:[]).with(*files) { mtime_hash.keys }
   end
 
-  subject do
-    described_class.new(files: files,
-                        factory: factory_double,
-                        kernel: kernel_double,
-                        file_system: file_double,
-                        dir_system: dir_double)
-  end
-
   it 'loads all the files on first create it' do
     subject.create(:user)
     expect(kernel_double).to have_received(:load).with('file1.rb')
     expect(kernel_double).to have_received(:load).with('file2.rb')
   end
 
-  it 'loads all the files on first create_list ' do
+  it 'loads all the files on first create_list' do
     subject.create_list(:user, 10)
     expect(kernel_double).to have_received(:load).with('file1.rb')
     expect(kernel_double).to have_received(:load).with('file2.rb')
   end
 
-  it 'it sends delegates create to the factory' do
+  it 'sends delegates create to the factory' do
     subject.create(:user)
     expect(factory_double).to have_received(:create).with(:user, {})
   end
 
-  it 'it sends delegates create to the factory and symbolize keys' do
-    subject.create(:user, {'name' => "name"})
-    expect(factory_double).to have_received(:create).with(:user, {name: 'name'})
+  it 'sends delegates create to the factory and symbolize keys' do
+    subject.create(:user, { 'name' => 'name' })
+    expect(factory_double).to have_received(:create).with(:user, { name: 'name' })
   end
 
-  it 'it sends delegates create to the factory and symbolize keys with trait' do
-    subject.create(:user, 'trait1', {'name' => "name"})
-    expect(factory_double).to have_received(:create).with(:user, :trait1, {name: 'name'})
+  it 'sends delegates create to the factory and symbolize keys with trait' do
+    subject.create(:user, 'trait1', { 'name' => 'name' })
+    expect(factory_double).to have_received(:create).with(:user, :trait1, { name: 'name' })
   end
 
-  it 'it sends delegates create to the factory and symbolize keys with only trait' do
+  it 'sends delegates create to the factory and symbolize keys with only trait' do
     subject.create(:user, 'trait2')
     expect(factory_double).to have_received(:create).with(:user, :trait2, {})
   end
 
-  it 'it sends delegates create_list to the factory' do
+  it 'sends delegates create_list to the factory' do
     subject.create_list(:note, 10)
     expect(factory_double).to have_received(:create_list).with(:note, 10)
   end
@@ -73,13 +73,13 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
   end
 
   it 'delegates build to the factory and symbolize keys' do
-    subject.build(:user, {'name' => "name"})
-    expect(factory_double).to have_received(:build).with(:user, {name: 'name'})
+    subject.build(:user, { 'name' => 'name' })
+    expect(factory_double).to have_received(:build).with(:user, { name: 'name' })
   end
 
   it 'delegates build to the factory and symbolize keys with trait' do
-    subject.build(:user, 'trait1', {'name' => "name"})
-    expect(factory_double).to have_received(:build).with(:user, :trait1, {name: 'name'})
+    subject.build(:user, 'trait1', { 'name' => 'name' })
+    expect(factory_double).to have_received(:build).with(:user, :trait1, { name: 'name' })
   end
 
   it 'delegates build to the factory and symbolize keys with only trait' do
@@ -99,7 +99,7 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
     expect(kernel_double).to have_received(:load).with('file2.rb').once
   end
 
-  it 'will reload the files if any have changed' do
+  it 'reloads the files if any have changed' do
     subject.create(:user)
     expect(kernel_double).to have_received(:load).with('file1.rb').once
     expect(kernel_double).to have_received(:load).with('file2.rb').once
@@ -110,7 +110,7 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
     expect(kernel_double).to have_received(:load).with('file2.rb').twice
   end
 
-  it 'will reload only the files that exist' do
+  it 'reloads only the files that exist' do
     subject.always_reload = true
     subject.create(:user)
     expect(kernel_double).to have_received(:load).with('file1.rb').once
@@ -122,7 +122,7 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
     expect(kernel_double).to have_received(:load).with('file2.rb').twice
   end
 
-  it 'will reset factory if a file has changed' do
+  it 'resets factory if a file has changed' do
     subject.create(:user)
     expect(factory_double).to have_received(:reload)
 
@@ -132,7 +132,7 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
     expect(factory_double).to have_received(:reload).twice
   end
 
-  it 'will always reload the files enabled' do
+  it 'alwayses reload the files enabled' do
     subject.always_reload = true
     subject.create_list(:user, 2)
     subject.create(:user)

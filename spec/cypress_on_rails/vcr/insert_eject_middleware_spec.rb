@@ -6,12 +6,11 @@ module CypressOnRails
   module Vcr
     RSpec.describe InsertEjectMiddleware do
       let(:app) { ->(env) { [200, {}, ["app did #{env['PATH_INFO']}"]] } }
-      let(:vcr) { class_double(VCR, turn_on!: true, turn_off!: true, insert_cassette: true, eject_cassette: true) }
-      subject { described_class.new(app, vcr) }
-
       let(:env) { {} }
-
       let(:response) { subject.call(env) }
+      let(:vcr) { class_double(VCR, turn_on!: true, turn_off!: true, insert_cassette: true, eject_cassette: true) }
+
+      subject { described_class.new(app, vcr) }
 
       def rack_input(json_value)
         StringIO.new(JSON.generate(json_value))

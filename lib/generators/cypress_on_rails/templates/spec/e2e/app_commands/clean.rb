@@ -3,7 +3,7 @@ if defined?(DatabaseCleaner)
   DatabaseCleaner.strategy = :truncation
   DatabaseCleaner.clean
 else
-  logger.warn "add database_cleaner or update cypress/app_commands/clean.rb"
+  logger.warn 'add database_cleaner or update cypress/app_commands/clean.rb'
   Post.delete_all if defined?(Post)
 end
 
@@ -15,4 +15,4 @@ if defined?(VCR)
   WebMock.disable! if defined?(WebMock)
 end
 
-Rails.logger.info "APPCLEANED" # used by log_fail.rb
+Rails.logger.info 'APPCLEANED' # used by log_fail.rb

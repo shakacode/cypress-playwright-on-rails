@@ -4,7 +4,7 @@ module CypressOnRails
   module TaskHelpers
     # Returns the root folder of the cypress-on-rails gem
     def gem_root
-      File.expand_path("..", __dir__)
+      File.expand_path('..', __dir__)
     end
 
     # Executes a string or an array of strings in a shell in the given directory
