@@ -37,7 +37,7 @@ task :release, %i[gem_version dry_run] do |_t, args|
 
   # Bump version, commit, and tag (gem bump does all of this)
   bump_command = "gem bump"
-  bump_command << " --version #{gem_version}" unless gem_version.strip.empty?
+  bump_command << " -v #{gem_version}" unless gem_version.strip.empty?
   bump_command << " --skip-ci" # Skip CI on version bump commit
   sh_in_dir(gem_root, bump_command)
 
