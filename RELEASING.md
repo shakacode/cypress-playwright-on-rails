@@ -10,79 +10,60 @@ This document describes how to release a new version of cypress-playwright-on-ra
 4. Development dependencies installed: `bundle install`
    - Includes `gem-release` for gem management (like react_on_rails)
 
-## Release Tasks
+## Release Command
 
-The project uses rake tasks with `gem-release` to automate the release process (similar to react_on_rails and other ShakaCode gems):
-
-### Quick Release
+The project uses a single rake task to automate the entire release process:
 
 ```bash
-# Prepare and publish in one command
-rake release:prepare[1.19.0]
-# Review changes, commit
-rake release:publish
+rake release[VERSION,DRY_RUN]
 ```
 
-### Step-by-Step Release
-
-#### 1. Prepare the Release
+### Examples
 
 ```bash
-rake release:prepare[1.19.0]
+# Release version 1.19.0
+rake release[1.19.0]
+
+# Automatic patch version bump (e.g., 1.18.0 -> 1.18.1)
+rake release
+
+# Dry run to preview what would happen
+rake release[1.19.0,true]
 ```
 
-This task will:
-- Validate the version format (X.Y.Z)
-- Use `gem bump` to update `lib/cypress_on_rails/version.rb`
-- Update `CHANGELOG.md` with the new version and date
-- Provide next steps
+### What the Release Task Does
 
-After running this:
-```bash
-# Review the changes
-git diff
+The `rake release` task will:
 
-# Commit the version bump
-git add -A
-git commit -m "Bump version to 1.19.0"
+1. Pull latest changes from master
+2. Bump the version in `lib/cypress_on_rails/version.rb`
+3. Update `Gemfile.lock` via `bundle install`
+4. Commit the version bump and Gemfile.lock changes
+5. Create a git tag (e.g., `v1.19.0`)
+6. Push the commit and tag to GitHub
+7. Build and publish the gem to RubyGems (will prompt for OTP)
 
-# Push to master
-git push origin master
-```
-
-#### 2. Publish the Release
-
-```bash
-rake release:publish
-```
-
-This task will:
-- Verify you're on master branch
-- Verify working directory is clean
-- Run the test suite
-- Use `gem release` to:
-  - Build the gem
-  - Push the gem to RubyGems
-  - Create a git tag (e.g., `v1.19.0`)
-  - Push the tag to GitHub
-
-#### 3. Post-Release Steps
+### Post-Release Steps
 
 After publishing, complete these manual steps:
 
-1. **Create GitHub Release**
-   - Go to https://github.com/shakacode/cypress-playwright-on-rails/releases/new?tag=v1.19.0
+1. **Update CHANGELOG.md**
+   ```bash
+   bundle exec rake update_changelog
+   git commit -a -m 'Update CHANGELOG.md'
+   git push
+   ```
+
+2. **Create GitHub Release**
+   - Go to the releases page: https://github.com/shakacode/cypress-playwright-on-rails/releases
+   - Click on the newly created tag
    - Copy release notes from CHANGELOG.md
    - Publish the release
 
-2. **Announce the Release**
+3. **Announce the Release** (optional)
    - Post in Slack channel
    - Tweet about the release
    - Update forum posts if needed
-
-3. **Close Related Issues**
-   - Review issues addressed in this release
-   - Close them with reference to the release
 
 ## Version Numbering
 
@@ -96,25 +77,27 @@ Follow [Semantic Versioning](https://semver.org/):
 
 ```bash
 # Patch release (bug fixes)
-rake release:prepare[1.18.1]
+rake release[1.18.1]
 
 # Minor release (new features)
-rake release:prepare[1.19.0]
+rake release[1.19.0]
 
 # Major release (breaking changes)
-rake release:prepare[2.0.0]
+rake release[2.0.0]
+
+# Automatic patch bump
+rake release
 ```
 
 ## Pre-Release Checklist
 
-Before running `rake release:prepare`:
+Before running `rake release`:
 
 - [ ] All PRs for the release are merged
 - [ ] CI is passing on master
 - [ ] CHANGELOG.md has [Unreleased] section with all changes
 - [ ] Major changes have been tested manually
 - [ ] Documentation is up to date
-- [ ] Issue #183 discussion is resolved (if applicable)
 
 ## Troubleshooting
 
@@ -135,14 +118,6 @@ git add -A && git commit -m "Your message"
 git stash
 ```
 
-### "Tests failed" error
-
-```bash
-# Fix the failing tests before releasing
-bundle exec rake spec
-
-# If tests are truly failing, don't release
-```
 
 ### "Failed to push gem to RubyGems" error
 
@@ -154,7 +129,7 @@ gem signin
 
 ### Tag already exists
 
-If you need to re-release:
+If you need to re-release the same version:
 ```bash
 # Delete local tag
 git tag -d v1.19.0
@@ -162,8 +137,11 @@ git tag -d v1.19.0
 # Delete remote tag
 git push origin :v1.19.0
 
-# Try again
-rake release:publish
+# Reset to before the release commit
+git reset --hard HEAD~1
+
+# Try the release again
+rake release[1.19.0]
 ```
 
 ## Rollback
@@ -194,34 +172,29 @@ git push origin master
 git checkout master
 git pull --rebase
 
-# 2. Prepare the release
-rake release:prepare[1.19.0]
-# Review output, confirm with 'y'
+# 2. Check CI is passing
+# Visit: https://github.com/shakacode/cypress-playwright-on-rails/actions
 
-# 3. Review and commit changes
-git diff
-git add -A
-git commit -m "Bump version to 1.19.0"
+# 3. Release (will handle everything automatically)
+rake release[1.19.0]
+# Enter your RubyGems OTP when prompted
 
-# 4. Run tests (optional, publish will run them too)
-bundle exec rake spec
+# 4. Update the changelog
+bundle exec rake update_changelog
+git commit -a -m 'Update CHANGELOG.md'
+git push
 
-# 5. Push to master
-git push origin master
+# 5. Create GitHub release
+open "https://github.com/shakacode/cypress-playwright-on-rails/releases"
+# Click on the new tag, add release notes from CHANGELOG.md
 
-# 6. Publish the release
-rake release:publish
-
-# 7. Create GitHub release
-open "https://github.com/shakacode/cypress-playwright-on-rails/releases/new?tag=v1.19.0"
-
-# 8. Celebrate! 🎉
+# 6. Celebrate! 🎉
 ```
 
 ## Notes
 
-- The release tasks will **not** push commits to master for you
-- Always review changes before committing
-- The `publish` task will run tests before releasing
-- Tags are created locally first, then pushed
+- The release task handles all git operations (commit, tag, push) automatically
+- Always ensure CI is green before releasing
+- The task will fail fast if working directory is not clean
 - Failed releases can be retried after fixing issues
+- Use dry run mode (`rake release[VERSION,true]`) to preview changes
