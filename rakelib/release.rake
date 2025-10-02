@@ -40,7 +40,7 @@ task :release, %i[gem_version dry_run] do |_t, args|
 
   # See https://github.com/svenfuchs/gem-release
   sh_in_dir(gem_root, "git pull --rebase")
-  sh_in_dir(gem_root, "gem bump --no-commit #{gem_version.strip.empty? ? '' : %(-v #{gem_version})}")
+  sh_in_dir(gem_root, "gem bump --no-commit --file lib/cypress_on_rails/version.rb #{gem_version.strip.empty? ? '' : %(-v #{gem_version})}")
 
   # Release the new gem version
   puts "Carefully add your OTP for Rubygems. If you get an error, run 'gem release' again."
