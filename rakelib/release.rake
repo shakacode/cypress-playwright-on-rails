@@ -1,110 +1,59 @@
 # frozen_string_literal: true
 
-namespace :release do
-  desc "Prepare release: bump version and update changelog"
-  task :prepare, [:version] do |_t, args|
-    require_relative '../lib/cypress_on_rails/version'
+require "bundler"
+require_relative "task_helpers"
 
-    version = args[:version]
-    unless version
-      puts "Usage: rake release:prepare[VERSION]"
-      puts "Example: rake release:prepare[1.19.0]"
-      exit 1
-    end
-
-    unless version.match?(/^\d+\.\d+\.\d+$/)
-      puts "Error: Version must be in format X.Y.Z (e.g., 1.19.0)"
-      exit 1
-    end
-
-    current_version = CypressOnRails::VERSION
-    puts "Current version: #{current_version}"
-    puts "New version: #{version}"
-
-    # Confirm the version bump
-    print "Continue? (y/n): "
-    response = $stdin.gets.chomp.downcase
-    unless response == 'y'
-      puts "Aborted."
-      exit 0
-    end
-
-    # Use gem bump to update version
-    puts "\n→ Bumping version with gem-release..."
-    unless system("gem bump -v #{version} --no-commit")
-      puts "Error: Failed to bump version"
-      exit 1
-    end
-    puts "✓ Updated version to #{version}"
-
-    # Update CHANGELOG
-    update_changelog(version, current_version)
-
-    puts "\n✓ Version prepared!"
-    puts "\nNext steps:"
-    puts "  1. Review changes: git diff"
-    puts "  2. Commit: git add -A && git commit -m 'Bump version to #{version}'"
-    puts "  3. Push: git push origin master"
-    puts "  4. Release: rake release:publish"
-  end
-
-  desc "Publish release: tag, build, and push gem"
-  task :publish do
-    require_relative '../lib/cypress_on_rails/version'
-    version = CypressOnRails::VERSION
-
-    # Pre-flight checks
-    current_branch = `git rev-parse --abbrev-ref HEAD`.chomp
-    unless current_branch == 'master'
-      puts "Error: Must be on master branch to release (currently on #{current_branch})"
-      exit 1
-    end
-
-    if `git status --porcelain`.chomp != ''
-      puts "Error: Working directory is not clean. Commit or stash changes first."
-      exit 1
-    end
-
-    puts "Preparing to release version #{version}..."
-
-    # Run tests
-    puts "\n→ Running tests..."
-    unless system('bundle exec rake spec')
-      puts "Error: Tests failed. Fix them before releasing."
-      exit 1
-    end
-    puts "✓ Tests passed"
-
-    # Use gem release command
-    puts "\n→ Releasing gem with gem-release..."
-    unless system("gem release --tag --push")
-      puts "Error: Failed to release gem"
-      exit 1
-    end
-
-    puts "\n🎉 Successfully released version #{version}!"
-    puts "\nNext steps:"
-    puts "  1. Create GitHub release: https://github.com/shakacode/cypress-playwright-on-rails/releases/new?tag=v#{version}"
-    puts "  2. Announce on Slack/Twitter"
-    puts "  3. Close related issues"
+class RaisingMessageHandler
+  def add_error(error)
+    raise error
   end
 end
 
-def update_changelog(version, current_version)
-  changelog_file = 'CHANGELOG.md'
-  changelog = File.read(changelog_file)
+# rubocop:disable Metrics/BlockLength
 
-  today = Time.now.strftime('%Y-%m-%d')
+desc("Releases the gem using the given version.
 
-  # Replace [Unreleased] with versioned entry
-  if changelog.match?(/## \[Unreleased\]/)
-    changelog.sub!(
-      /## \[Unreleased\]/,
-      "## [Unreleased]\n\n---\n\n## [#{version}] — #{today}\n[Compare]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v#{current_version}...v#{version}"
-    )
-    File.write(changelog_file, changelog)
-    puts "✓ Updated #{changelog_file}"
-  else
-    puts "Warning: Could not find [Unreleased] section in CHANGELOG.md"
+IMPORTANT: the gem version must be in valid rubygem format (no dashes).
+
+This task depends on the gem-release ruby gem which is installed via `bundle install`
+
+1st argument: The new version in rubygem format (no dashes). Pass no argument to
+              automatically perform a patch version bump.
+2nd argument: Perform a dry run by passing 'true' as a second argument.
+
+Note, accept defaults for rubygems options. Script will pause to get 2FA tokens.
+
+Example: `rake release[1.19.0,false]`")
+task :release, %i[gem_version dry_run] do |_t, args|
+  include CypressOnRails::TaskHelpers
+
+  # Check if there are uncommitted changes
+  unless `git status --porcelain`.strip.empty?
+    raise "You have uncommitted changes. Please commit or stash them before releasing."
   end
+
+  args_hash = args.to_hash
+
+  is_dry_run = args_hash[:dry_run] == 'true'
+
+  gem_version = args_hash.fetch(:gem_version, "")
+
+  # See https://github.com/svenfuchs/gem-release
+  sh_in_dir(gem_root, "git pull --rebase")
+  sh_in_dir(gem_root, "gem bump --no-commit #{gem_version.strip.empty? ? '' : %(-v #{gem_version})}")
+
+  # Release the new gem version
+  puts "Carefully add your OTP for Rubygems. If you get an error, run 'gem release' again."
+  sh_in_dir(gem_root, "gem release") unless is_dry_run
+
+  msg = <<~MSG
+    Once you have successfully published, run these commands to update CHANGELOG.md:
+
+    bundle exec rake update_changelog
+    git commit -a -m 'Update CHANGELOG.md'
+    git push
+  MSG
+  puts msg
 end
+
+# rubocop:enable Metrics/BlockLength
