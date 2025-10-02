@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.19.0] - 2025-10-01
+
 ### Added
 * **Rake tasks for test execution**: Added `cypress:open` and `cypress:run` rake tasks for seamless test execution, similar to cypress-rails functionality. Also added `playwright:open` and `playwright:run` tasks.
 * **Server lifecycle hooks**: Added configuration hooks for test server management:
@@ -436,6 +438,7 @@ If migrating from the `cypress-rails` gem:
 [PR 18]: https://github.com/shakacode/cypress-playwright-on-rails/pull/18
 
 <!-- Version diff reference list -->
+[1.19.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.15.1...v1.16.0
