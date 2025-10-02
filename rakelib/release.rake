@@ -15,7 +15,7 @@ desc("Releases the gem using the given version.
 
 IMPORTANT: the gem version must be in valid rubygem format (no dashes).
 
-This task depends on the gem-release ruby gem which is installed via `bundle install`
+This task depends on the gem-release (ruby gem) which is installed via `bundle install`
 
 1st argument: The new version in rubygem format (no dashes). Pass no argument to
               automatically perform a patch version bump.
@@ -23,7 +23,7 @@ This task depends on the gem-release ruby gem which is installed via `bundle ins
 
 Note, accept defaults for rubygems options. Script will pause to get 2FA tokens.
 
-Example: `rake release[1.19.0,false]`")
+Example: `rake release[2.1.0,false]`")
 task :release, %i[gem_version dry_run] do |_t, args|
   include CypressOnRails::TaskHelpers
 
@@ -40,7 +40,7 @@ task :release, %i[gem_version dry_run] do |_t, args|
 
   # See https://github.com/svenfuchs/gem-release
   sh_in_dir(gem_root, "git pull --rebase")
-  sh_in_dir(gem_root, "gem bump --no-commit #{gem_version.strip.empty? ? '' : %(-v #{gem_version})}")
+  sh_in_dir(gem_root, "gem bump --no-commit --file lib/cypress_on_rails/version.rb #{gem_version.strip.empty? ? '' : %(-v #{gem_version})}")
 
   # Release the new gem version
   puts "Carefully add your OTP for Rubygems. If you get an error, run 'gem release' again."
