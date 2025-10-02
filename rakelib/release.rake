@@ -43,7 +43,7 @@ task :release, %i[gem_version dry_run] do |_t, args|
   sh_in_dir(gem_root, "gem bump --no-commit --file lib/cypress_on_rails/version.rb #{gem_version.strip.empty? ? '' : %(--version #{gem_version})}")
 
   # Read the actual version from the file after bump
-  require_relative "../lib/cypress_on_rails/version"
+  load File.expand_path("../lib/cypress_on_rails/version.rb", __dir__)
   actual_version = CypressOnRails::VERSION
 
   # Update Gemfile.lock files
