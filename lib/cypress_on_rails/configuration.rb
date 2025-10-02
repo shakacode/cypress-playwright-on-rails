@@ -2,34 +2,23 @@ require 'logger'
 
 module CypressOnRails
   class Configuration
-    attr_accessor :api_prefix
-    attr_accessor :install_folder
-    attr_accessor :use_middleware
-    attr_accessor :use_vcr_middleware
-    attr_accessor :use_vcr_use_cassette_middleware
-    attr_accessor :before_request
-    attr_accessor :logger
-    attr_accessor :vcr_options
-    
+    attr_accessor :api_prefix, :install_folder, :use_middleware, :use_vcr_middleware, :use_vcr_use_cassette_middleware,
+                  :before_request, :logger, :vcr_options, :after_server_start, :after_transaction_start, :after_state_reset, :before_server_stop, :server_port, :transactional_server
+
     # Server hooks for managing test lifecycle
     attr_accessor :before_server_start
-    attr_accessor :after_server_start
-    attr_accessor :after_transaction_start
-    attr_accessor :after_state_reset
-    attr_accessor :before_server_stop
-    
+
     # Server configuration
     attr_accessor :server_host
-    attr_accessor :server_port
-    attr_accessor :transactional_server
 
     # Attributes for backwards compatibility
     def cypress_folder
-      warn "cypress_folder is deprecated, please use install_folder"
+      warn 'cypress_folder is deprecated, please use install_folder'
       install_folder
     end
+
     def cypress_folder=(v)
-      warn "cypress_folder= is deprecated, please use install_folder"
+      warn 'cypress_folder= is deprecated, please use install_folder'
       self.install_folder = v
     end
 
@@ -37,9 +26,9 @@ module CypressOnRails
       reset
     end
 
-    alias :use_middleware? :use_middleware
-    alias :use_vcr_middleware? :use_vcr_middleware
-    alias :use_vcr_use_cassette_middleware? :use_vcr_use_cassette_middleware
+    alias use_middleware? use_middleware
+    alias use_vcr_middleware? use_vcr_middleware
+    alias use_vcr_use_cassette_middleware? use_vcr_use_cassette_middleware
 
     def reset
       self.api_prefix = ''
@@ -47,26 +36,26 @@ module CypressOnRails
       self.use_middleware = true
       self.use_vcr_middleware = false
       self.use_vcr_use_cassette_middleware = false
-      self.before_request = -> (request) {}
+      self.before_request = ->(request) {}
       self.logger = Logger.new(STDOUT)
       self.vcr_options = {}
-      
+
       # Server hooks
       self.before_server_start = nil
       self.after_server_start = nil
       self.after_transaction_start = nil
       self.after_state_reset = nil
       self.before_server_stop = nil
-      
+
       # Server configuration
       self.server_host = ENV.fetch('CYPRESS_RAILS_HOST', 'localhost')
       self.server_port = ENV.fetch('CYPRESS_RAILS_PORT', nil)
       self.transactional_server = true
     end
 
-    def tagged_logged
+    def tagged_logged(&block)
       if logger.respond_to?(:tagged)
-        logger.tagged('CY_DEV') { yield }
+        logger.tagged('CY_DEV', &block)
       else
         yield
       end

@@ -9,7 +9,7 @@ module CypressOnRails
 
     def initialize(options = {})
       config = CypressOnRails.configuration
-      
+
       @framework = options[:framework] || :cypress
       @host = options[:host] || config.server_host
       @port = options[:port] || config.server_port || find_available_port
@@ -46,10 +46,10 @@ module CypressOnRails
     end
 
     def ensure_install_folder_exists
-      unless File.exist?(install_folder)
-        puts "Creating #{install_folder} directory..."
-        FileUtils.mkdir_p(install_folder)
-      end
+      return if File.exist?(install_folder)
+
+      puts "Creating #{install_folder} directory..."
+      FileUtils.mkdir_p(install_folder)
     end
 
     def find_available_port
@@ -59,36 +59,35 @@ module CypressOnRails
       port
     end
 
-    def start_server(&block)
+    def start_server
       config = CypressOnRails.configuration
-      
+
       run_hook(config.before_server_start)
-      
+
       ENV['CYPRESS'] = '1'
       ENV['RAILS_ENV'] = 'test'
-      
+
       server_pid = spawn_server
-      
+
       begin
         wait_for_server
         run_hook(config.after_server_start)
-        
+
         puts "Rails server started on #{base_url}"
-        
+
         if @transactional && defined?(ActiveRecord::Base)
           ActiveRecord::Base.connection.begin_transaction(joinable: false)
           run_hook(config.after_transaction_start)
         end
-        
+
         yield
-        
       ensure
         run_hook(config.before_server_stop)
-        
-        if @transactional && defined?(ActiveRecord::Base)
-          ActiveRecord::Base.connection.rollback_transaction if ActiveRecord::Base.connection.transaction_open?
+
+        if @transactional && defined?(ActiveRecord::Base) && ActiveRecord::Base.connection.transaction_open?
+          ActiveRecord::Base.connection.rollback_transaction
         end
-        
+
         stop_server(server_pid)
         ENV.delete('CYPRESS')
       end
@@ -96,10 +95,10 @@ module CypressOnRails
 
     def spawn_server
       rails_args = if File.exist?('bin/rails')
-        ['bin/rails']
-      else
-        ['bundle', 'exec', 'rails']
-      end
+                     ['bin/rails']
+                   else
+                     %w[bundle exec rails]
+                   end
 
       server_args = rails_args + ['server', '-p', port.to_s, '-b', host]
 
@@ -111,12 +110,10 @@ module CypressOnRails
     def wait_for_server(timeout = 30)
       Timeout.timeout(timeout) do
         loop do
-          begin
-            TCPSocket.new(host, port).close
-            break
-          rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
-            sleep 0.1
-          end
+          TCPSocket.new(host, port).close
+          break
+        rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+          sleep 0.1
         end
       end
     rescue Timeout::Error
@@ -170,11 +167,11 @@ module CypressOnRails
         end
       when :playwright
         if command_exists?('yarn')
-          ['yarn', 'playwright', 'test']
+          %w[yarn playwright test]
         elsif command_exists?('npx')
-          ['npx', 'playwright', 'test']
+          %w[npx playwright test]
         else
-          ['playwright', 'test']
+          %w[playwright test]
         end
       end
     end
@@ -189,9 +186,9 @@ module CypressOnRails
     end
 
     def run_hook(hook)
-      if hook && hook.respond_to?(:call)
-        hook.call
-      end
+      return unless hook && hook.respond_to?(:call)
+
+      hook.call
     end
   end
 end

@@ -1,8 +1,7 @@
 require 'cypress_on_rails/railtie'
 
 module Rails
-  def self.env
-  end
+  def self.env; end
 end
 
 RSpec.describe CypressOnRails::Railtie do

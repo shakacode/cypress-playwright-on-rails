@@ -1,8 +1,11 @@
-require 'bundler/gem_tasks'
+# frozen_string_literal: true
 
 require 'rspec/core/rake_task'
 RSpec::Core::RakeTask.new(:spec) do |t|
   t.pattern = 'spec/cypress_on_rails/*_spec.rb'
 end
 
-task default: %w[spec build]
+desc 'Run all CI checks (specs, linting, newlines)'
+task ci: %i[spec lint check_newlines]
+
+task default: :ci

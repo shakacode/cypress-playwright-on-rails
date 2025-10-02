@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "English"
+require 'English'
 
 desc "Updates CHANGELOG.md inserting headers for the new version.
 
@@ -13,7 +13,7 @@ task :update_changelog, %i[tag] do |_, args|
   version = tag.start_with?('v') ? tag[1..-1] : tag
   anchor = "[#{version}]"
 
-  changelog = File.read("CHANGELOG.md")
+  changelog = File.read('CHANGELOG.md')
 
   if changelog.include?(anchor)
     puts "Tag #{version} is already documented in CHANGELOG.md, update manually if needed"
@@ -28,7 +28,7 @@ task :update_changelog, %i[tag] do |_, args|
   end
 
   # After "## [Unreleased]", insert new version header
-  unreleased_section = "## [Unreleased]"
+  unreleased_section = '## [Unreleased]'
   new_version_header = "\n\n## #{anchor} - #{tag_date}"
 
   if changelog.include?(unreleased_section)
@@ -39,25 +39,25 @@ task :update_changelog, %i[tag] do |_, args|
 
   # Find and update version comparison links at the bottom
   # Pattern: [1.18.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.17.0...v1.18.0
-  compare_link_prefix = "https://github.com/shakacode/cypress-playwright-on-rails/compare"
+  compare_link_prefix = 'https://github.com/shakacode/cypress-playwright-on-rails/compare'
 
   # Find the last version link to determine the previous version
-  last_version_match = changelog.match(/\[(\d+\.\d+\.\d+(?:\.\w+)?)\]:.*?compare\/v(\d+\.\d+\.\d+(?:\.\w+)?)\.\.\.v(\d+\.\d+\.\d+(?:\.\w+)?)/)
+  last_version_match = changelog.match(%r{\[(\d+\.\d+\.\d+(?:\.\w+)?)\]:.*?compare/v(\d+\.\d+\.\d+(?:\.\w+)?)\.\.\.v(\d+\.\d+\.\d+(?:\.\w+)?)})
 
   if last_version_match
     last_version = last_version_match[1]
     # Add new version link at the top of the version list
     new_link = "#{anchor}: #{compare_link_prefix}/v#{last_version}...v#{version}"
     # Insert after the "<!-- Version diff reference list -->" comment
-    changelog.sub!("<!-- Version diff reference list -->", "<!-- Version diff reference list -->\n#{new_link}")
+    changelog.sub!('<!-- Version diff reference list -->', "<!-- Version diff reference list -->\n#{new_link}")
   else
-    puts "Warning: Could not find version comparison links. You may need to add the link manually."
+    puts 'Warning: Could not find version comparison links. You may need to add the link manually.'
   end
 
-  File.write("CHANGELOG.md", changelog)
+  File.write('CHANGELOG.md', changelog)
   puts "Updated CHANGELOG.md with an entry for #{version}"
   puts "\nNext steps:"
   puts "1. Edit CHANGELOG.md to add release notes under the [#{version}] section"
   puts "2. Move content from [Unreleased] to [#{version}] if applicable"
-  puts "3. Review and commit the changes"
+  puts '3. Review and commit the changes'
 end

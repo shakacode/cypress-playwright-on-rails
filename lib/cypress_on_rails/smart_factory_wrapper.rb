@@ -50,12 +50,12 @@ module CypressOnRails
     def create(*options)
       auto_reload
       factory_name = options.shift
-      if options.last.is_a?(Hash)
-        args = options.pop
-      else
-        args = {}
-      end
-      factory.create(factory_name,*options.map(&:to_sym),args.symbolize_keys)
+      args = if options.last.is_a?(Hash)
+               options.pop
+             else
+               {}
+             end
+      factory.create(factory_name, *options.map(&:to_sym), args.symbolize_keys)
     end
 
     def create_list(*args)
@@ -66,11 +66,11 @@ module CypressOnRails
     def build(*options)
       auto_reload
       factory_name = options.shift
-      if options.last.is_a?(Hash)
-        args = options.pop
-      else
-        args = {}
-      end
+      args = if options.last.is_a?(Hash)
+               options.pop
+             else
+               {}
+             end
       factory.build(factory_name, *options.map(&:to_sym), args.symbolize_keys)
     end
 
@@ -86,7 +86,7 @@ module CypressOnRails
       files.each do |file|
         logger.debug "-- Loading: #{file}"
         @kernel.load(file)
-      end 
+      end
     end
 
     private
@@ -107,11 +107,12 @@ module CypressOnRails
     end
 
     def current_latest_mtime
-      files.map{|file| @file_system.mtime(file) }.max
+      files.map { |file| @file_system.mtime(file) }.max
     end
 
     def auto_reload
       return unless should_reload?
+
       reload
     end
 

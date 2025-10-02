@@ -10,7 +10,7 @@ module CypressOnRails
       if CypressOnRails.configuration.use_middleware?
         require 'cypress_on_rails/middleware'
         app.middleware.use Middleware
-        
+
         # Add state reset middleware for compatibility with cypress-rails
         require 'cypress_on_rails/state_reset_middleware'
         app.middleware.use StateResetMiddleware

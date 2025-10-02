@@ -7,14 +7,14 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.api_prefix).to eq('')
     expect(CypressOnRails.configuration.install_folder).to eq('spec/e2e')
     expect(CypressOnRails.configuration.use_middleware?).to eq(true)
-    expect(CypressOnRails.configuration.logger).to_not be_nil
-    expect(CypressOnRails.configuration.before_request).to_not be_nil
+    expect(CypressOnRails.configuration.logger).not_to be_nil
+    expect(CypressOnRails.configuration.before_request).not_to be_nil
     expect(CypressOnRails.configuration.vcr_options).to eq({})
   end
 
   it 'can be configured' do
     my_logger = Logger.new(STDOUT)
-    before_request_lambda = ->(_) { return [200, {}, ['hello world']] }
+    before_request_lambda = ->(_) { [200, {}, ['hello world']] }
     CypressOnRails.configure do |config|
       config.api_prefix = '/api'
       config.install_folder = 'my/path'

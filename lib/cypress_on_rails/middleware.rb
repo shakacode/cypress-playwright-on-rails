@@ -19,7 +19,7 @@ module CypressOnRails
       if request.path.start_with?("#{configuration.api_prefix}/__e2e__/command")
         configuration.tagged_logged { handle_command(request) }
       elsif request.path.start_with?("#{configuration.api_prefix}/__cypress__/command")
-        warn "/__cypress__/command is deprecated. Please use the install generator to use /__e2e__/command instead."
+        warn '/__cypress__/command is deprecated. Please use the install generator to use /__e2e__/command instead.'
         configuration.tagged_logged { handle_command(request) }
       else
         @app.call(env)
@@ -31,11 +31,11 @@ module CypressOnRails
     Command = Struct.new(:name, :options, :install_folder) do
       # @return [Array<Cypress::Middleware::Command>]
       def self.from_body(body, configuration)
-        if body.is_a?(Array)
-          command_params = body
-        else
-          command_params = [body]
-        end
+        command_params = if body.is_a?(Array)
+                           body
+                         else
+                           [body]
+                         end
         command_params.map do |params|
           new(params.fetch('name'), params['options'], configuration.install_folder)
         end
@@ -55,7 +55,7 @@ module CypressOnRails
       body = JSON.parse(req.body.read)
       logger.info "handle_command: #{body}"
       commands = Command.from_body(body, configuration)
-      missing_command = commands.find {|command| !@file.exist?(command.file_path) }
+      missing_command = commands.find { |command| !@file.exist?(command.file_path) }
 
       if missing_command.nil?
         begin
@@ -64,18 +64,18 @@ module CypressOnRails
           begin
             output = results.to_json
           rescue NoMethodError
-            output = {"message" => "Cannot convert to json"}.to_json
+            output = { 'message' => 'Cannot convert to json' }.to_json
           end
 
           logger.debug "output: #{output}"
-          [201, {'Content-Type' => 'application/json'}, [output]]
-        rescue => e
-          output = {"message" => e.message, "class" => e.class.to_s}.to_json
-          [500, {'Content-Type' => 'application/json'}, [output]]
+          [201, { 'Content-Type' => 'application/json' }, [output]]
+        rescue StandardError => e
+          output = { 'message' => e.message, 'class' => e.class.to_s }.to_json
+          [500, { 'Content-Type' => 'application/json' }, [output]]
         end
       else
-        output = {"message" => "could not find command file: #{missing_command.file_path}"}.to_json
-        [404, {'Content-Type' => 'application/json'}, [output]]
+        output = { 'message' => "could not find command file: #{missing_command.file_path}" }.to_json
+        [404, { 'Content-Type' => 'application/json' }, [output]]
       end
     end
   end

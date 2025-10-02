@@ -5,7 +5,7 @@ module CypressOnRails
     class_option :install_folder, type: :string, default: 'e2e'
     class_option :install_with, type: :string, default: 'yarn'
     class_option :experimental, type: :boolean, default: false
-    source_root File.expand_path('../templates', __FILE__)
+    source_root File.expand_path('templates', __dir__)
 
     def install_framework
       directories = options.install_folder.split('/')
@@ -13,9 +13,8 @@ module CypressOnRails
       install_dir = "#{Dir.pwd}/#{directories.join('/')}"
 
       command = nil
-      packages = []
       packages = if options.framework == 'cypress'
-                   ['cypress', 'cypress-on-rails']
+                   %w[cypress cypress-on-rails]
                  elsif options.framework == 'playwright'
                    ['playwright', '@playwright/test']
                  end
@@ -26,32 +25,32 @@ module CypressOnRails
       end
       if command
         say command
-        fail "failed to install #{packages.join(' ')}" unless system(command)
+        raise "failed to install #{packages.join(' ')}" unless system(command)
       end
 
       if options.framework == 'cypress'
-        template "spec/cypress/support/index.js.erb", "#{options.install_folder}/cypress/support/index.js"
-        copy_file "spec/cypress/support/commands.js", "#{options.install_folder}/cypress/support/commands.js"
-        copy_file "spec/cypress.config.js", "#{options.install_folder}/cypress.config.js"
+        template 'spec/cypress/support/index.js.erb', "#{options.install_folder}/cypress/support/index.js"
+        copy_file 'spec/cypress/support/commands.js', "#{options.install_folder}/cypress/support/commands.js"
+        copy_file 'spec/cypress.config.js', "#{options.install_folder}/cypress.config.js"
       end
-      if options.framework == 'playwright'
-        template "spec/playwright/support/index.js.erb", "#{options.install_folder}/playwright/support/index.js"
-        copy_file "spec/playwright.config.js", "#{options.install_folder}/playwright.config.js"
-      end
+      return unless options.framework == 'playwright'
+
+      template 'spec/playwright/support/index.js.erb', "#{options.install_folder}/playwright/support/index.js"
+      copy_file 'spec/playwright.config.js', "#{options.install_folder}/playwright.config.js"
     end
 
     def add_initial_files
-      template "config/initializers/cypress_on_rails.rb.erb", "config/initializers/cypress_on_rails.rb"
-      template "spec/e2e/e2e_helper.rb.erb", "#{options.install_folder}/#{options.framework}/e2e_helper.rb"
+      template 'config/initializers/cypress_on_rails.rb.erb', 'config/initializers/cypress_on_rails.rb'
+      template 'spec/e2e/e2e_helper.rb.erb', "#{options.install_folder}/#{options.framework}/e2e_helper.rb"
       directory 'spec/e2e/app_commands', "#{options.install_folder}/#{options.framework}/app_commands"
       if options.framework == 'cypress'
-        copy_file "spec/cypress/support/on-rails.js", "#{options.install_folder}/cypress/support/on-rails.js"
+        copy_file 'spec/cypress/support/on-rails.js', "#{options.install_folder}/cypress/support/on-rails.js"
         directory 'spec/cypress/e2e/rails_examples', "#{options.install_folder}/cypress/e2e/rails_examples"
       end
-      if options.framework == 'playwright'
-        copy_file "spec/playwright/support/on-rails.js", "#{options.install_folder}/playwright/support/on-rails.js"
-        directory 'spec/playwright/e2e/rails_examples', "#{options.install_folder}/playwright/e2e/rails_examples"
-      end
+      return unless options.framework == 'playwright'
+
+      copy_file 'spec/playwright/support/on-rails.js', "#{options.install_folder}/playwright/support/on-rails.js"
+      directory 'spec/playwright/e2e/rails_examples', "#{options.install_folder}/playwright/e2e/rails_examples"
     end
 
     def update_files
@@ -60,11 +59,11 @@ module CypressOnRails
                        "\nimport './on-rails'",
                        after: 'import \'./commands\''
       end
-      if options.framework == 'playwright'
-        append_to_file "#{options.install_folder}/playwright/support/index.js",
-                       "\nimport './on-rails'",
-                       after: '// Import commands.js using ES2015 syntax:'
-      end
+      return unless options.framework == 'playwright'
+
+      append_to_file "#{options.install_folder}/playwright/support/index.js",
+                     "\nimport './on-rails'",
+                     after: '// Import commands.js using ES2015 syntax:'
     end
   end
 end

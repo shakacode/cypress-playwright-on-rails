@@ -3,7 +3,7 @@ Array.wrap(command_options).map do |factory_options|
   begin
     logger.debug "running #{factory_method}, #{factory_options}"
     CypressOnRails::SmartFactoryWrapper.public_send(factory_method, *factory_options)
-  rescue => e
+  rescue StandardError => e
     logger.error "#{e.class}: #{e.message}"
     logger.error e.backtrace.join("\n")
     logger.error "#{e.record.inspect}" if e.is_a?(ActiveRecord::RecordInvalid)

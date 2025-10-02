@@ -6,12 +6,11 @@ module CypressOnRails
   module Vcr
     RSpec.describe UseCassetteMiddleware do
       let(:app) { ->(env) { [200, {}, ["app did #{env['PATH_INFO']}"]] } }
-      let(:vcr) { VCR }
-      subject { described_class.new(app, vcr) }
-
       let(:env) { { 'rack.input' => rack_input([]) } }
-
       let(:response) { subject.call(env) }
+      let(:vcr) { VCR }
+
+      subject { described_class.new(app, vcr) }
 
       def rack_input(json_value)
         StringIO.new(JSON.generate(json_value))

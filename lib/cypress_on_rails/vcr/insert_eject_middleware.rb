@@ -33,11 +33,11 @@ module CypressOnRails
         logger.info "vcr insert cassette: #{body}"
         cassette_name, options = extract_cassette_info(body)
         vcr.insert_cassette(cassette_name, options)
-        [201, { 'Content-Type' => 'application/json' }, [{ 'message': 'OK' }.to_json]]
+        [201, { 'Content-Type' => 'application/json' }, [{ message: 'OK' }.to_json]]
       rescue JSON::ParserError => e
-        [400, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
+        [400, { 'Content-Type' => 'application/json' }, [{ message: e.message }.to_json]]
       rescue LoadError, ArgumentError => e
-        [500, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
+        [500, { 'Content-Type' => 'application/json' }, [{ message: e.message }.to_json]]
       end
 
       def parse_request_body(req)
@@ -58,9 +58,9 @@ module CypressOnRails
         logger.info 'vcr eject cassette'
         vcr.eject_cassette
         do_first_call
-        [201, { 'Content-Type' => 'application/json' }, [{ 'message': 'OK' }.to_json]]
+        [201, { 'Content-Type' => 'application/json' }, [{ message: 'OK' }.to_json]]
       rescue LoadError, ArgumentError => e
-        [500, { 'Content-Type' => 'application/json' }, [{ 'message': e.message }.to_json]]
+        [500, { 'Content-Type' => 'application/json' }, [{ message: e.message }.to_json]]
       end
 
       def do_first_call
