@@ -1,8 +1,15 @@
-require 'bundler/gem_tasks'
-
 require 'rspec/core/rake_task'
 RSpec::Core::RakeTask.new(:spec) do |t|
   t.pattern = 'spec/cypress_on_rails/*_spec.rb'
+end
+
+# Manually define build task (normally provided by bundler/gem_tasks)
+desc "Build cypress-on-rails-#{CypressOnRails::VERSION}.gem into the pkg directory"
+task :build do
+  require_relative 'lib/cypress_on_rails/version'
+  sh "gem build cypress-on-rails.gemspec"
+  sh "mkdir -p pkg"
+  sh "mv cypress-on-rails-#{CypressOnRails::VERSION}.gem pkg/"
 end
 
 task default: %w[spec build]
@@ -38,7 +45,7 @@ namespace :release do
 
     # Use gem bump to update version
     puts "\n→ Bumping version with gem-release..."
-    unless system("gem bump --version #{version} --no-commit")
+    unless system("gem bump -v #{version} --no-commit")
       puts "Error: Failed to bump version"
       exit 1
     end
