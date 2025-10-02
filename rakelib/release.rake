@@ -50,8 +50,8 @@ task :release, %i[gem_version dry_run] do |_t, args|
   sh_in_dir(gem_root, "bundle install")
 
   unless is_dry_run
-    # Commit the version bump and Gemfile.lock update
-    sh_in_dir(gem_root, "git add lib/cypress_on_rails/version.rb Gemfile.lock")
+    # Commit the version bump
+    sh_in_dir(gem_root, "git add lib/cypress_on_rails/version.rb")
     sh_in_dir(gem_root, "git commit -m \"Release v#{actual_version}\"")
 
     # Tag the release
