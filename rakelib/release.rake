@@ -40,11 +40,32 @@ task :release, %i[gem_version dry_run] do |_t, args|
 
   # See https://github.com/svenfuchs/gem-release
   sh_in_dir(gem_root, "git pull --rebase")
-  sh_in_dir(gem_root, "gem bump --no-commit --file lib/cypress_on_rails/version.rb #{gem_version.strip.empty? ? '' : %(-v #{gem_version})}")
+  sh_in_dir(gem_root, "gem bump --no-commit --file lib/cypress_on_rails/version.rb #{gem_version.strip.empty? ? '' : %(--version #{gem_version})}")
 
-  # Release the new gem version
-  puts "Carefully add your OTP for Rubygems. If you get an error, run 'gem release' again."
-  sh_in_dir(gem_root, "gem release") unless is_dry_run
+  # Read the actual version from the file after bump
+  require_relative "../lib/cypress_on_rails/version"
+  actual_version = CypressOnRails::VERSION
+
+  # Update Gemfile.lock files
+  sh_in_dir(gem_root, "bundle install")
+
+  unless is_dry_run
+    # Commit the version bump and Gemfile.lock update
+    sh_in_dir(gem_root, "git add -A")
+    sh_in_dir(gem_root, "git commit -m \"Release v#{actual_version}\"")
+
+    # Tag the release
+    sh_in_dir(gem_root, "git tag v#{actual_version}")
+
+    # Push the commit and tag
+    sh_in_dir(gem_root, "git push && git push --tags")
+
+    # Release the new gem version
+    puts "Carefully add your OTP for Rubygems. If you get an error, run 'gem release' again."
+    sh_in_dir(gem_root, "gem release")
+  else
+    puts "DRY RUN: Would have committed, tagged v#{actual_version}, pushed, and released gem"
+  end
 
   msg = <<~MSG
     Once you have successfully published, run these commands to update CHANGELOG.md:
