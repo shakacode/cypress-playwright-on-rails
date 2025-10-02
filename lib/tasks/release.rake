@@ -4,7 +4,9 @@ desc("Releases the gem using the given version.
 
 IMPORTANT: the gem version must be in valid rubygem format (no dashes).
 
-This task depends on the gem-release ruby gem which is installed via `bundle install`
+This task depends on the gem-release ruby gem (listed as a dev dependency).
+If you get 'Unknown command bump' errors, install gem-release:
+  gem install gem-release
 
 1st argument: The new version in rubygem format (no dashes). Pass no argument to
               automatically perform a patch version bump.
