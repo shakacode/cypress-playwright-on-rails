@@ -20,8 +20,9 @@ desc 'Ensure all files end with newline'
 task :check_newlines do
   files_without_newline = []
 
-  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec}').each do |file|
+  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}').each do |file|
     next if file.include?('vendor/') || file.include?('node_modules/') || file.include?('.git/')
+    next if file.include?('pkg/') || file.include?('tmp/') || file.include?('coverage/')
     next unless File.file?(file)
 
     content = File.read(file)
@@ -41,8 +42,9 @@ desc 'Fix files missing final newline'
 task :fix_newlines do
   fixed_files = []
 
-  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec}').each do |file|
+  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}').each do |file|
     next if file.include?('vendor/') || file.include?('node_modules/') || file.include?('.git/')
+    next if file.include?('pkg/') || file.include?('tmp/') || file.include?('coverage/')
     next unless File.file?(file)
 
     content = File.read(file)
