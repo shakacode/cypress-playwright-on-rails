@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'fileutils'
+
+hooks_dir = File.expand_path('../.git/hooks', __dir__)
+pre_commit_hook = File.join(hooks_dir, 'pre-commit')
+
+# Create pre-commit hook content
+hook_content = <<~HOOK
+  #!/bin/sh
+  # Pre-commit hook to run linters and check for newlines
+
+  # Check for files missing newlines
+  echo "Checking for files missing newlines..."
+  bundle exec rake check_newlines
+  if [ $? -ne 0 ]; then
+    echo "❌ Some files are missing final newlines. Run 'bundle exec rake fix_newlines' to fix."
+    exit 1
+  fi
+
+  # Run RuboCop on staged Ruby files
+  echo "Running RuboCop on staged files..."
+  files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(rb|rake)$')
+  if [ -n "$files" ]; then
+    bundle exec rubocop $files
+    if [ $? -ne 0 ]; then
+      echo "❌ RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
+      exit 1
+    fi
+  fi
+
+  echo "✅ All checks passed!"
+HOOK
+
+# Create hooks directory if it doesn't exist
+FileUtils.mkdir_p(hooks_dir)
+
+# Write the pre-commit hook
+File.write(pre_commit_hook, hook_content)
+
+# Make it executable
+File.chmod(0o755, pre_commit_hook)
+
+puts '✅ Pre-commit hook installed successfully!'
+puts 'The hook will:'
+puts '  - Check that all files end with a newline'
+puts '  - Run RuboCop on staged Ruby files'
+puts ''
+puts 'To skip the hook temporarily, use: git commit --no-verify'
