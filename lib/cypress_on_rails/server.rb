@@ -1,6 +1,7 @@
 require 'socket'
 require 'timeout'
 require 'fileutils'
+require 'net/http'
 require 'cypress_on_rails/configuration'
 
 module CypressOnRails
@@ -105,30 +106,54 @@ module CypressOnRails
 
       puts "Starting Rails server: #{server_args.join(' ')}"
 
-      spawn(*server_args, out: $stdout, err: $stderr)
+      @server_pid = spawn(*server_args, out: $stdout, err: $stderr, pgroup: true)
+      @server_pgid = Process.getpgid(@server_pid)
+      @server_pid
     end
 
     def wait_for_server(timeout = 30)
       Timeout.timeout(timeout) do
         loop do
-          begin
-            TCPSocket.new(host, port).close
-            break
-          rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
-            sleep 0.1
-          end
+          break if server_responding?
+          sleep 0.1
         end
       end
     rescue Timeout::Error
       raise "Rails server failed to start on #{host}:#{port} after #{timeout} seconds"
     end
 
+    def server_responding?
+      url = "http://#{host}:#{port}"
+      response = Net::HTTP.get_response(URI(url))
+      # Accept 200-399 (success and redirects), reject 404 and 5xx
+      (200..399).cover?(response.code.to_i)
+    rescue Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, SocketError
+      false
+    end
+
     def stop_server(pid)
-      if pid
-        puts "Stopping Rails server (PID: #{pid})"
-        Process.kill('TERM', pid)
-        Process.wait(pid)
+      return unless pid
+
+      puts "Stopping Rails server (PID: #{pid})"
+      send_term_signal
+      Process.wait(pid)
+    rescue Errno::ESRCH
+      # Process already terminated
+    end
+
+    def send_term_signal
+      if @server_pgid
+        Process.kill('TERM', -@server_pgid)
+      else
+        safe_kill_process('TERM', @server_pid)
       end
+    rescue Errno::ESRCH, Errno::EPERM => e
+      puts "Warning: Failed to kill process group #{@server_pgid}: #{e.message}, trying single process"
+      safe_kill_process('TERM', @server_pid)
+    end
+
+    def safe_kill_process(signal, pid)
+      Process.kill(signal, pid) if pid
     rescue Errno::ESRCH
       # Process already terminated
     end
