@@ -135,14 +135,11 @@ module CypressOnRails
     def server_responding?
       config = CypressOnRails.configuration
       readiness_path = config.server_readiness_path || '/'
-      # Use shorter timeout for individual readiness checks since we poll in a loop
-      # The configured timeout is for slow CI, but each check should be quick
-      timeout = [config.server_readiness_timeout || 5, 2].min
+      timeout = config.server_readiness_timeout || 5
       uri = URI("http://#{host}:#{port}#{readiness_path}")
 
       response = Net::HTTP.start(uri.host, uri.port, open_timeout: timeout, read_timeout: timeout) do |http|
-        # Ensure path is never empty - default to '/'
-        http.get(uri.path.empty? ? '/' : uri.path)
+        http.get(uri.path)
       end
 
       # Accept 200-399 (success and redirects), reject 404 and 5xx
