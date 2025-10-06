@@ -10,13 +10,15 @@ module CypressOnRails
 
     def initialize(options = {})
       config = CypressOnRails.configuration
-      
+
       @framework = options[:framework] || :cypress
       @host = options[:host] || config.server_host
       @port = options[:port] || config.server_port || find_available_port
       @port = @port.to_i if @port
       @install_folder = options[:install_folder] || config.install_folder || detect_install_folder
       @transactional = options.fetch(:transactional, config.transactional_server)
+      @server_pid = nil
+      @server_pgid = nil
     end
 
     def open
@@ -107,7 +109,12 @@ module CypressOnRails
       puts "Starting Rails server: #{server_args.join(' ')}"
 
       @server_pid = spawn(*server_args, out: $stdout, err: $stderr, pgroup: true)
-      @server_pgid = Process.getpgid(@server_pid)
+      begin
+        @server_pgid = Process.getpgid(@server_pid)
+      rescue Errno::ESRCH => e
+        puts "Warning: Process #{@server_pid} terminated immediately after spawn: #{e.message}"
+        @server_pgid = nil
+      end
       @server_pid
     end
 
@@ -123,11 +130,18 @@ module CypressOnRails
     end
 
     def server_responding?
-      url = "http://#{host}:#{port}"
-      response = Net::HTTP.get_response(URI(url))
+      config = CypressOnRails.configuration
+      readiness_path = config.server_readiness_path || '/'
+      uri = URI("http://#{host}:#{port}#{readiness_path}")
+
+      response = Net::HTTP.start(uri.host, uri.port, open_timeout: 1, read_timeout: 1) do |http|
+        http.get(uri.path.empty? ? '/' : uri.path)
+      end
+
       # Accept 200-399 (success and redirects), reject 404 and 5xx
       (200..399).cover?(response.code.to_i)
-    rescue Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, SocketError
+    rescue Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::ETIMEDOUT, SocketError,
+           Net::OpenTimeout, Net::ReadTimeout, Net::HTTPBadResponse
       false
     end
 

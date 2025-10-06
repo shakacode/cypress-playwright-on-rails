@@ -22,6 +22,7 @@ module CypressOnRails
     attr_accessor :server_host
     attr_accessor :server_port
     attr_accessor :transactional_server
+    attr_accessor :server_readiness_path
 
     # Attributes for backwards compatibility
     def cypress_folder
@@ -62,6 +63,7 @@ module CypressOnRails
       self.server_host = ENV.fetch('CYPRESS_RAILS_HOST', 'localhost')
       self.server_port = ENV.fetch('CYPRESS_RAILS_PORT', nil)
       self.transactional_server = true
+      self.server_readiness_path = ENV.fetch('CYPRESS_RAILS_READINESS_PATH', '/')
     end
 
     def tagged_logged
