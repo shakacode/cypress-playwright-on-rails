@@ -23,6 +23,7 @@ module CypressOnRails
     attr_accessor :server_port
     attr_accessor :transactional_server
     attr_accessor :server_readiness_path
+    attr_accessor :server_readiness_timeout
 
     # Attributes for backwards compatibility
     def cypress_folder
@@ -64,6 +65,7 @@ module CypressOnRails
       self.server_port = ENV.fetch('CYPRESS_RAILS_PORT', nil)
       self.transactional_server = true
       self.server_readiness_path = ENV.fetch('CYPRESS_RAILS_READINESS_PATH', '/')
+      self.server_readiness_timeout = ENV.fetch('CYPRESS_RAILS_READINESS_TIMEOUT', '5').to_i
     end
 
     def tagged_logged

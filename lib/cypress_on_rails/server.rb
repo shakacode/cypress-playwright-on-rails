@@ -17,6 +17,7 @@ module CypressOnRails
       @port = @port.to_i if @port
       @install_folder = options[:install_folder] || config.install_folder || detect_install_folder
       @transactional = options.fetch(:transactional, config.transactional_server)
+      # Process management: track PID and process group for proper cleanup
       @server_pid = nil
       @server_pgid = nil
     end
@@ -112,7 +113,7 @@ module CypressOnRails
       begin
         @server_pgid = Process.getpgid(@server_pid)
       rescue Errno::ESRCH => e
-        puts "Warning: Process #{@server_pid} terminated immediately after spawn: #{e.message}"
+        CypressOnRails.configuration.logger.warn("Process #{@server_pid} terminated immediately after spawn: #{e.message}")
         @server_pgid = nil
       end
       @server_pid
@@ -132,10 +133,11 @@ module CypressOnRails
     def server_responding?
       config = CypressOnRails.configuration
       readiness_path = config.server_readiness_path || '/'
+      timeout = config.server_readiness_timeout || 5
       uri = URI("http://#{host}:#{port}#{readiness_path}")
 
-      response = Net::HTTP.start(uri.host, uri.port, open_timeout: 1, read_timeout: 1) do |http|
-        http.get(uri.path.empty? ? '/' : uri.path)
+      response = Net::HTTP.start(uri.host, uri.port, open_timeout: timeout, read_timeout: timeout) do |http|
+        http.get(uri.path)
       end
 
       # Accept 200-399 (success and redirects), reject 404 and 5xx
@@ -156,20 +158,28 @@ module CypressOnRails
     end
 
     def send_term_signal
-      if @server_pgid
+      if @server_pgid && process_exists?(@server_pid)
         Process.kill('TERM', -@server_pgid)
       else
         safe_kill_process('TERM', @server_pid)
       end
     rescue Errno::ESRCH, Errno::EPERM => e
-      puts "Warning: Failed to kill process group #{@server_pgid}: #{e.message}, trying single process"
+      CypressOnRails.configuration.logger.warn("Failed to kill process group #{@server_pgid}: #{e.message}, trying single process")
       safe_kill_process('TERM', @server_pid)
+    end
+
+    def process_exists?(pid)
+      return false unless pid
+      Process.kill(0, pid)
+      true
+    rescue Errno::ESRCH, Errno::EPERM
+      false
     end
 
     def safe_kill_process(signal, pid)
       Process.kill(signal, pid) if pid
-    rescue Errno::ESRCH
-      # Process already terminated
+    rescue Errno::ESRCH, Errno::EPERM
+      # Process already terminated or permission denied
     end
 
     def base_url
