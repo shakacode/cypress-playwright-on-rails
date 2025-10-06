@@ -113,6 +113,8 @@ module CypressOnRails
       begin
         @server_pgid = Process.getpgid(@server_pid)
       rescue Errno::ESRCH => e
+        # Edge case: process terminated before we could get pgid
+        # This is OK - send_term_signal will fall back to single-process kill
         CypressOnRails.configuration.logger.warn("Process #{@server_pid} terminated immediately after spawn: #{e.message}")
         @server_pgid = nil
       end
@@ -133,14 +135,18 @@ module CypressOnRails
     def server_responding?
       config = CypressOnRails.configuration
       readiness_path = config.server_readiness_path || '/'
-      timeout = config.server_readiness_timeout || 5
+      # Use shorter timeout for individual readiness checks since we poll in a loop
+      # The configured timeout is for slow CI, but each check should be quick
+      timeout = [config.server_readiness_timeout || 5, 2].min
       uri = URI("http://#{host}:#{port}#{readiness_path}")
 
       response = Net::HTTP.start(uri.host, uri.port, open_timeout: timeout, read_timeout: timeout) do |http|
-        http.get(uri.path)
+        # Ensure path is never empty - default to '/'
+        http.get(uri.path.empty? ? '/' : uri.path)
       end
 
       # Accept 200-399 (success and redirects), reject 404 and 5xx
+      # 3xx redirects are considered "ready" because the server is responding correctly
       (200..399).cover?(response.code.to_i)
     rescue Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::ETIMEDOUT, SocketError,
            Net::OpenTimeout, Net::ReadTimeout, Net::HTTPBadResponse
@@ -151,21 +157,21 @@ module CypressOnRails
       return unless pid
 
       puts "Stopping Rails server (PID: #{pid})"
-      send_term_signal
+      send_term_signal(pid)
       Process.wait(pid)
     rescue Errno::ESRCH
       # Process already terminated
     end
 
-    def send_term_signal
-      if @server_pgid && process_exists?(@server_pid)
+    def send_term_signal(pid)
+      if @server_pgid && process_exists?(pid)
         Process.kill('TERM', -@server_pgid)
       else
-        safe_kill_process('TERM', @server_pid)
+        safe_kill_process('TERM', pid)
       end
     rescue Errno::ESRCH, Errno::EPERM => e
       CypressOnRails.configuration.logger.warn("Failed to kill process group #{@server_pgid}: #{e.message}, trying single process")
-      safe_kill_process('TERM', @server_pid)
+      safe_kill_process('TERM', pid)
     end
 
     def process_exists?(pid)
