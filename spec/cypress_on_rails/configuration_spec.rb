@@ -10,6 +10,8 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.logger).to_not be_nil
     expect(CypressOnRails.configuration.before_request).to_not be_nil
     expect(CypressOnRails.configuration.vcr_options).to eq({})
+    expect(CypressOnRails.configuration.server_readiness_path).to eq('/')
+    expect(CypressOnRails.configuration.server_readiness_timeout).to eq(5)
   end
 
   it 'can be configured' do
@@ -22,6 +24,8 @@ RSpec.describe CypressOnRails::Configuration do
       config.logger = my_logger
       config.before_request = before_request_lambda
       config.vcr_options = { hook_into: :webmock }
+      config.server_readiness_path = '/health'
+      config.server_readiness_timeout = 10
     end
     expect(CypressOnRails.configuration.api_prefix).to eq('/api')
     expect(CypressOnRails.configuration.install_folder).to eq('my/path')
@@ -29,5 +33,7 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.logger).to eq(my_logger)
     expect(CypressOnRails.configuration.before_request).to eq(before_request_lambda)
     expect(CypressOnRails.configuration.vcr_options).to eq(hook_into: :webmock)
+    expect(CypressOnRails.configuration.server_readiness_path).to eq('/health')
+    expect(CypressOnRails.configuration.server_readiness_timeout).to eq(10)
   end
 end

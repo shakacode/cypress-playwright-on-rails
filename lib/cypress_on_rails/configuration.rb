@@ -22,7 +22,11 @@ module CypressOnRails
     attr_accessor :server_host
     attr_accessor :server_port
     attr_accessor :transactional_server
+    # HTTP path to check for server readiness (default: '/')
+    # Can be set via CYPRESS_RAILS_READINESS_PATH environment variable
     attr_accessor :server_readiness_path
+    # Timeout in seconds for individual HTTP readiness checks (default: 5)
+    # Can be set via CYPRESS_RAILS_READINESS_TIMEOUT environment variable
     attr_accessor :server_readiness_timeout
 
     # Attributes for backwards compatibility
