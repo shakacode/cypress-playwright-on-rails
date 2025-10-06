@@ -1,6 +1,7 @@
 require 'socket'
 require 'timeout'
 require 'fileutils'
+require 'net/http'
 require 'cypress_on_rails/configuration'
 
 module CypressOnRails
@@ -9,13 +10,16 @@ module CypressOnRails
 
     def initialize(options = {})
       config = CypressOnRails.configuration
-      
+
       @framework = options[:framework] || :cypress
       @host = options[:host] || config.server_host
       @port = options[:port] || config.server_port || find_available_port
       @port = @port.to_i if @port
       @install_folder = options[:install_folder] || config.install_folder || detect_install_folder
       @transactional = options.fetch(:transactional, config.transactional_server)
+      # Process management: track PID and process group for proper cleanup
+      @server_pid = nil
+      @server_pgid = nil
     end
 
     def open
@@ -105,32 +109,89 @@ module CypressOnRails
 
       puts "Starting Rails server: #{server_args.join(' ')}"
 
-      spawn(*server_args, out: $stdout, err: $stderr)
+      @server_pid = spawn(*server_args, out: $stdout, err: $stderr, pgroup: true)
+      begin
+        @server_pgid = Process.getpgid(@server_pid)
+      rescue Errno::ESRCH => e
+        # Edge case: process terminated before we could get pgid
+        # This is OK - send_term_signal will fall back to single-process kill
+        CypressOnRails.configuration.logger.warn("Process #{@server_pid} terminated immediately after spawn: #{e.message}")
+        @server_pgid = nil
+      end
+      @server_pid
     end
 
     def wait_for_server(timeout = 30)
       Timeout.timeout(timeout) do
         loop do
-          begin
-            TCPSocket.new(host, port).close
-            break
-          rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
-            sleep 0.1
-          end
+          break if server_responding?
+          sleep 0.1
         end
       end
     rescue Timeout::Error
       raise "Rails server failed to start on #{host}:#{port} after #{timeout} seconds"
     end
 
+    def server_responding?
+      config = CypressOnRails.configuration
+      readiness_path = config.server_readiness_path || '/'
+      timeout = config.server_readiness_timeout || 5
+      uri = URI("http://#{host}:#{port}#{readiness_path}")
+
+      response = Net::HTTP.start(uri.host, uri.port, open_timeout: timeout, read_timeout: timeout) do |http|
+        http.get(uri.path)
+      end
+
+      # Accept 200-399 (success and redirects), reject 404 and 5xx
+      # 3xx redirects are considered "ready" because the server is responding correctly
+      (200..399).cover?(response.code.to_i)
+    rescue Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::ETIMEDOUT, SocketError,
+           Net::OpenTimeout, Net::ReadTimeout, Net::HTTPBadResponse
+      false
+    end
+
     def stop_server(pid)
-      if pid
-        puts "Stopping Rails server (PID: #{pid})"
-        Process.kill('TERM', pid)
-        Process.wait(pid)
+      return unless pid
+
+      puts "Stopping Rails server (PID: #{pid})"
+      send_term_signal(pid)
+
+      begin
+        Timeout.timeout(10) do
+          Process.wait(pid)
+        end
+      rescue Timeout::Error
+        CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
+        safe_kill_process('KILL', pid)
+        Process.wait(pid) rescue Errno::ESRCH
       end
     rescue Errno::ESRCH
       # Process already terminated
+    end
+
+    def send_term_signal(pid)
+      if @server_pgid && process_exists?(pid)
+        Process.kill('TERM', -@server_pgid)
+      else
+        safe_kill_process('TERM', pid)
+      end
+    rescue Errno::ESRCH, Errno::EPERM => e
+      CypressOnRails.configuration.logger.warn("Failed to kill process group #{@server_pgid}: #{e.message}, trying single process")
+      safe_kill_process('TERM', pid)
+    end
+
+    def process_exists?(pid)
+      return false unless pid
+      Process.kill(0, pid)
+      true
+    rescue Errno::ESRCH, Errno::EPERM
+      false
+    end
+
+    def safe_kill_process(signal, pid)
+      Process.kill(signal, pid) if pid
+    rescue Errno::ESRCH, Errno::EPERM
+      # Process already terminated or permission denied
     end
 
     def base_url
