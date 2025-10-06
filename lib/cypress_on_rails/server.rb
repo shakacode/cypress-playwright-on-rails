@@ -155,7 +155,16 @@ module CypressOnRails
 
       puts "Stopping Rails server (PID: #{pid})"
       send_term_signal(pid)
-      Process.wait(pid)
+
+      begin
+        Timeout.timeout(10) do
+          Process.wait(pid)
+        end
+      rescue Timeout::Error
+        CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
+        safe_kill_process('KILL', pid)
+        Process.wait(pid) rescue Errno::ESRCH
+      end
     rescue Errno::ESRCH
       # Process already terminated
     end
