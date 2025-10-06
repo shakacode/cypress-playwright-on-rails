@@ -8,8 +8,8 @@ Gem::Specification.new do |s|
   s.author      = ["miceportal team", 'Grant Petersen-Speelman']
   s.email       = ["info@miceportal.de", 'grantspeelman@gmail.com']
   s.homepage    = "http://github.com/shakacode/cypress-on-rails"
-  s.summary     = "Integrates cypress with rails or rack applications"
-  s.description = "Integrates cypress with rails or rack applications"
+  s.summary     = "Integrates Cypress and Playwright with Rails or Rack applications"
+  s.description = "Integrates Cypress and Playwright with Rails or Rack applications"
   s.post_install_message = 'The CypressDev constant is being deprecated and will be completely removed and replaced with CypressOnRails.'
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {spec}/*`.split("\n")
