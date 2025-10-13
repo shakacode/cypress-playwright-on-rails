@@ -16,6 +16,26 @@ module CypressOnRails
     def self.load_e2e_helper
       e2e_helper_file = "#{configuration.install_folder}/e2e_helper.rb"
       cypress_helper_file = "#{configuration.install_folder}/cypress_helper.rb"
+
+      # Check for old structure (files in framework subdirectory)
+      old_cypress_location = "#{configuration.install_folder}/cypress/e2e_helper.rb"
+      old_playwright_location = "#{configuration.install_folder}/playwright/e2e_helper.rb"
+
+      if File.exist?(old_cypress_location) || File.exist?(old_playwright_location)
+        old_location = File.exist?(old_cypress_location) ? old_cypress_location : old_playwright_location
+        logger.warn "=" * 80
+        logger.warn "DEPRECATION WARNING: Old folder structure detected!"
+        logger.warn "Found e2e_helper.rb at: #{old_location}"
+        logger.warn "This file should be at: #{e2e_helper_file}"
+        logger.warn ""
+        logger.warn "The generator now creates e2e_helper.rb and app_commands/ at the install_folder"
+        logger.warn "root, not inside the framework subdirectory."
+        logger.warn ""
+        logger.warn "To fix this, run: mv #{old_location} #{e2e_helper_file}"
+        logger.warn "See CHANGELOG.md for full migration guide."
+        logger.warn "=" * 80
+      end
+
       if File.exist?(e2e_helper_file)
         Kernel.require e2e_helper_file
       elsif File.exist?(cypress_helper_file)

@@ -134,17 +134,52 @@ bin/rails g cypress_on_rails:install --install_with=skip
 bin/rails g cypress_on_rails:install --install_with=skip
 ```
 
-The generator modifies/adds the following files/directory in your application:
-* `config/initializers/cypress_on_rails.rb` used to configure Cypress on Rails
-* `e2e/cypress/integration/` contains your cypress tests
-* `e2e/cypress/support/on-rails.js` contains Cypress on Rails support code
-* `e2e/cypress/e2e_helper.rb` contains helper code to require libraries like factory_bot
-* `e2e/cypress/app_commands/` contains your scenario definitions
-* `e2e/playwright/e2e/` contains your playwright tests
-* `e2e/playwright/support/on-rails.js` contains Playwright on Rails support code
+The generator creates the following structure in your application:
 
-If you are not using `database_cleaner` look at `e2e/cypress/app_commands/clean.rb`.
-If you are not using `factory_bot` look at `e2e/cypress/app_commands/factory_bot.rb`.
+**For Cypress:**
+```
+e2e/
+  cypress.config.js              # Cypress configuration
+  e2e_helper.rb                  # Helper code for factory_bot, database_cleaner, etc.
+  app_commands/                  # Your custom commands and scenarios
+    clean.rb
+    factory_bot.rb
+    scenarios/
+      basic.rb
+  fixtures/
+    vcr_cassettes/               # VCR recordings (if using VCR)
+  cypress/
+    support/
+      index.js
+      commands.js
+      on-rails.js                # Cypress on Rails support code
+    e2e/
+      rails_examples/            # Example tests
+```
+
+**For Playwright:**
+```
+e2e/
+  playwright.config.js           # Playwright configuration
+  e2e_helper.rb                  # Helper code for factory_bot, database_cleaner, etc.
+  app_commands/                  # Your custom commands and scenarios (shared with Cypress)
+  fixtures/
+    vcr_cassettes/               # VCR recordings (if using VCR)
+  playwright/
+    support/
+      index.js
+      on-rails.js                # Playwright on Rails support code
+    e2e/
+      rails_examples/            # Example tests
+```
+
+**Additional files:**
+* `config/initializers/cypress_on_rails.rb` - Configuration for Cypress on Rails
+
+**Important:** Note that `e2e_helper.rb` and `app_commands/` are at the root of the install folder (e.g., `e2e/`), NOT inside the framework subdirectory (e.g., `e2e/cypress/`). This allows both Cypress and Playwright to share the same commands and helpers when using both frameworks.
+
+If you are not using `database_cleaner` look at `e2e/app_commands/clean.rb`.
+If you are not using `factory_bot` look at `e2e/app_commands/factory_bot.rb`.
 
 Now you can create scenarios and commands that are plain Ruby files that get loaded through middleware, the ruby sky is your limit.
 
