@@ -512,6 +512,7 @@ If migrating from the `cypress-rails` gem:
 [PR 27]: https://github.com/shakacode/cypress-playwright-on-rails/pull/27
 [PR 31]: https://github.com/shakacode/cypress-playwright-on-rails/pull/31
 [PR 18]: https://github.com/shakacode/cypress-playwright-on-rails/pull/18
+[#201]: https://github.com/shakacode/cypress-playwright-on-rails/issues/201
 
 <!-- Version diff reference list -->
 [1.19.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.18.0...v1.19.0

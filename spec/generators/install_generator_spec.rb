@@ -16,7 +16,11 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
     allow(Dir).to receive(:pwd).and_return(destination_root)
 
     # Prevent actual npm/yarn installation in tests
-    allow_any_instance_of(CypressOnRails::InstallGenerator).to receive(:system).and_return(true)
+    # Mock only package manager commands, let file operations through
+    allow_any_instance_of(CypressOnRails::InstallGenerator).to receive(:system) do |_, command|
+      # Return true for yarn/npm install commands to skip actual installation
+      command.to_s.match?(/yarn|npm/)
+    end
   end
 
   after do
@@ -102,6 +106,11 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
       support_path = File.join(destination_root, 'e2e', 'playwright', 'support', 'index.js')
       expect(File).to exist(support_path)
     end
+
+    it 'creates playwright examples in framework subdirectory' do
+      examples_path = File.join(destination_root, 'e2e', 'playwright', 'e2e', 'rails_examples')
+      expect(File).to be_directory(examples_path)
+    end
   end
 
   describe 'with custom install_folder' do
@@ -133,6 +142,20 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
 
     before do
       run_generator(args, options)
+    end
+
+    it 'does not create e2e_helper.rb in old location (framework subdirectory)' do
+      old_cypress_path = File.join(destination_root, 'e2e', 'cypress', 'e2e_helper.rb')
+      old_playwright_path = File.join(destination_root, 'e2e', 'playwright', 'e2e_helper.rb')
+      expect(File).not_to exist(old_cypress_path)
+      expect(File).not_to exist(old_playwright_path)
+    end
+
+    it 'does not create app_commands in old location (framework subdirectory)' do
+      old_cypress_path = File.join(destination_root, 'e2e', 'cypress', 'app_commands')
+      old_playwright_path = File.join(destination_root, 'e2e', 'playwright', 'app_commands')
+      expect(File).not_to exist(old_cypress_path)
+      expect(File).not_to exist(old_playwright_path)
     end
 
     it 'places e2e_helper.rb where middleware expects it (install_folder/e2e_helper.rb)' do
