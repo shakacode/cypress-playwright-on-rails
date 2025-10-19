@@ -1,7 +1,7 @@
 if defined?(CypressOnRails)
   CypressOnRails.configure do |c|
     c.api_prefix = "<%= options.api_prefix %>"
-    c.install_folder = File.expand_path("#{__dir__}/../../<%= options.install_folder %>/<%= options.framework %>")
+    c.install_folder = File.expand_path("#{__dir__}/../../<%= options.install_folder %>")
     # WARNING!! CypressOnRails can execute arbitrary ruby code
     # please use with extra caution if enabling on hosted servers or starting your local server on 0.0.0.0
     c.use_middleware = !Rails.env.production?
@@ -12,7 +12,7 @@ if defined?(CypressOnRails)
     <% unless options.experimental %># <% end %> c.vcr_options = {
     <% unless options.experimental %># <% end %>   hook_into: :webmock,
     <% unless options.experimental %># <% end %>   default_cassette_options: { record: :once },
-    <% unless options.experimental %># <% end %>   cassette_library_dir: File.expand_path("#{__dir__}/../../<%= options.install_folder %>/<%= options.framework %>/fixtures/vcr_cassettes")
+    <% unless options.experimental %># <% end %>   cassette_library_dir: File.expand_path("#{__dir__}/../../<%= options.install_folder %>/fixtures/vcr_cassettes")
     <% unless options.experimental %># <% end %> }
     c.logger = Rails.logger
     

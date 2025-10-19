@@ -7,6 +7,82 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+* **BREAKING: Generator folder structure**: Fixed install generator to create `e2e_helper.rb` and `app_commands/` at the install folder root (e.g., `e2e/`) instead of inside the framework subdirectory (e.g., `e2e/cypress/`). This ensures compatibility between Cypress/Playwright config file location and middleware expectations. [#201]
+
+### Migration Guide for Folder Structure Change
+
+#### Breaking Change Notice
+If you previously ran the install generator (versions prior to 1.20.0), the file structure created was incorrect. The generator placed helper and command files in the framework subdirectory when they should be at the install folder root.
+
+**Old (Incorrect) Structure:**
+```
+e2e/
+  cypress.config.js
+  cypress/
+    e2e_helper.rb          ← Wrong location
+    app_commands/          ← Wrong location
+    support/
+    e2e/
+```
+
+**New (Correct) Structure:**
+```
+e2e/
+  cypress.config.js
+  e2e_helper.rb            ← Correct location
+  app_commands/            ← Correct location
+  fixtures/
+    vcr_cassettes/         ← VCR cassettes also at root
+  cypress/
+    support/
+    e2e/
+```
+
+#### How to Migrate
+
+**Option 1: Fresh Installation (Recommended for new projects)**
+```bash
+# Remove old structure
+rm -rf e2e/
+
+# Re-run generator
+bin/rails g cypress_on_rails:install --force
+```
+
+**Option 2: Manual Migration (For existing projects with custom code)**
+```bash
+# Move files to correct location
+mv e2e/cypress/e2e_helper.rb e2e/
+mv e2e/cypress/app_commands e2e/
+
+# Update VCR cassettes path if using VCR
+mv e2e/cypress/fixtures e2e/
+
+# Verify your initializer has the correct path
+# Should be: c.install_folder = File.expand_path("#{__dir__}/../../e2e")
+# Not: c.install_folder = File.expand_path("#{__dir__}/../../e2e/cypress")
+```
+
+**Option 3: Update Initializer Only (Quick fix, not recommended)**
+If you cannot migrate files immediately, you can temporarily update your initializer:
+```ruby
+# config/initializers/cypress_on_rails.rb
+c.install_folder = File.expand_path("#{__dir__}/../../e2e/cypress")
+```
+However, this means Cypress may have issues finding config files. We recommend migrating to the correct structure.
+
+#### Why This Change?
+The middleware expects to find `e2e_helper.rb` at `#{install_folder}/e2e_helper.rb` and commands at `#{install_folder}/app_commands/`. Meanwhile, Cypress/Playwright expect config files at the install_folder root when using `--project` flag. The previous structure created a conflict where these requirements couldn't both be satisfied.
+
+#### Testing Your Migration
+After migrating, verify:
+1. Run `bin/rails cypress:open` or `bin/rails playwright:open` - should open successfully
+2. Run a test that uses app commands - should execute without "file not found" errors
+3. Check that VCR cassettes (if used) are being created/loaded correctly
+
+---
+
 ## [1.19.0] - 2025-10-01
 
 ### Added
@@ -436,6 +512,7 @@ If migrating from the `cypress-rails` gem:
 [PR 27]: https://github.com/shakacode/cypress-playwright-on-rails/pull/27
 [PR 31]: https://github.com/shakacode/cypress-playwright-on-rails/pull/31
 [PR 18]: https://github.com/shakacode/cypress-playwright-on-rails/pull/18
+[#201]: https://github.com/shakacode/cypress-playwright-on-rails/issues/201
 
 <!-- Version diff reference list -->
 [1.19.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.18.0...v1.19.0

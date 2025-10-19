@@ -42,8 +42,8 @@ module CypressOnRails
 
     def add_initial_files
       template "config/initializers/cypress_on_rails.rb.erb", "config/initializers/cypress_on_rails.rb"
-      template "spec/e2e/e2e_helper.rb.erb", "#{options.install_folder}/#{options.framework}/e2e_helper.rb"
-      directory 'spec/e2e/app_commands', "#{options.install_folder}/#{options.framework}/app_commands"
+      template "spec/e2e/e2e_helper.rb.erb", "#{options.install_folder}/e2e_helper.rb"
+      directory 'spec/e2e/app_commands', "#{options.install_folder}/app_commands"
       if options.framework == 'cypress'
         copy_file "spec/cypress/support/on-rails.js", "#{options.install_folder}/cypress/support/on-rails.js"
         directory 'spec/cypress/e2e/rails_examples', "#{options.install_folder}/cypress/e2e/rails_examples"
