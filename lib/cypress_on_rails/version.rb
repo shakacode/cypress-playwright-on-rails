@@ -1,3 +1,3 @@
 module CypressOnRails
-  VERSION = '1.19.0'.freeze
+  VERSION = '1.20.0'.freeze
 end
