@@ -15,10 +15,12 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 2.7.6
+        ruby-version: 3.0.6
         bundler-cache: true
     - name: Run tests
       run: bundle exec rake
+    - name: Run lint checks
+      run: bundle exec rake lint
     - name: Run interaction tests
       run: ./specs_e2e/rails_6_1/test.sh
       env:
@@ -36,6 +38,8 @@ jobs:
         bundler-cache: true
     - name: Run tests
       run: bundle exec rake
+    - name: Run lint checks
+      run: bundle exec rake lint
     - run: gem uninstall -v '>= 2' -ax bundler || true
     - run: gem install bundler -v '< 2'
     - name: Run interaction tests
@@ -55,6 +59,8 @@ jobs:
         bundler-cache: true
     - name: Run tests
       run: bundle exec rake
+    - name: Run lint checks
+      run: bundle exec rake lint
     - run: gem uninstall -v '>= 2' -ax bundler || true
     - run: gem install bundler -v '< 2'
     - name: Run interaction tests

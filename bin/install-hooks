@@ -8,7 +8,7 @@ pre_commit_hook = File.join(hooks_dir, 'pre-commit')
 
 # Create pre-commit hook content
 hook_content = <<~HOOK
-  #!/bin/sh
+  #!/usr/bin/env bash
   # Pre-commit hook to run linters and check for newlines
 
   # Check for files missing newlines
