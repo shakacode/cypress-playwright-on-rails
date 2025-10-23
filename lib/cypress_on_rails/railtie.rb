@@ -1,3 +1,4 @@
+require 'active_support/core_ext/module/delegation'
 require 'rails/railtie'
 require 'cypress_on_rails/configuration'
 
