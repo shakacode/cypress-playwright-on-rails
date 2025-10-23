@@ -20,11 +20,14 @@ desc 'Ensure all files end with newline'
 task :check_newlines do
   files_without_newline = []
 
-  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}').each do |file|
-    next if file.include?('vendor/') || file.include?('node_modules/') || file.include?('.git/')
-    next if file.include?('pkg/') || file.include?('tmp/') || file.include?('coverage/')
-    next unless File.file?(file)
+  # Define excluded directories
+  excluded_dirs = %w[vendor/ node_modules/ .git/ pkg/ tmp/ coverage/]
 
+  # Get all relevant files and filter out excluded directories more efficiently
+  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}')
+     .reject { |f| excluded_dirs.any? { |dir| f.start_with?(dir) } }
+     .select { |f| File.file?(f) }
+     .each do |file|
     content = File.read(file)
     files_without_newline << file unless content.empty? || content.end_with?("\n")
   end
@@ -42,11 +45,14 @@ desc 'Fix files missing final newline'
 task :fix_newlines do
   fixed_files = []
 
-  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}').each do |file|
-    next if file.include?('vendor/') || file.include?('node_modules/') || file.include?('.git/')
-    next if file.include?('pkg/') || file.include?('tmp/') || file.include?('coverage/')
-    next unless File.file?(file)
+  # Define excluded directories (same as check_newlines)
+  excluded_dirs = %w[vendor/ node_modules/ .git/ pkg/ tmp/ coverage/]
 
+  # Get all relevant files and filter out excluded directories more efficiently
+  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}')
+     .reject { |f| excluded_dirs.any? { |dir| f.start_with?(dir) } }
+     .select { |f| File.file?(f) }
+     .each do |file|
     content = File.read(file)
     unless content.empty? || content.end_with?("\n")
       File.write(file, content + "\n")
