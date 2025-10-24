@@ -3,6 +3,12 @@
 
 require 'fileutils'
 
+# Check if we're in a git repository
+unless File.exist?(File.expand_path('../.git', __dir__))
+  puts '❌ Error: Not in a git repository. Please run this from the project root.'
+  exit 1
+end
+
 hooks_dir = File.expand_path('../.git/hooks', __dir__)
 pre_commit_hook = File.join(hooks_dir, 'pre-commit')
 
@@ -21,9 +27,10 @@ hook_content = <<~HOOK
 
   # Run RuboCop on staged Ruby files
   echo "Running RuboCop on staged files..."
-  files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(rb|rake)$')
+  files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(rb|rake)$' || true)
   if [ -n "$files" ]; then
-    bundle exec rubocop $files
+    # Use printf to handle filenames with spaces and special characters safely
+    printf '%s\\n' "$files" | xargs bundle exec rubocop
     if [ $? -ne 0 ]; then
       echo "❌ RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
       exit 1
@@ -34,13 +41,28 @@ hook_content = <<~HOOK
 HOOK
 
 # Create hooks directory if it doesn't exist
-FileUtils.mkdir_p(hooks_dir)
+begin
+  FileUtils.mkdir_p(hooks_dir)
+rescue SystemCallError => e
+  puts "❌ Error: Failed to create hooks directory: #{e.message}"
+  exit 1
+end
 
 # Write the pre-commit hook
-File.write(pre_commit_hook, hook_content)
+begin
+  File.write(pre_commit_hook, hook_content)
+rescue SystemCallError => e
+  puts "❌ Error: Failed to write pre-commit hook: #{e.message}"
+  exit 1
+end
 
 # Make it executable
-File.chmod(0o755, pre_commit_hook)
+begin
+  File.chmod(0o755, pre_commit_hook)
+rescue SystemCallError => e
+  puts "❌ Error: Failed to make hook executable: #{e.message}"
+  exit 1
+end
 
 puts '✅ Pre-commit hook installed successfully!'
 puts 'The hook will:'
