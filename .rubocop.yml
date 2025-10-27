@@ -1,0 +1,64 @@
+inherit_from: .rubocop_todo.yml
+
+plugins:
+  - rubocop-rake
+  - rubocop-rspec
+
+AllCops:
+  TargetRubyVersion: 3.0
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'spec/fixtures/**/*'
+    - 'tmp/**/*'
+    - 'pkg/**/*'
+    - 'node_modules/**/*'
+    - 'specs_e2e/**/*'
+    - 'e2e/**/*'
+
+# Ensure all files end with a newline
+Layout/TrailingEmptyLines:
+  Enabled: true
+  EnforcedStyle: final_newline
+
+# Ensure no trailing whitespace
+Layout/TrailingWhitespace:
+  Enabled: true
+
+# Line length is configured in .rubocop_todo.yml for existing violations
+
+# Allow longer blocks in specs and rake tasks
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '**/*.rake'
+    - 'Rakefile'
+    - '*.gemspec'
+
+# Allow longer methods in rake tasks
+Metrics/MethodLength:
+  Exclude:
+    - '**/*.rake'
+    - 'Rakefile'
+
+# String literals - configured in .rubocop_todo.yml for gradual adoption
+
+# Frozen string literal pragma - configured in .rubocop_todo.yml for gradual adoption
+
+# Documentation
+Style/Documentation:
+  Enabled: false
+
+# Allow compact module/class definitions
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+# RSpec specific
+RSpec/ExampleLength:
+  Max: 20
+
+RSpec/MultipleExpectations:
+  Max: 5
+
+RSpec/NestedGroups:
+  Max: 4
