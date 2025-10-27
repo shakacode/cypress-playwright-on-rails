@@ -1,3 +1,5 @@
+inherit_from: .rubocop_todo.yml
+
 plugins:
   - rubocop-rake
   - rubocop-rspec
@@ -23,12 +25,7 @@ Layout/TrailingEmptyLines:
 Layout/TrailingWhitespace:
   Enabled: true
 
-# Line length - be reasonable but not too strict
-Layout/LineLength:
-  Max: 120
-  Exclude:
-    - 'spec/**/*'
-    - 'lib/generators/**/*'
+# Line length is configured in .rubocop_todo.yml for existing violations
 
 # Allow longer blocks in specs and rake tasks
 Metrics/BlockLength:
@@ -44,18 +41,9 @@ Metrics/MethodLength:
     - '**/*.rake'
     - 'Rakefile'
 
-# String literals
-Style/StringLiterals:
-  Enabled: true
-  EnforcedStyle: single_quotes
-  ConsistentQuotesInMultiline: true
+# String literals - configured in .rubocop_todo.yml for gradual adoption
 
-# Frozen string literal pragma
-Style/FrozenStringLiteralComment:
-  Enabled: true
-  EnforcedStyle: always
-  Exclude:
-    - 'spec/**/*'
+# Frozen string literal pragma - configured in .rubocop_todo.yml for gradual adoption
 
 # Documentation
 Style/Documentation:

@@ -82,7 +82,7 @@ task :fix_newlines do
     # Read file to check if it needs a newline
     content = File.read(file)
     unless content.empty? || content.end_with?("\n")
-      File.write(file, content + "\n")
+      File.write(file, "#{content}\n")
       fixed_files << file
     end
   end
