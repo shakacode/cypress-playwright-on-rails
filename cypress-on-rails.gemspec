@@ -34,5 +34,5 @@ Gem::Specification.new do |s|
     "documentation_uri" => "https://github.com/shakacode/cypress-on-rails/blob/master/README.md",
     "homepage_uri"      => "http://github.com/shakacode/cypress-on-rails",
     "source_code_uri"   => "http://github.com/shakacode/cypress-on-rails"
-}
+  }
 end
