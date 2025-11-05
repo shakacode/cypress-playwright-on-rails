@@ -263,22 +263,27 @@ bundle exec playwright test
 - Test improvements
 - Documentation updates (unless user-facing)
 - Development tooling changes
+- Linting, formatting, or code style changes
 
 **Format:**
+- Use `[PR 123](https://github.com/shakacode/cypress-on-rails/pull/123) by [username](https://github.com/username)` format (no hash in PR number)
+- Use `/update-changelog` command for guided changelog updates with automatic formatting
+- Run `grep -A 3 "^#### " CHANGELOG.md | head -30` to see real formatting examples
+
 ```markdown
 ## [Unreleased]
 
 ### Added
-- VCR use_cassette middleware for automatic cassette wrapping (#123)
+- VCR use_cassette middleware for automatic cassette wrapping [PR 123](https://github.com/shakacode/cypress-on-rails/pull/123) by [username](https://github.com/username)
 
 ### Changed
-- Improved error messages for missing command files (#124)
+- Improved error messages for missing command files [PR 124](https://github.com/shakacode/cypress-on-rails/pull/124) by [username](https://github.com/username)
 
 ### Deprecated
-- `cypress_folder` configuration option, use `install_folder` instead
+- `cypress_folder` configuration option, use `install_folder` instead [PR 125](https://github.com/shakacode/cypress-on-rails/pull/125) by [username](https://github.com/username)
 
 ### Fixed
-- Factory auto-reload not detecting file changes on Windows (#125)
+- Factory auto-reload not detecting file changes on Windows [PR 126](https://github.com/shakacode/cypress-on-rails/pull/126) by [username](https://github.com/username)
 ```
 
 ## 🔒 Security Considerations
