@@ -9,21 +9,23 @@ current = File.expand_path('..', __dir__)
 
 while current != '/'
   git_path = File.join(current, '.git')
-  if File.exist?(git_path)
-    if File.file?(git_path)
-      # It's a worktree, read the actual git dir
-      git_dir_line = File.read(git_path).lines.find { |l| l.start_with?('gitdir:') }
-      if git_dir_line
-        relative_path = git_dir_line.sub('gitdir:', '').strip
-        git_dir = File.expand_path(relative_path, current)
-        break
-      end
-    else
-      git_dir = git_path
-      break
-    end
+  unless File.exist?(git_path)
+    current = File.dirname(current)
+    next
   end
-  current = File.dirname(current)
+
+  unless File.file?(git_path)
+    git_dir = git_path
+    break
+  end
+
+  # It's a worktree, read the actual git dir
+  git_dir_line = File.read(git_path).lines.find { |l| l.start_with?('gitdir:') }
+  if git_dir_line
+    relative_path = git_dir_line.sub('gitdir:', '').strip
+    git_dir = File.expand_path(relative_path, current)
+  end
+  break
 end
 
 unless git_dir && File.exist?(git_dir)
