@@ -22,11 +22,17 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'factory_bot', '!= 6.4.5'
   s.add_development_dependency 'vcr'
   s.add_development_dependency 'gem-release'
+  s.add_development_dependency 'rubocop', '~> 1.81'
+  s.add_development_dependency 'rubocop-rake', '~> 0.7'
+  s.add_development_dependency 'rubocop-rspec', '~> 3.7'
+
+  s.required_ruby_version = '>= 3.0.0'
+
   s.metadata = {
     "bug_tracker_uri"   => "https://github.com/shakacode/cypress-on-rails/issues",
     "changelog_uri"     => "https://github.com/shakacode/cypress-on-rails/blob/master/CHANGELOG.md",
     "documentation_uri" => "https://github.com/shakacode/cypress-on-rails/blob/master/README.md",
     "homepage_uri"      => "http://github.com/shakacode/cypress-on-rails",
     "source_code_uri"   => "http://github.com/shakacode/cypress-on-rails"
-}
+  }
 end

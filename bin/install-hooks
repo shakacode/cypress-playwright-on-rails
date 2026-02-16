@@ -1,0 +1,96 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'fileutils'
+
+# Find the git directory (could be .git file in worktree or .git directory)
+git_dir = nil
+current = File.expand_path('..', __dir__)
+
+while current != '/'
+  git_path = File.join(current, '.git')
+  unless File.exist?(git_path)
+    current = File.dirname(current)
+    next
+  end
+
+  unless File.file?(git_path)
+    git_dir = git_path
+    break
+  end
+
+  # It's a worktree, read the actual git dir
+  git_dir_line = File.read(git_path).lines.find { |l| l.start_with?('gitdir:') }
+  if git_dir_line
+    relative_path = git_dir_line.sub('gitdir:', '').strip
+    git_dir = File.expand_path(relative_path, current)
+  end
+  break
+end
+
+unless git_dir && File.exist?(git_dir)
+  puts '❌ Error: Not in a git repository. Please run this from the project root.'
+  exit 1
+end
+
+hooks_dir = File.join(git_dir, 'hooks')
+pre_commit_hook = File.join(hooks_dir, 'pre-commit')
+
+# Create pre-commit hook content
+hook_content = <<~HOOK
+  #!/usr/bin/env bash
+  # Pre-commit hook to run linters and check for newlines
+
+  # Check for files missing newlines
+  echo "Checking for files missing newlines..."
+  bundle exec rake check_newlines
+  if [ $? -ne 0 ]; then
+    echo "❌ Some files are missing final newlines. Run 'bundle exec rake fix_newlines' to fix."
+    exit 1
+  fi
+
+  # Run RuboCop on staged Ruby files
+  echo "Running RuboCop on staged files..."
+  files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(rb|rake)$' || true)
+  if [ -n "$files" ]; then
+    # Use printf to handle filenames with spaces and special characters safely
+    printf '%s\\n' "$files" | xargs bundle exec rubocop
+    if [ $? -ne 0 ]; then
+      echo "❌ RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
+      exit 1
+    fi
+  fi
+
+  echo "✅ All checks passed!"
+HOOK
+
+# Create hooks directory if it doesn't exist
+begin
+  FileUtils.mkdir_p(hooks_dir)
+rescue SystemCallError => e
+  puts "❌ Error: Failed to create hooks directory: #{e.message}"
+  exit 1
+end
+
+# Write the pre-commit hook
+begin
+  File.write(pre_commit_hook, hook_content)
+rescue SystemCallError => e
+  puts "❌ Error: Failed to write pre-commit hook: #{e.message}"
+  exit 1
+end
+
+# Make it executable
+begin
+  File.chmod(0o755, pre_commit_hook)
+rescue SystemCallError => e
+  puts "❌ Error: Failed to make hook executable: #{e.message}"
+  exit 1
+end
+
+puts '✅ Pre-commit hook installed successfully!'
+puts 'The hook will:'
+puts '  - Check that all files end with a newline'
+puts '  - Run RuboCop on staged Ruby files'
+puts ''
+puts 'To skip the hook temporarily, use: git commit --no-verify'
