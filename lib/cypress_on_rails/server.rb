@@ -69,7 +69,7 @@ module CypressOnRails
       run_hook(config.before_server_start)
       
       ENV['CYPRESS'] = '1'
-      ENV['RAILS_ENV'] = 'test'
+      ENV['RAILS_ENV'] ||= 'test'
       
       server_pid = spawn_server
       
