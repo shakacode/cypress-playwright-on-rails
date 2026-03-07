@@ -16,41 +16,40 @@ task lint: :rubocop
 desc 'Auto-fix all linting issues'
 task 'lint:fix' => 'rubocop:autocorrect'
 
-# Helper method to check if file is likely binary
-def binary_file?(filepath)
-  return false unless File.exist?(filepath)
+# Newline checking utilities
+module NewlineChecker
+  MAX_FILE_SIZE = 10 * 1024 * 1024
+  EXCLUDED_DIRS = %w[vendor/ node_modules/ .git/ pkg/ tmp/ coverage/ specs_e2e/ e2e/ spec/fixtures/].freeze
+  FILE_EXTENSIONS = '**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}'
 
-  # Read first 8192 bytes to check for binary content
-  File.open(filepath, 'rb') do |file|
-    chunk = file.read(8192) || ''
-    # File is binary if it contains null bytes or has high ratio of non-printable chars
-    return true if chunk.include?("\x00")
+  module_function
 
-    # Check for high ratio of non-printable characters
-    non_printable = chunk.count("\x01-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF")
-    non_printable.to_f / chunk.size > 0.3
+  def binary_file?(filepath)
+    return false unless File.exist?(filepath)
+
+    File.open(filepath, 'rb') do |file|
+      chunk = file.read(8192) || ''
+      return true if chunk.include?("\x00")
+
+      non_printable = chunk.count("\x01-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF")
+      non_printable.to_f / chunk.size > 0.3
+    end
+  rescue StandardError
+    true
   end
-rescue StandardError
-  # If we can't read the file, assume it's not something we should check
-  true
-end
 
-# Maximum file size to check (10MB)
-MAX_FILE_SIZE = 10 * 1024 * 1024
+  def text_files
+    Dir.glob(FILE_EXTENSIONS)
+       .reject { |f| EXCLUDED_DIRS.any? { |dir| f.start_with?(dir) } }
+       .select { |f| File.file?(f) && File.size(f) < MAX_FILE_SIZE && !binary_file?(f) }
+  end
+end
 
 desc 'Ensure all files end with newline'
 task :check_newlines do
   files_without_newline = []
 
-  # Define excluded directories (matching RuboCop config)
-  excluded_dirs = %w[vendor/ node_modules/ .git/ pkg/ tmp/ coverage/ specs_e2e/ e2e/ spec/fixtures/]
-
-  # Get all relevant files and filter out excluded directories more efficiently
-  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}')
-     .reject { |f| excluded_dirs.any? { |dir| f.start_with?(dir) } }
-     .select { |f| File.file?(f) && File.size(f) < MAX_FILE_SIZE && !binary_file?(f) }
-     .each do |file|
-    # Read only the last few bytes to check for newline
+  NewlineChecker.text_files.each do |file|
     File.open(file, 'rb') do |f|
       f.seek([f.size - 2, 0].max)
       tail = f.read
@@ -71,19 +70,18 @@ desc 'Fix files missing final newline'
 task :fix_newlines do
   fixed_files = []
 
-  # Define excluded directories (matching RuboCop config)
-  excluded_dirs = %w[vendor/ node_modules/ .git/ pkg/ tmp/ coverage/ specs_e2e/ e2e/ spec/fixtures/]
+  NewlineChecker.text_files.each do |file|
+    File.open(file, 'rb') do |f|
+      f.seek([f.size - 2, 0].max)
+      tail = f.read
+      next if tail.nil? || tail.empty? || tail.end_with?("\n")
+    end
 
-  # Get all relevant files and filter out excluded directories more efficiently
-  Dir.glob('**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}')
-     .reject { |f| excluded_dirs.any? { |dir| f.start_with?(dir) } }
-     .select { |f| File.file?(f) && File.size(f) < MAX_FILE_SIZE && !binary_file?(f) }
-     .each do |file|
-    # Read file to check if it needs a newline
-    content = File.read(file)
-    unless content.empty? || content.end_with?("\n")
-      File.write(file, "#{content}\n")
+    begin
+      File.open(file, 'a') { |f| f.write("\n") }
       fixed_files << file
+    rescue SystemCallError => e
+      warn "Failed to fix #{file}: #{e.message}"
     end
   end
 

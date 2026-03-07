@@ -29,7 +29,7 @@ while current != '/'
 end
 
 unless git_dir && File.exist?(git_dir)
-  puts '❌ Error: Not in a git repository. Please run this from the project root.'
+  puts 'Error: Not in a git repository. Please run this from the project root.'
   exit 1
 end
 
@@ -41,11 +41,17 @@ hook_content = <<~HOOK
   #!/usr/bin/env bash
   # Pre-commit hook to run linters and check for newlines
 
-  # Check for files missing newlines
-  echo "Checking for files missing newlines..."
-  bundle exec rake check_newlines
-  if [ $? -ne 0 ]; then
-    echo "❌ Some files are missing final newlines. Run 'bundle exec rake fix_newlines' to fix."
+  # Check staged files for missing newlines
+  echo "Checking staged files for missing newlines..."
+  missing_newline=0
+  while IFS= read -r file; do
+    if [ -f "$file" ] && [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+      echo "  Missing final newline: $file"
+      missing_newline=1
+    fi
+  done < <(git diff --cached --name-only --diff-filter=ACM)
+  if [ "$missing_newline" -ne 0 ]; then
+    echo "Some files are missing final newlines. Run 'bundle exec rake fix_newlines' to fix."
     exit 1
   fi
 
@@ -56,27 +62,34 @@ hook_content = <<~HOOK
     # Use printf to handle filenames with spaces and special characters safely
     printf '%s\\n' "$files" | xargs bundle exec rubocop
     if [ $? -ne 0 ]; then
-      echo "❌ RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
+      echo "RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
       exit 1
     fi
   fi
 
-  echo "✅ All checks passed!"
+  echo "All checks passed!"
 HOOK
 
 # Create hooks directory if it doesn't exist
 begin
   FileUtils.mkdir_p(hooks_dir)
 rescue SystemCallError => e
-  puts "❌ Error: Failed to create hooks directory: #{e.message}"
+  puts "Error: Failed to create hooks directory: #{e.message}"
   exit 1
+end
+
+# Back up existing hook if present
+if File.exist?(pre_commit_hook)
+  backup = "#{pre_commit_hook}.bak"
+  FileUtils.cp(pre_commit_hook, backup)
+  puts "Backed up existing hook to #{backup}"
 end
 
 # Write the pre-commit hook
 begin
   File.write(pre_commit_hook, hook_content)
 rescue SystemCallError => e
-  puts "❌ Error: Failed to write pre-commit hook: #{e.message}"
+  puts "Error: Failed to write pre-commit hook: #{e.message}"
   exit 1
 end
 
@@ -84,13 +97,13 @@ end
 begin
   File.chmod(0o755, pre_commit_hook)
 rescue SystemCallError => e
-  puts "❌ Error: Failed to make hook executable: #{e.message}"
+  puts "Error: Failed to make hook executable: #{e.message}"
   exit 1
 end
 
-puts '✅ Pre-commit hook installed successfully!'
+puts 'Pre-commit hook installed successfully!'
 puts 'The hook will:'
-puts '  - Check that all files end with a newline'
+puts '  - Check that staged files end with a newline'
 puts '  - Run RuboCop on staged Ruby files'
 puts ''
 puts 'To skip the hook temporarily, use: git commit --no-verify'
