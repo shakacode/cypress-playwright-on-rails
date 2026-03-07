@@ -9,8 +9,6 @@ class RaisingMessageHandler
   end
 end
 
-# rubocop:disable Metrics/BlockLength
-
 desc("Releases the gem using the given version.
 
 IMPORTANT: the gem version must be in valid rubygem format (no dashes).
@@ -76,5 +74,3 @@ task :release, %i[gem_version dry_run] do |_t, args|
   MSG
   puts msg
 end
-
-# rubocop:enable Metrics/BlockLength
