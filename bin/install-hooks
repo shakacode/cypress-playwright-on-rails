@@ -57,10 +57,9 @@ hook_content = <<~HOOK
 
   # Run RuboCop on staged Ruby files
   echo "Running RuboCop on staged files..."
-  files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(rb|rake)$' || true)
-  if [ -n "$files" ]; then
-    # Use printf to handle filenames with spaces and special characters safely
-    printf '%s\\n' "$files" | xargs bundle exec rubocop
+  ruby_files=$(git diff --cached --name-only -z --diff-filter=ACM | grep -zE '\\.(rb|rake)$' || true)
+  if [ -n "$ruby_files" ]; then
+    printf '%s' "$ruby_files" | xargs -0 bundle exec rubocop
     if [ $? -ne 0 ]; then
       echo "RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
       exit 1

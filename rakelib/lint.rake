@@ -30,6 +30,7 @@ module NewlineChecker
     File.open(filepath, 'rb') do |file|
       chunk = file.read(8192) || ''
       return true if chunk.include?("\x00")
+      return false if chunk.empty?
 
       non_printable = chunk.count("\x01-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF")
       non_printable.to_f / chunk.size > 0.3
@@ -71,11 +72,12 @@ task :fix_newlines do
   fixed_files = []
 
   NewlineChecker.text_files.each do |file|
-    File.open(file, 'rb') do |f|
+    needs_fix = File.open(file, 'rb') do |f|
       f.seek([f.size - 2, 0].max)
       tail = f.read
-      next if tail.nil? || tail.empty? || tail.end_with?("\n")
+      !tail.nil? && !tail.empty? && !tail.end_with?("\n")
     end
+    next unless needs_fix
 
     begin
       File.open(file, 'a') { |f| f.write("\n") }
