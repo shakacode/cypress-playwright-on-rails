@@ -59,9 +59,7 @@ task :check_newlines do
   end
 
   if files_without_newline.any?
-    puts 'Files missing final newline:'
-    files_without_newline.each { |f| puts "  #{f}" }
-    exit 1
+    abort "Files missing final newline:\n#{files_without_newline.map { |f| "  #{f}" }.join("\n")}"
   else
     puts '✓ All files end with newline'
   end

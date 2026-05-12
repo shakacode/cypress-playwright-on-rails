@@ -364,11 +364,6 @@ RSpec/VerifiedDoubles:
     - 'spec/cypress_on_rails/railtie_spec.rb'
     - 'spec/cypress_on_rails/vcr/use_cassette_middleware_spec.rb'
 
-Security/Eval:
-  Exclude:
-    - 'lib/cypress_on_rails/command_executor.rb'
-    - 'lib/generators/cypress_on_rails/templates/spec/e2e/app_commands/eval.rb'
-
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle.
 # SupportedStyles: separated, grouped
