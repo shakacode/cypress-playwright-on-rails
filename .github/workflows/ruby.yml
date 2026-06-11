@@ -2,9 +2,9 @@ name: Ruby
 
 on:
   push:
-    branches: [ master ]
+    branches: [master, main]
   pull_request:
-    branches: [ master ]
+    branches: [master, main]
 
 jobs:
   rails_6_1:
@@ -15,7 +15,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 2.7.6
+        ruby-version: '3.4'
         bundler-cache: true
     - name: Run tests
       run: bundle exec rake

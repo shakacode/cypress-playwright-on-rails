@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Breaking
+* **Minimum Ruby version**: Raised `required_ruby_version` to `>= 3.0.0`. Ruby 2.x is no longer supported. [#193]
+
 ### Fixed
 * **BREAKING: Generator folder structure**: Fixed install generator to create `e2e_helper.rb` and `app_commands/` at the install folder root (e.g., `e2e/`) instead of inside the framework subdirectory (e.g., `e2e/cypress/`). This ensures compatibility between Cypress/Playwright config file location and middleware expectations. [#201]
 
