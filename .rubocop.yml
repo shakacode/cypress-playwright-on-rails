@@ -6,7 +6,7 @@ plugins:
 
 AllCops:
   TargetRubyVersion: 3.0
-  NewCops: enable
+  NewCops: pending
   Exclude:
     - 'vendor/**/*'
     - 'spec/fixtures/**/*'

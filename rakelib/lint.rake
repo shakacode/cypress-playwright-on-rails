@@ -21,6 +21,16 @@ module NewlineChecker
   MAX_FILE_SIZE = 10 * 1024 * 1024
   EXCLUDED_DIRS = %w[vendor/ node_modules/ .git/ pkg/ tmp/ coverage/ specs_e2e/ e2e/ spec/fixtures/].freeze
   FILE_EXTENSIONS = '**/*.{rb,rake,yml,yaml,md,gemspec,ru,erb,js,json}'
+  EXTENSIONLESS_FILE_PATTERNS = %w[
+    **/Gemfile
+    **/Rakefile
+    **/Gemfile.lock
+    **/Dockerfile
+    **/Procfile
+    **/Guardfile
+    **/Capfile
+  ].freeze
+  TEXT_FILE_PATTERNS = [FILE_EXTENSIONS, *EXTENSIONLESS_FILE_PATTERNS].freeze
 
   module_function
 
@@ -32,15 +42,17 @@ module NewlineChecker
       return true if chunk.include?("\x00")
       return false if chunk.empty?
 
-      non_printable = chunk.count("\x01-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF")
-      non_printable.to_f / chunk.size > 0.3
+      bytes = chunk.b.bytes
+      non_printable = bytes.count { |byte| (byte < 32 && ![9, 10, 13].include?(byte)) || byte == 127 }
+      non_printable.to_f / bytes.size > 0.3
     end
   rescue StandardError
     true
   end
 
   def text_files
-    Dir.glob(FILE_EXTENSIONS)
+    Dir.glob(TEXT_FILE_PATTERNS, File::FNM_DOTMATCH)
+       .uniq
        .reject { |f| EXCLUDED_DIRS.any? { |dir| f.start_with?(dir) } }
        .select { |f| File.file?(f) && File.size(f) < MAX_FILE_SIZE && !binary_file?(f) }
   end

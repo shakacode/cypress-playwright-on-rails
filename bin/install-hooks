@@ -44,12 +44,13 @@ hook_content = <<~HOOK
   # Check staged files for missing newlines
   echo "Checking staged files for missing newlines..."
   missing_newline=0
-  while IFS= read -r file; do
-    if [ -f "$file" ] && [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+  newline_file_pattern='(^|/)(Gemfile|Rakefile|Gemfile\.lock|Dockerfile|Procfile|Guardfile|Capfile)$|\.(rb|rake|yml|yaml|md|gemspec|ru|erb|js|json)$'
+  while IFS= read -r -d '' file; do
+    if [ -f "$file" ] && [ -s "$file" ] && LC_ALL=C grep -Iq . "$file" && [ -n "$(tail -c 1 "$file")" ]; then
       echo "  Missing final newline: $file"
       missing_newline=1
     fi
-  done < <(git diff --cached --name-only --diff-filter=ACM)
+  done < <(git diff --cached --name-only -z --diff-filter=ACM | grep -zE "$newline_file_pattern")
   if [ "$missing_newline" -ne 0 ]; then
     echo "Some files are missing final newlines. Run 'bundle exec rake fix_newlines' to fix."
     exit 1
@@ -79,9 +80,18 @@ end
 
 # Back up existing hook if present
 if File.exist?(pre_commit_hook)
-  backup = "#{pre_commit_hook}.bak"
-  FileUtils.cp(pre_commit_hook, backup)
-  puts "Backed up existing hook to #{backup}"
+  existing_content = File.read(pre_commit_hook)
+  if existing_content.include?('# Pre-commit hook to run linters and check for newlines')
+    puts 'Replacing previously installed hook (no backup needed)'
+  else
+    backup = "#{pre_commit_hook}.bak"
+    if File.exist?(backup)
+      timestamp = Time.now.utc.strftime('%Y%m%d%H%M%S')
+      backup = "#{pre_commit_hook}.#{timestamp}.bak"
+    end
+    FileUtils.cp(pre_commit_hook, backup)
+    puts "Backed up existing hook to #{backup}"
+  end
 end
 
 # Write the pre-commit hook
