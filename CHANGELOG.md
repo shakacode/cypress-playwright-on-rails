@@ -8,7 +8,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+* **Rails 8.1 compatibility**: Require ActiveSupport delegation explicitly so the railtie loads under Rails 8.1. [PR 207](https://github.com/shakacode/cypress-playwright-on-rails/pull/207)
+* **Playwright helpers return parsed JSON**: `appCommands`, `appVcrInsertCassette`, and `appVcrEjectCassette` in the generated Playwright `on-rails.js` now return `response.json()` instead of a `Buffer`. [PR 219](https://github.com/shakacode/cypress-playwright-on-rails/pull/219) by [helio3197](https://github.com/helio3197) (originally [PR 168](https://github.com/shakacode/cypress-playwright-on-rails/pull/168))
+* Generated initializer and `e2e_helper.rb` templates no longer contain trailing spaces. [PR 205](https://github.com/shakacode/cypress-playwright-on-rails/pull/205) by [tnir](https://github.com/tnir)
+
+### Changed
+* The managed test server no longer overrides `RAILS_ENV` when it is already set, so E2E runs can target the test (or any) environment. [PR 210](https://github.com/shakacode/cypress-playwright-on-rails/pull/210) by [arielj](https://github.com/arielj)
+
+---
+
+## [1.20.0] - 2025-10-21
+[Compare](https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.19.0...v1.20.0)
+
+### Fixed
 * **BREAKING: Generator folder structure**: Fixed install generator to create `e2e_helper.rb` and `app_commands/` at the install folder root (e.g., `e2e/`) instead of inside the framework subdirectory (e.g., `e2e/cypress/`). This ensures compatibility between Cypress/Playwright config file location and middleware expectations. [#201]
+
+### Changed
+* Improved server process cleanup and readiness checks. [PR 199](https://github.com/shakacode/cypress-playwright-on-rails/pull/199)
+* Gem description now mentions Playwright support. [PR 200](https://github.com/shakacode/cypress-playwright-on-rails/pull/200)
 
 ### Migration Guide for Folder Structure Change
 
