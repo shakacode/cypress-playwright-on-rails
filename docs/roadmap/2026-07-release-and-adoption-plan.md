@@ -25,10 +25,11 @@ Owner: @justin808
 1. v1.21.0 scope and R1/R2 merge order — **approved, executed**.
 2. Seven close-candidates — **approved, closed**.
 3. #24 (gem split) and #11 (rename) — **closed**.
-4. Docs site (S2) — **testing.shakastack.com for now**; buy a dedicated
-   domain only if/when the naming question resolves toward a rename.
-   Gem naming: long-term rename is attractive for discoverability
-   (Playwright missing from the name); under active consideration — see §S4.
+4. Docs site (S2) — **testing.shakastack.com for now**; no domain purchase
+   until the 2.0 rename ships. Gem naming — **RESOLVED 2026-07-04
+   (ADR-0001)**: publish `e2e_on_rails` now as a thin alias/wrapper gem;
+   full rename (canonical gem `e2e_on_rails`, module `E2eOnRails`,
+   `cypress-on-rails` as shim) happens at 2.0. Supersedes §S4's option list.
 5. Outreach (M3) — approved in principle; post only after v1.21.0 +
    hardening (#185) + migration guide (#220) ship. Draft lives in #224.
 6. #191/#193 (release task, RuboCop) — **after** v1.21.0.
