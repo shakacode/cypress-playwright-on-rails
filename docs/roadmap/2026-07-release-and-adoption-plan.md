@@ -158,24 +158,17 @@ Contents: Rails 8.1 compat (#207), generator whitespace (#205), PR #210
 
 Tasks (each independently implementable; IDs referenced below):
 
-- **R1 — Merge PR #210.** Verify CI green on a rebase against master first.
-  Changelog entry under `### Changed`: server no longer overrides a
-  pre-set `RAILS_ENV`.
-- **R2 — Rebase + merge PR #168.** Conflict is in
-  `lib/generators/cypress_on_rails/templates/spec/e2e/e2e_helper.rb.erb` area
-  (playwright helper templates). After rebase, run the Playwright example app
-  CI job. Note in CHANGELOG under `### Fixed`. Credit @helio3197.
-- **R3 — CHANGELOG pass.** Move the `[Unreleased]` folder-structure section
-  (#201/#203) under `## [1.20.0]` — verified: commit 73961af is inside the
-  v1.20.0 tag but its entry was left under Unreleased. Add entries for
-  #205, #207, #210, #168.
-- **R4 — Release.** Follow `RELEASING.md` (`rake release[1.21.0]`,
-  gem-release based). Requires RubyGems + git push credentials (human step).
-- **R5 — Backfill GitHub Releases** for v1.16.0, v1.17.0, v1.18.0, v1.19.0,
-  v1.20.0, v1.21.0 from CHANGELOG sections
-  (`gh release create v1.XX.0 --title "vX.XX.0" --notes-file <extract>`).
-  Rationale: the repo currently advertises "Latest release v1.15.0 · 2023" —
-  reads as abandoned, which is fatal when courting cypress-rails refugees.
+- **R1 — Merge PR #210.** ✅ DONE 2026-07-04.
+- **R2 — Rebase + merge PR #168.** ✅ DONE 2026-07-04 as PR #219 (fork
+  rejected maintainer push; obsolete Rails 4.2 Gemfile commit dropped).
+- **R3 — CHANGELOG pass.** ✅ DONE 2026-07-04 (PR #225): #201/#203 entry moved
+  under `## [1.20.0]`; Unreleased now lists #205, #207, #210, #219.
+- **R4 — Release.** ⏳ REMAINING (human step): follow `RELEASING.md`
+  (`rake release[1.21.0]`, gem-release based); requires RubyGems + git push
+  credentials. Then `gh release create v1.21.0` from the CHANGELOG section.
+- **R5 — Backfill GitHub Releases.** ✅ DONE 2026-07-04 for v1.16.0–v1.20.0;
+  repo now shows v1.20.0 as Latest (was v1.15.0 · 2023). v1.21.0's release
+  is created as part of R4.
 - **R6 — Fix the release task** (PR #191's goal) only if R4 actually hits the
   duplicate-task conflict; otherwise close #191 and note the finding.
 
@@ -252,37 +245,37 @@ spec headlessly, and get a deterministic pass/fail without clicking around.
   and extend "Prove" to two legs: *prove it's fast* (ShakaPerf) + *prove it
   works* (this gem). Owner: whoever edits shakastack.com (site repo UNKNOWN —
   locate first).
-- **S2 — docs-site decision (needs @justin808):** dedicated domain
-  (cypressplaywrightonrails.com? testing.shakastack.com?) vs polished in-repo
-  docs. Every sibling project has a domain; recommendation: cheap
-  subdomain-on-shakastack option to start.
+- **S2 — docs site (DECIDED 2026-07-04):** publish to
+  **testing.shakastack.com**; no dedicated domain unless/until the 2.0 rename
+  ships (see ADR-0001). Implementation task: stand up the docs site there
+  once #221 (README/docs split) lands, and publish `llms.txt` from #222.
 - **S3 — cross-promotion:** react_on_rails already uses this gem for its E2E
   suite — write that up (blog or docs page "How React on Rails tests itself
   with Playwright"), link from react_on_rails docs and AGENTS_USER_GUIDE.
-- **S4 — naming decision (needs @justin808, closes #11/#24):** repo is
-  `cypress-playwright-on-rails`, gem is `cypress-on-rails`, brand is split.
-  Options: (a) status quo, (b) rename gem with alias. Recommendation: (a) for
-  now — 6.4M downloads of brand equity; revisit only with a 2.0.
+- **S4 — naming (DECIDED 2026-07-04, ADR-0001; #11/#24 closed):** publish
+  `e2e_on_rails` now as a thin alias gem (issue #226); full rename — canonical
+  gem `e2e_on_rails`, module `E2eOnRails`, `cypress-on-rails` as shim — at
+  2.0. See `docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md` and
+  `CONTEXT.md` for the canonical vocabulary.
 
 ---
 
-## 5. Decisions needed from @justin808
+## 5. Open decisions
 
-1. Approve merge order R1/R2 and the v1.21.0 scope.
-2. Approve closing the 7 close-candidates (§2) with the prescribed comments.
-3. Close or keep #24 (gem split) and #11 (rename) — recommendation: close both.
-4. Docs-site decision (S2).
-5. Outreach tone for the cypress-rails#164 comment (M3) — draft before posting.
-6. Whether #191/#193 (release task, RuboCop) land before or after v1.21.0
-   (recommendation: after, to keep the release diff minimal).
+All six original decision points were resolved on 2026-07-04 (see the
+Decisions section at the top of this document). Still genuinely open:
+
+1. Final sign-off on the M3 outreach comment text before posting (draft in
+   issue #224; gated on v1.21.0 + #185 + #220 shipping).
+2. Timing of the 2.0 rename flip (deliberately unscheduled — ADR-0001).
 
 ## 6. Suggested agent execution order
 
-```
-R3 → R1 → R2 → R4(human) → R5        # v1.21.0, ~1 day of agent work + release
-H1 → H2 → H3 → M1 → M2 → M4          # hardening before marketing
-A1 → A2 → A3 → A4 → A5               # agent-native layer
-S1–S4 in parallel (site/marketing, human-led)
+```text
+R4(human release)                     # only v1.21.0 step left
+#226 alias gem → H1 → H2 → H3 → M1 → M2 → M4   # hardening before marketing
+A1 → A2 → A3 → A4 → A5                # agent-native layer (issues #222/#223/#78)
+S1–S3 in parallel (site/marketing, human-led)
 ```
 
 Every task above states its issue/PR, files, and acceptance criteria; tasks
