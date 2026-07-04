@@ -1,7 +1,37 @@
 # Release & Adoption Plan — July 2026
 
-Status: PROPOSED (triage applied to GitHub 2026-07-03; everything else awaits maintainer sign-off)
+Status: APPROVED & IN EXECUTION (decisions approved by @justin808 2026-07-04)
 Owner: @justin808
+
+## Execution log
+
+- 2026-07-03: triage labels applied to all open issues/PRs.
+- 2026-07-04: **R1 done** (PR #210 merged). **R2 done** (PR #168 rebased as
+  PR #219, merged; obsolete Rails 4.2 commit dropped). **R5 done** (GitHub
+  Releases v1.16.0–v1.20.0 backfilled; repo now shows v1.20.0 as Latest).
+  **R3 in review** (PR #225). All 7 close-candidates closed with pointers,
+  plus #24 and #11 closed per decision. Every remaining open issue now
+  carries an "Agent Implementation Spec" section. New task issues:
+  [#220](https://github.com/shakacode/cypress-playwright-on-rails/issues/220) (M1 migration guide),
+  [#221](https://github.com/shakacode/cypress-playwright-on-rails/issues/221) (M2 README),
+  [#222](https://github.com/shakacode/cypress-playwright-on-rails/issues/222) (A1+A2 agent docs),
+  [#223](https://github.com/shakacode/cypress-playwright-on-rails/issues/223) (A3 doctor),
+  [#224](https://github.com/shakacode/cypress-playwright-on-rails/issues/224) (M3 outreach, gated).
+- Remaining for v1.21.0: merge PR #225, then a maintainer runs
+  `rake release[1.21.0]` (RELEASING.md) and publishes the GitHub Release.
+
+## Decisions (2026-07-04, @justin808)
+
+1. v1.21.0 scope and R1/R2 merge order — **approved, executed**.
+2. Seven close-candidates — **approved, closed**.
+3. #24 (gem split) and #11 (rename) — **closed**.
+4. Docs site (S2) — **testing.shakastack.com for now**; buy a dedicated
+   domain only if/when the naming question resolves toward a rename.
+   Gem naming: long-term rename is attractive for discoverability
+   (Playwright missing from the name); under active consideration — see §S4.
+5. Outreach (M3) — approved in principle; post only after v1.21.0 +
+   hardening (#185) + migration guide (#220) ship. Draft lives in #224.
+6. #191/#193 (release task, RuboCop) — **after** v1.21.0.
 Audience: maintainers **and coding agents**. Every task below is written to be
 implementable by an agent without additional context. Facts were verified on
 2026-07-03; re-verify anything marked VERIFY before acting on it.
