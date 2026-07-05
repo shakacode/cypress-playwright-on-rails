@@ -432,8 +432,7 @@ end
 
 def release_staged_files
   [
-    "lib/cypress_on_rails/version.rb",
-    "Gemfile.lock"
+    "lib/cypress_on_rails/version.rb"
   ]
 end
 
@@ -467,13 +466,16 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
 
   verify_gh_auth(gem_root: gem_root) unless dry_run
 
-  validate_requested_version_input!(gem_version.to_s.strip)
+  raw_version_input = gem_version.to_s.strip
+  validate_requested_version_input!(raw_version_input) unless raw_version_input.empty?
 
   with_release_checkout(gem_root: gem_root, dry_run: dry_run) do |release_root|
     sh_in_dir_for_release(release_root, "git pull --rebase") unless dry_run
 
+    version_input = resolve_version_input(raw_version_input, release_root)
+    validate_requested_version_input!(version_input)
     current_version = current_gem_version(release_root)
-    target_version = compute_target_gem_version(current_gem_version: current_version, version_input: gem_version)
+    target_version = compute_target_gem_version(current_gem_version: current_version, version_input: version_input)
 
     warn_changelog_missing(gem_root: release_root, version: target_version)
     validate_release_version_policy!(
@@ -550,11 +552,9 @@ task :release, %i[gem_version dry_run override_version_policy] do |_t, args|
   args_hash = args.to_hash
   is_dry_run = release_truthy?(args_hash[:dry_run])
   allow_override = version_policy_override_enabled?(args_hash[:override_version_policy])
-  gem_root = File.expand_path("..", __dir__)
-  version_input = resolve_version_input(args_hash[:gem_version], gem_root)
 
   release_result = perform_release(
-    gem_version: version_input,
+    gem_version: args_hash[:gem_version].to_s,
     dry_run: is_dry_run,
     allow_version_policy_override: allow_override
   )

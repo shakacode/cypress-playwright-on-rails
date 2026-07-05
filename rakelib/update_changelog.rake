@@ -205,6 +205,18 @@ def normalize_heading_key(line)
   "#{heading_level} #{heading_text}".strip
 end
 
+def warning_changelog_heading?(line)
+  line.to_s.match?(/\A###+\s+WARNING:/i)
+end
+
+def prefer_warning_heading(existing_block, incoming_heading)
+  existing_heading = existing_block.lines.first&.rstrip || ""
+  return existing_block if warning_changelog_heading?(existing_heading)
+  return existing_block unless warning_changelog_heading?(incoming_heading)
+
+  existing_block.sub(/\A[^\n]*/, incoming_heading)
+end
+
 def deduplicate_block_entries(block)
   lines = block.lines
   first_line = lines.first&.rstrip || ""
@@ -260,6 +272,7 @@ def consolidate_changelog_blocks(blocks)
       heading_key = normalize_heading_key(heading_match[1])
       if heading_indices.key?(heading_key)
         idx = heading_indices[heading_key]
+        consolidated[idx] = prefer_warning_heading(consolidated[idx], first_line)
         content_after_heading = cleaned.lines.drop(1).join.gsub(/\A\n+/, "").rstrip
         consolidated[idx] = "#{consolidated[idx].rstrip}\n#{content_after_heading}" unless content_after_heading.empty?
       else
@@ -274,6 +287,13 @@ def consolidate_changelog_blocks(blocks)
   consolidated.map { |block| deduplicate_block_entries(block) }
 end
 
+def normalized_changelog_section_version(section)
+  version = section[:version].to_s
+  return nil if version.casecmp("Unreleased").zero?
+
+  normalize_version_string(version)
+end
+
 def collapse_prerelease_sections(changelog, base_version, channel)
   parsed = parse_changelog_sections(changelog)
   sections = parsed[:sections]
@@ -281,7 +301,10 @@ def collapse_prerelease_sections(changelog, base_version, channel)
   return changelog unless unreleased_section
 
   target_regex = /\A#{Regexp.escape(base_version)}\.#{channel}\.\d+\z/i
-  matching_sections = sections.select { |section| normalize_version_string(section[:version]).match?(target_regex) }
+  matching_sections = sections.select do |section|
+    normalized_version = normalized_changelog_section_version(section)
+    normalized_version&.match?(target_regex)
+  end
   return changelog if matching_sections.empty?
 
   all_blocks = changelog_section_blocks(unreleased_section[:body]) +
@@ -289,7 +312,10 @@ def collapse_prerelease_sections(changelog, base_version, channel)
   consolidated = consolidate_changelog_blocks(all_blocks)
   merged_body = consolidated.join("\n\n").strip
 
-  sections.reject! { |section| normalize_version_string(section[:version]).match?(target_regex) }
+  sections.reject! do |section|
+    normalized_version = normalized_changelog_section_version(section)
+    normalized_version&.match?(target_regex)
+  end
   unreleased_section[:body] = merged_body.empty? ? "\n" : "\n\n#{merged_body}\n"
 
   render_changelog_sections(parsed[:prefix], sections)
@@ -440,7 +466,7 @@ task :update_changelog, %i[mode_or_tag] do |_, args|
   if auto_mode
     fetch_git_tags!(gem_root)
     prepared_changelog = auto_mode == "release" ? prepare_changelog_for_auto_version(changelog, gem_root) : changelog
-    changelog_version = compute_auto_version(prepared_changelog, auto_mode, gem_root, changelog_for_bump: changelog)
+    changelog_version = compute_auto_version(prepared_changelog, auto_mode, gem_root)
     changelog = prepared_changelog
     tag_date = Date.today.strftime("%Y-%m-%d")
     puts "Auto-computed #{auto_mode} version: #{changelog_version}"

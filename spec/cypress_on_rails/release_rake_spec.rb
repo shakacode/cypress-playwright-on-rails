@@ -65,6 +65,45 @@ RSpec.describe "release rake helpers" do
     end
   end
 
+  describe "#release_staged_files" do
+    it "stages only tracked release metadata" do
+      expect(release_staged_files).to eq(["lib/cypress_on_rails/version.rb"])
+    end
+  end
+
+  describe "#perform_release" do
+    it "pulls the release checkout before resolving a blank version input" do
+      events = []
+
+      allow(self).to receive(:ensure_clean_worktree!)
+      allow(self).to receive(:verify_gh_auth)
+      allow(self).to receive(:with_release_checkout)
+        .with(gem_root: File.expand_path("../..", __dir__), dry_run: false)
+        .and_yield("/fresh")
+      allow(self).to receive(:extract_latest_changelog_version)
+        .with(gem_root: "/fresh")
+        .and_return("1.21.0")
+      allow(self).to receive(:current_gem_version)
+        .with("/fresh")
+        .and_return("1.20.0", "1.20.0", "1.21.0")
+      allow(self).to receive(:warn_changelog_missing)
+      allow(self).to receive(:validate_release_version_policy!)
+      allow(self).to receive(:sync_github_release_after_publish)
+      allow(self).to receive(:sh_in_dir_for_release) do |_dir, command|
+        events << command
+      end
+
+      result = nil
+      capture_stdout { result = perform_release(gem_version: "", dry_run: false) }
+      bump_command = events.find { |command| command.include?("gem bump") }
+
+      expect(result[:released_gem_version]).to eq("1.21.0")
+      expect(events).to include("git pull --rebase")
+      expect(bump_command).to include("--version 1.21.0")
+      expect(events.index("git pull --rebase")).to be < events.index(bump_command)
+    end
+  end
+
   describe "#resolve_version_input" do
     it "uses the changelog version when it is newer than the current gem version" do
       allow(self).to receive(:extract_latest_changelog_version).with(gem_root: "/repo").and_return("1.21.0.rc.0")

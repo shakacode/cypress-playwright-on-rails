@@ -72,6 +72,71 @@ RSpec.describe "update_changelog rake helpers" do
         expect(compute_auto_version(changelog, "release", repo_dir)).to eq("1.20.1")
       end
     end
+
+    it "infers the stable version from collapsed active rc notes" do
+      Dir.mktmpdir do |repo_dir|
+        init_git_repo!(repo_dir)
+        run_git!("tag", "v1.20.0", chdir: repo_dir)
+        run_git!("tag", "v1.21.0.rc.0", chdir: repo_dir)
+
+        changelog = <<~CHANGELOG
+          ## [Unreleased]
+
+          ## [1.21.0.rc.0] - 2026-07-04
+
+          ### Added
+          * Feature
+        CHANGELOG
+        prepared_changelog = prepare_changelog_for_auto_version(changelog, repo_dir)
+
+        expect(compute_auto_version(prepared_changelog, "release", repo_dir)).to eq("1.21.0")
+      end
+    end
+  end
+
+  describe "#collapse_prerelease_sections" do
+    it "skips Unreleased when matching prerelease sections" do
+      changelog = <<~CHANGELOG
+        ## [Unreleased]
+
+        ### Fixed
+        * Unreleased fix
+
+        ## [1.21.0.rc.0] - 2026-07-04
+
+        ### Added
+        * Feature
+      CHANGELOG
+
+      collapsed = collapse_prerelease_sections(changelog, "1.21.0", "rc")
+
+      expect(collapsed).to include("### Fixed")
+      expect(collapsed).to include("* Unreleased fix")
+      expect(collapsed).to include("### Added")
+      expect(collapsed).to include("* Feature")
+      expect(collapsed).not_to include("## [1.21.0.rc.0]")
+    end
+
+    it "preserves warning labels when merging breaking-change headings" do
+      changelog = <<~CHANGELOG
+        ## [Unreleased]
+
+        ### Breaking Changes
+        * Plain breaking note
+
+        ## [1.21.0.rc.0] - 2026-07-04
+
+        ### WARNING: Breaking Changes
+        * Warning breaking note
+      CHANGELOG
+
+      collapsed = collapse_prerelease_sections(changelog, "1.21.0", "rc")
+
+      expect(collapsed).to include("### WARNING: Breaking Changes")
+      expect(collapsed).to include("* Plain breaking note")
+      expect(collapsed).to include("* Warning breaking note")
+      expect(collapsed).not_to include("\n### Breaking Changes\n")
+    end
   end
 
   describe "#insert_version_header" do
