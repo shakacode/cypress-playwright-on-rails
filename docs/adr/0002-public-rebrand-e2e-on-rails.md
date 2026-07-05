@@ -44,9 +44,9 @@ were resolved by the maintainer on 2026-07-04:
 
 Nothing in this rebrand discards accumulated social proof or history:
 
-- **GitHub:** the rename (#228) is in-place — stars, forks, watchers, issues,
-  PRs, and traffic history all carry over, and old URLs/git remotes redirect
-  permanently. Precedent: this repo already renamed once
+- **GitHub:** the rename (#228, pending — gated on v1.21.0 shipping) must be
+  an in-place GitHub rename — stars, forks, watchers, issues, PRs, and traffic
+  history all carry over, and old URLs/git remotes redirect permanently. Precedent: this repo already renamed once
   (cypress-on-rails → cypress-playwright-on-rails) and lost nothing.
   Do NOT create a fresh repo and archive the old one; that WOULD lose stats.
 - **RubyGems:** `cypress-on-rails` is never yanked. It remains the real gem

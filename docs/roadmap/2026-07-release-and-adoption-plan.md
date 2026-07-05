@@ -34,6 +34,7 @@ Owner: @justin808
 5. Outreach (M3) — approved in principle; post only after v1.21.0 +
    hardening (#185) + migration guide (#220) ship. Draft lives in #224.
 6. #191/#193 (release task, RuboCop) — **after** v1.21.0.
+
 Audience: maintainers **and coding agents**. Every task below is written to be
 implementable by an agent without additional context. Facts were verified on
 2026-07-03; re-verify anything marked VERIFY before acting on it.
@@ -187,11 +188,18 @@ cypress-rails users.
   app (this is the exact failure mode that killed cypress-rails — see
   testdouble/cypress-rails#164).
 - **H2 (issue #186) — PR #180 review follow-ups.** Small; do with H1.
-- **H3 (issue #13) — security hardening.** Add an opt-in shared-secret token
-  check to the middleware (`c.middleware_token = ENV[...]`; requests without
-  the header 403) + README warning rewrite. Do NOT enable middleware outside
-  dev/test by default (already the case — `use_middleware = !Rails.env.production?`;
-  VERIFY current default in `lib/cypress_on_rails/configuration.rb`).
+- **H3 (issue #13) — security hardening.** ⚠️ Two verified facts constrain the
+  design (2026-07-05 review): (1) the gem's own default is **unsafe** —
+  `Configuration#reset` sets `use_middleware = true` unconditionally; the
+  `!Rails.env.production?` guard exists only in the *generated* initializer
+  template, so apps configured by hand get the middleware in every
+  environment. Fixing that library default is part of H3. (2) An auth hook
+  **already exists**: `before_request` runs at the top of
+  `Middleware#handle_command`, the generated initializer shows a 403 example,
+  and README §"Authenticate CypressOnRails" documents secret-token auth with
+  it. H3 must first evaluate hardening/documenting `before_request` (or
+  building `middleware_token` as thin sugar over it) rather than shipping a
+  second, overlapping auth mechanism. Full spec in issue #13.
 - **M1 — `docs/MIGRATE_FROM_CYPRESS_RAILS.md`.** The centerpiece. Structure:
   1. Why (dormant since 2024, Rails 7.2+ broken, no Playwright — with links);
   2. Concept map table (their env vars/hooks/reset endpoint → ours; most map 1:1 since v1.19.0);

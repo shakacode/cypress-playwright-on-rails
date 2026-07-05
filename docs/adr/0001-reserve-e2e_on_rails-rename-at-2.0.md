@@ -24,7 +24,9 @@ Constraints discovered during evaluation (2026-07-04):
 
 ## Decision
 
-1. Publish **`e2e_on_rails`** now as a thin wrapper gem: it pins
+1. Publish **`e2e_on_rails`** now as a thin wrapper gem (availability was
+   checked 2026-07-04; re-verify on rubygems.org immediately before the first
+   publish — see #226): it pins
    `cypress-on-rails` to the current minor and its require file loads
    `cypress_on_rails`. Version mirrors the parent gem. This secures the name
    and gives "e2e rails" searchers a working install path immediately.
