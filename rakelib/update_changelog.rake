@@ -369,6 +369,11 @@ end
 def compute_auto_version(changelog, mode, gem_root, changelog_for_bump: nil)
   changelog_for_bump ||= changelog
 
+  if mode == "release"
+    active_base_version = active_prerelease_base_version(gem_root, changelog)
+    return active_base_version if active_base_version
+  end
+
   active_version = next_active_prerelease_version(changelog, mode, gem_root)
   return active_version if active_version
 

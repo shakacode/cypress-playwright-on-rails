@@ -98,6 +98,26 @@ RSpec.describe "update_changelog rake helpers" do
         expect(compute_auto_version(prepared_changelog, "release", repo_dir)).to eq("1.21.0")
       end
     end
+
+    it "promotes an active prerelease base even when collapsed rc notes look patch-only" do
+      Dir.mktmpdir do |repo_dir|
+        init_git_repo!(repo_dir)
+        run_git!("tag", "v1.20.0", chdir: repo_dir)
+        run_git!("tag", "v1.21.0.rc.0", chdir: repo_dir)
+
+        changelog = <<~CHANGELOG
+          ## [Unreleased]
+
+          ## [1.21.0.rc.0] - 2026-07-04
+
+          ### Fixed
+          * Stabilization fix
+        CHANGELOG
+        prepared_changelog = prepare_changelog_for_auto_version(changelog, repo_dir)
+
+        expect(compute_auto_version(prepared_changelog, "release", repo_dir)).to eq("1.21.0")
+      end
+    end
   end
 
   describe "#collapse_prerelease_sections" do
