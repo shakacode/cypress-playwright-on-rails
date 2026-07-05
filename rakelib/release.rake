@@ -600,6 +600,9 @@ task :sync_github_release, %i[gem_version dry_run] do |_t, args|
   gem_root = File.expand_path("..", __dir__)
   version = args[:gem_version].to_s.strip
   version = current_gem_version(gem_root) if version.empty?
+  if semver_keyword?(version)
+    abort "sync_github_release expects an explicit version like 1.21.0 or 1.21.0.rc.0; semver keywords are only supported by the release task."
+  end
   validate_requested_version_input!(version)
 
   dry_run = release_truthy?(args[:dry_run])
