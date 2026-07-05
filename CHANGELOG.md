@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+---
+
+## [1.21.0] - 2026-07-04
+
 ### Fixed
 * **Rails 8.1 compatibility**: Require ActiveSupport delegation explicitly so the railtie loads under Rails 8.1. [PR 207](https://github.com/shakacode/cypress-playwright-on-rails/pull/207)
 * **Playwright helpers return parsed JSON**: `appCommands`, `appVcrInsertCassette`, and `appVcrEjectCassette` in the generated Playwright `on-rails.js` now return `response.json()` instead of a `Buffer`. [PR 219](https://github.com/shakacode/cypress-playwright-on-rails/pull/219) by [helio3197](https://github.com/helio3197) (originally [PR 168](https://github.com/shakacode/cypress-playwright-on-rails/pull/168))
@@ -532,6 +536,8 @@ If migrating from the `cypress-rails` gem:
 [#201]: https://github.com/shakacode/cypress-playwright-on-rails/issues/201
 
 <!-- Version diff reference list -->
+[1.21.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.20.0...v1.21.0
+[1.20.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/shakacode/cypress-playwright-on-rails/compare/v1.16.0...v1.17.0
