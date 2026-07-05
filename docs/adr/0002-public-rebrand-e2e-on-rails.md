@@ -40,6 +40,21 @@ were resolved by the maintainer on 2026-07-04:
 5. **No gem split** (reaffirms closing #24); if a split ever happens it uses
    the `e2e_on_rails-*` prefix per the naming doc.
 
+## Stats preservation (explicit guarantee, added 2026-07-04)
+
+Nothing in this rebrand discards accumulated social proof or history:
+
+- **GitHub:** the rename (#228) is in-place — stars, forks, watchers, issues,
+  PRs, and traffic history all carry over, and old URLs/git remotes redirect
+  permanently. Precedent: this repo already renamed once
+  (cypress-on-rails → cypress-playwright-on-rails) and lost nothing.
+  Do NOT create a fresh repo and archive the old one; that WOULD lose stats.
+- **RubyGems:** `cypress-on-rails` is never yanked. It remains the real gem
+  through 1.x and the published shim from 2.0 onward, so its ~6.4M download
+  history stays visible and keeps growing (shim installs also pull
+  `e2e_on_rails`, so the new gem accrues its own count on top). Marketing and
+  README cite the lineage: "6.4M+ downloads as cypress-on-rails".
+
 ## Consequences
 
 - Docs-site work (#221/#222 outputs, migration guide #220) publishes to
