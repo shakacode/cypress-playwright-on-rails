@@ -177,6 +177,8 @@ def changelog_section_blocks(section_body)
 
   section_body.lines.each do |line|
     normalized_line = line.rstrip
+    next if normalized_line.match?(/\A---+\z/)
+
     if normalized_line.match?(/^###+\s+/) && !block_lines.empty?
       blocks << normalize_changelog_block(block_lines)
       block_lines = [normalized_line]

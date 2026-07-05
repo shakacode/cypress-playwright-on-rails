@@ -163,6 +163,33 @@ RSpec.describe "update_changelog rake helpers" do
       expect(collapsed).to include("* Warning breaking note")
       expect(collapsed).not_to include("\n### Breaking Changes\n")
     end
+
+    it "does not merge section separators into collapsed prerelease notes" do
+      changelog = <<~CHANGELOG
+        ## [Unreleased]
+
+        ---
+
+        ## [1.21.0.rc.0] - 2026-07-04
+
+        ### Fixed
+        * RC stabilization fix
+
+        ---
+
+        ## [1.20.0] - 2025-10-21
+
+        ### Fixed
+        * Previous fix
+      CHANGELOG
+
+      collapsed = collapse_prerelease_sections(changelog, "1.21.0", "rc")
+      unreleased_section = extract_unreleased_section(collapsed)
+
+      expect(unreleased_section).to include("### Fixed")
+      expect(unreleased_section).to include("* RC stabilization fix")
+      expect(unreleased_section).not_to include("---")
+    end
   end
 
   describe "#insert_version_header" do
