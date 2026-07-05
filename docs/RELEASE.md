@@ -22,9 +22,4 @@ bundle exec rake "sync_github_release[1.21.0.rc.0]"
 
 Prereleases use RubyGems dot notation, for example `1.21.0.rc.0`.
 
-Before promoting a release candidate to stable, smoke-test public downstreams that already use the gem:
-
-- `shakacode/react_on_rails`
-- `shakacode/react-on-rails-demos`
-
-Also smoke-test private ShakaCode production apps that use the gem. Add React on Rails demos from https://reactonrails.com/examples/ as they adopt `cypress-on-rails`.
+For maintainer prerequisites, RC smoke targets, and troubleshooting, see `RELEASING.md`.

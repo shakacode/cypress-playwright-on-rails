@@ -29,9 +29,9 @@ update and stamp the changelog first, merge that PR, then run the release task w
    The command should add user-visible entries to `## [Unreleased]`, then run the matching rake task:
 
    ```bash
-   bundle exec rake update_changelog[release]
-   bundle exec rake update_changelog[rc]
-   bundle exec rake update_changelog[1.21.0.rc.0]
+   bundle exec rake "update_changelog[release]"
+   bundle exec rake "update_changelog[rc]"
+   bundle exec rake "update_changelog[1.21.0.rc.0]"
    ```
 
 2. Merge the changelog PR.
@@ -55,7 +55,8 @@ bundle exec rake "release[,true]"
 # Explicit version
 bundle exec rake "release[1.21.0.rc.0]"
 
-# Override version-policy checks, only when intentional
+# Override version-policy checks, only when intentional.
+# The rake argument and RELEASE_VERSION_POLICY_OVERRIDE=true are equivalent.
 bundle exec rake "release[1.21.0,false,true]"
 
 # Re-sync GitHub release notes from CHANGELOG.md
@@ -69,7 +70,7 @@ bundle exec rake "sync_github_release[1.21.0]"
 3. Resolves the release version from `CHANGELOG.md`, or falls back to a patch bump.
 4. Validates the requested version is newer than existing tags and matches the changelog bump shape for stable releases.
 5. Bumps `lib/cypress_on_rails/version.rb`.
-6. Runs `bundle install` to update `Gemfile.lock`.
+6. Runs `bundle install` to verify dependencies.
 7. Commits the release metadata.
 8. Creates and pushes `vVERSION`.
 9. Publishes the gem to RubyGems.
@@ -102,7 +103,7 @@ React on Rails source-backed demos listed on https://reactonrails.com/examples/ 
 Run `/update-changelog release`, `/update-changelog rc`, or:
 
 ```bash
-bundle exec rake update_changelog[1.21.0.rc.0]
+bundle exec rake "update_changelog[1.21.0.rc.0]"
 ```
 
 ### RubyGems publish failure

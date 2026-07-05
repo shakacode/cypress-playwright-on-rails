@@ -102,6 +102,39 @@ RSpec.describe "release rake helpers" do
       expect(bump_command).to include("--version 1.21.0")
       expect(events.index("git pull --rebase")).to be < events.index(bump_command)
     end
+
+    it "tags and publishes the current commit for an untagged retry" do
+      events = []
+
+      allow(self).to receive(:ensure_clean_worktree!)
+      allow(self).to receive(:verify_gh_auth)
+      allow(self).to receive(:with_release_checkout)
+        .with(gem_root: File.expand_path("../..", __dir__), dry_run: false)
+        .and_yield("/fresh")
+      allow(self).to receive(:extract_latest_changelog_version)
+        .with(gem_root: "/fresh")
+        .and_return("1.21.0")
+      allow(self).to receive(:current_gem_version)
+        .with("/fresh")
+        .and_return("1.21.0", "1.21.0", "1.21.0")
+      allow(self).to receive(:version_tagged?).with("/fresh", "1.21.0").and_return(false)
+      allow(self).to receive(:warn_changelog_missing)
+      allow(self).to receive(:validate_release_version_policy!)
+      allow(self).to receive(:sync_github_release_after_publish)
+      allow(self).to receive(:sh_in_dir_for_release) do |_dir, command|
+        events << command
+      end
+
+      result = nil
+      capture_stdout { result = perform_release(gem_version: "", dry_run: false) }
+
+      expect(result[:released_gem_version]).to eq("1.21.0")
+      expect(events.grep(/gem bump/)).to be_empty
+      expect(events.grep(/git commit/)).to be_empty
+      expect(events).to include("git tag v1.21.0")
+      expect(events).to include("git push && git push --tags")
+      expect(events).to include("gem release")
+    end
   end
 
   describe "#resolve_version_input" do
@@ -143,6 +176,10 @@ RSpec.describe "release rake helpers" do
       expect(expected_bump_type_from_changelog_section("### Breaking Changes\n* Break")).to eq(:major)
       expect(expected_bump_type_from_changelog_section("### Added\n* Feature")).to eq(:minor)
       expect(expected_bump_type_from_changelog_section("### Fixed\n* Fix")).to eq(:patch)
+    end
+
+    it "treats inline BREAKING entries as major changes" do
+      expect(expected_bump_type_from_changelog_section("### Fixed\n* **BREAKING: Generator folder structure**: Changed")).to eq(:major)
     end
   end
 
@@ -186,6 +223,13 @@ RSpec.describe "release rake helpers" do
         CHANGELOG
 
         expect(extract_changelog_section(changelog_path: changelog_path, version: "1.21.0")).to be_nil
+      end
+    end
+
+    it "returns nil when the changelog file is missing" do
+      Dir.mktmpdir do |dir|
+        expect(extract_changelog_section(changelog_path: File.join(dir, "CHANGELOG.md"), version: "1.21.0"))
+          .to be_nil
       end
     end
   end

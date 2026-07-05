@@ -80,6 +80,7 @@ end
 def inferred_bump_type_from_unreleased(changelog)
   section = extract_unreleased_section(changelog)
   return :major if section.match?(/^###\s+(?:WARNING:\s*)?Breaking(?:\s+Changes?)?\b/i)
+  return :major if section.match?(/^\s*[-*]\s+(?:\*\*)?BREAKING\b/i)
   return :minor if section.match?(/^###\s+(Added|New\s+Features?|Features?|Enhancements?)\b/i)
   return :patch if section.match?(/^###\s+(Fixed|Fixes|Bug\s+Fixes?|Security|Improved|Changed|Deprecated|Removed)\b/i)
 

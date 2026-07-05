@@ -7,15 +7,8 @@ require "rubygems/version"
 require "shellwords"
 require "tempfile"
 require "tmpdir"
-require_relative "task_helpers"
 
 GITHUB_REPO_SLUG_PATTERN = /\A[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\z/ unless defined?(GITHUB_REPO_SLUG_PATTERN)
-
-class RaisingMessageHandler
-  def add_error(error)
-    raise error
-  end
-end
 
 def release_truthy?(value)
   [true, "true", "yes", 1, "1", "t"].include?(value.instance_of?(String) ? value.downcase : value)
@@ -186,6 +179,7 @@ end
 def expected_bump_type_from_changelog_section(changelog_section)
   section = changelog_section.to_s
   return :major if section.match?(/^###\s+(?:WARNING:\s*)?Breaking(?:\s+Changes?)?\b/i)
+  return :major if section.match?(/^\s*[-*]\s+(?:\*\*)?BREAKING\b/i)
   return :minor if section.match?(/^###\s+(Added|New\s+Features?|Features?|Enhancements?)\b/i)
   return :patch if section.match?(/^###\s+(Fixed|Fixes|Bug\s+Fixes?|Security|Improved|Changed|Deprecated|Removed)\b/i)
 
@@ -206,6 +200,8 @@ def handle_version_policy_violation!(message:, allow_override:)
 end
 
 def extract_changelog_section(changelog_path:, version:)
+  return nil unless File.exist?(changelog_path)
+
   lines = File.readlines(changelog_path)
   section_header = /^## \[(?:v)?#{Regexp.escape(version)}\]/
   start_index = lines.index { |line| line.match?(section_header) }
@@ -476,6 +472,7 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
     validate_requested_version_input!(version_input)
     current_version = current_gem_version(release_root)
     target_version = compute_target_gem_version(current_gem_version: current_version, version_input: version_input)
+    version_already_current = target_version == current_version
 
     warn_changelog_missing(gem_root: release_root, version: target_version)
     validate_release_version_policy!(
@@ -485,21 +482,29 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
       fetch_tags: true
     )
 
-    sh_in_dir_for_release(
-      release_root,
-      "gem bump --no-commit --file lib/cypress_on_rails/version.rb --version #{Shellwords.escape(target_version)}"
-    )
-    sh_in_dir_for_release(release_root, "bundle install")
+    unless version_already_current
+      sh_in_dir_for_release(
+        release_root,
+        "gem bump --no-commit --file lib/cypress_on_rails/version.rb --version #{Shellwords.escape(target_version)}"
+      )
+      sh_in_dir_for_release(release_root, "bundle install")
+    end
 
     actual_version = current_gem_version(release_root)
     released_gem_version = actual_version
     abort "Expected gem bump to produce #{target_version}, but found #{actual_version}." unless actual_version == target_version
 
     if dry_run
-      puts "DRY RUN: Would commit #{staged_files.join(', ')}, tag v#{actual_version}, push, and release gem."
+      if version_already_current
+        puts "DRY RUN: Would tag v#{actual_version}, push, and release gem from the current commit."
+      else
+        puts "DRY RUN: Would commit #{staged_files.join(', ')}, tag v#{actual_version}, push, and release gem."
+      end
     else
-      sh_in_dir_for_release(release_root, "git add #{Shellwords.join(staged_files)}")
-      sh_in_dir_for_release(release_root, "git commit -m #{Shellwords.escape("Release v#{actual_version}")}")
+      unless version_already_current
+        sh_in_dir_for_release(release_root, "git add #{Shellwords.join(staged_files)}")
+        sh_in_dir_for_release(release_root, "git commit -m #{Shellwords.escape("Release v#{actual_version}")}")
+      end
       sh_in_dir_for_release(release_root, "git tag v#{actual_version}")
       sh_in_dir_for_release(release_root, "git push && git push --tags")
       puts "Carefully add your OTP for RubyGems. If you get an error, run 'gem release' again."

@@ -48,10 +48,10 @@ bundle exec rake release
 4. If `$ARGUMENTS` asks for a release stamp, run the rake task:
 
    ```bash
-   bundle exec rake update_changelog[release]
-   bundle exec rake update_changelog[rc]
-   bundle exec rake update_changelog[beta]
-   bundle exec rake update_changelog[1.21.0.rc.0]
+   bundle exec rake "update_changelog[release]"
+   bundle exec rake "update_changelog[rc]"
+   bundle exec rake "update_changelog[beta]"
+   bundle exec rake "update_changelog[1.21.0.rc.0]"
    ```
 
 5. Verify:

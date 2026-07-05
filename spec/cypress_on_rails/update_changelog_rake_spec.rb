@@ -39,6 +39,12 @@ RSpec.describe "update_changelog rake helpers" do
       expect(inferred_bump_type_from_unreleased("## [Unreleased]\n### Added\n* Add\n")).to eq(:minor)
       expect(inferred_bump_type_from_unreleased("## [Unreleased]\n### Fixed\n* Fix\n")).to eq(:patch)
     end
+
+    it "treats inline BREAKING entries as major changes" do
+      changelog = "## [Unreleased]\n### Fixed\n* **BREAKING: Generator folder structure**: Changed\n"
+
+      expect(inferred_bump_type_from_unreleased(changelog)).to eq(:major)
+    end
   end
 
   describe "#compute_auto_version" do
