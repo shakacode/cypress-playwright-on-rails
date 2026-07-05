@@ -140,6 +140,10 @@ def prerelease_gem_version?(gem_version)
   gem_version.to_s.match?(/\A\d+\.\d+\.\d+\.(beta|rc)\.\d+\z/i)
 end
 
+def prerelease_base_gem_version(gem_version)
+  gem_version.to_s.sub(/\.(beta|rc)\.\d+\z/i, "")
+end
+
 def parse_release_tag_to_gem_version(tag)
   stable_match = tag.to_s.match(/\Av(\d+\.\d+\.\d+)\z/)
   return stable_match[1] if stable_match
@@ -188,6 +192,17 @@ end
 
 def version_policy_override_enabled?(override_flag)
   release_truthy?(override_flag) || release_truthy?(ENV.fetch("RELEASE_VERSION_POLICY_OVERRIDE", nil))
+end
+
+def stable_prerelease_promotion?(tagged_versions:, target_gem_version:, latest_stable_version:)
+  return false if prerelease_gem_version?(target_gem_version)
+  return false unless Gem::Version.new(target_gem_version) > Gem::Version.new(latest_stable_version)
+
+  tagged_versions.any? do |version|
+    prerelease_gem_version?(version) &&
+      prerelease_base_gem_version(version) == target_gem_version &&
+      Gem::Version.new(version) > Gem::Version.new(latest_stable_version)
+  end
 end
 
 def handle_version_policy_violation!(message:, allow_override:)
@@ -248,6 +263,15 @@ def validate_release_version_policy!(gem_root:, target_gem_version:, allow_overr
 
   if prerelease_gem_version?(target_gem_version)
     puts "VERSION POLICY: Skipping changelog bump-consistency check for prerelease #{target_gem_version}."
+    return
+  end
+
+  if stable_prerelease_promotion?(
+    tagged_versions: tagged_versions,
+    target_gem_version: target_gem_version,
+    latest_stable_version: latest_stable_version
+  )
+    puts "VERSION POLICY: Skipping changelog bump-consistency check for stable promotion of prerelease #{target_gem_version}."
     return
   end
 

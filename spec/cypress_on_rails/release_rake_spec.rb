@@ -183,6 +183,28 @@ RSpec.describe "release rake helpers" do
     end
   end
 
+  describe "#validate_release_version_policy!" do
+    it "allows stable promotion of an active prerelease even when notes look patch-only" do
+      allow(self).to receive(:tagged_release_gem_versions)
+        .with("/repo", fetch_tags: false)
+        .and_return(["1.20.0", "1.21.0.rc.0"])
+      allow(self).to receive(:extract_changelog_section)
+        .with(changelog_path: "/repo/CHANGELOG.md", version: "1.21.0")
+        .and_return("### Fixed\n* Stabilization fix")
+
+      expect do
+        capture_stdout do
+          validate_release_version_policy!(
+            gem_root: "/repo",
+            target_gem_version: "1.21.0",
+            allow_override: false,
+            fetch_tags: false
+          )
+        end
+      end.not_to raise_error
+    end
+  end
+
   describe "#extract_changelog_section" do
     it "extracts body text for the requested version without including adjacent sections" do
       Dir.mktmpdir do |dir|
