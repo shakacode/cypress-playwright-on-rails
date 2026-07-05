@@ -25,11 +25,12 @@ Owner: @justin808
 1. v1.21.0 scope and R1/R2 merge order — **approved, executed**.
 2. Seven close-candidates — **approved, closed**.
 3. #24 (gem split) and #11 (rename) — **closed**.
-4. Docs site (S2) — **testing.shakastack.com for now**; no domain purchase
-   until the 2.0 rename ships. Gem naming — **RESOLVED 2026-07-04
-   (ADR-0001)**: publish `e2e_on_rails` now as a thin alias/wrapper gem;
-   full rename (canonical gem `e2e_on_rails`, module `E2eOnRails`,
-   `cypress-on-rails` as shim) happens at 2.0. Supersedes §S4's option list.
+4. Naming & docs site — **RESOLVED 2026-07-04, twice refined (ADR-0001 →
+   ADR-0002)**: public brand is **E2E on Rails**; `e2eonrails.com` purchased
+   and canonical (supersedes testing.shakastack.com); repo renames to
+   `shakacode/e2e-on-rails` right after v1.21.0 ships; `e2e_on_rails` wrapper
+   now (#226); the gem flip is 2.0, scheduled right after the v1.22 line.
+   Full rationale: `docs/roadmap/2026-07-e2e-on-rails-naming-decision.md`.
 5. Outreach (M3) — approved in principle; post only after v1.21.0 +
    hardening (#185) + migration guide (#220) ship. Draft lives in #224.
 6. #191/#193 (release task, RuboCop) — **after** v1.21.0.
@@ -245,18 +246,25 @@ spec headlessly, and get a deterministic pass/fail without clicking around.
   and extend "Prove" to two legs: *prove it's fast* (ShakaPerf) + *prove it
   works* (this gem). Owner: whoever edits shakastack.com (site repo UNKNOWN —
   locate first).
-- **S2 — docs site (DECIDED 2026-07-04):** publish to
-  **testing.shakastack.com**; no dedicated domain unless/until the 2.0 rename
-  ships (see ADR-0001). Implementation task: stand up the docs site there
-  once #221 (README/docs split) lands, and publish `llms.txt` from #222.
+- **S2 — docs site (DECIDED 2026-07-04, ADR-0002):** publish to
+  **e2eonrails.com** (purchased; apex is docs + landing, no `docs.`
+  subdomain, no defensive domain variants). IA from the naming doc:
+  `/getting-started`, `/cypress`, `/playwright`, `/factory-bot`, `/fixtures`,
+  `/scenarios`, `/app-commands`, `/migration/from-cypress-on-rails`.
+  Stand it up once #221 (README/docs split) lands; publish `llms.txt` (#222)
+  there.
 - **S3 — cross-promotion:** react_on_rails already uses this gem for its E2E
   suite — write that up (blog or docs page "How React on Rails tests itself
   with Playwright"), link from react_on_rails docs and AGENTS_USER_GUIDE.
-- **S4 — naming (DECIDED 2026-07-04, ADR-0001; #11/#24 closed):** publish
-  `e2e_on_rails` now as a thin alias gem (issue #226); full rename — canonical
-  gem `e2e_on_rails`, module `E2eOnRails`, `cypress-on-rails` as shim — at
-  2.0. See `docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md` and
-  `CONTEXT.md` for the canonical vocabulary.
+- **S4 — naming (DECIDED 2026-07-04, ADR-0001 + ADR-0002; #11/#24 closed):**
+  public brand **E2E on Rails** ("The Rails test bridge for Cypress and
+  Playwright"). Sequence: v1.21.0 releases under the current names → repo
+  renames to `shakacode/e2e-on-rails` + README hero rebrand → v1.22 campaign
+  runs under the new brand with `gem 'cypress-on-rails'` still the install →
+  **2.0 = the gem flip** (`e2e_on_rails` canonical, `cypress-on-rails` shim,
+  module `E2eOnRails`), scheduled right after v1.22. See
+  `docs/roadmap/2026-07-e2e-on-rails-naming-decision.md`, ADR-0002, and
+  `CONTEXT.md`.
 
 ---
 
@@ -267,15 +275,16 @@ Decisions section at the top of this document). Still genuinely open:
 
 1. Final sign-off on the M3 outreach comment text before posting (draft in
    issue #224; gated on v1.21.0 + #185 + #220 shipping).
-2. Timing of the 2.0 rename flip (deliberately unscheduled — ADR-0001).
 
 ## 6. Suggested agent execution order
 
 ```text
-R4(human release)                     # only v1.21.0 step left
-#226 alias gem → H1 → H2 → H3 → M1 → M2 → M4   # hardening before marketing
-A1 → A2 → A3 → A4 → A5                # agent-native layer (issues #222/#223/#78)
-S1–S3 in parallel (site/marketing, human-led)
+R4(human release)                        # only v1.21.0 step left
+repo rename + README hero (post-v1.21.0, ADR-0002)
+#226 alias gem → H1 → H2 → H3 → M1 → M2 → M4   # v1.22: hardening before marketing
+2.0 flip (right after v1.22): e2e_on_rails canonical, cypress-on-rails shim
+A1 → A2 → A3 → A4 → A5                   # agent-native layer (issues #222/#223/#78)
+S1–S3 in parallel (site/marketing, human-led); docs site = e2eonrails.com
 ```
 
 Every task above states its issue/PR, files, and acceptance criteria; tasks

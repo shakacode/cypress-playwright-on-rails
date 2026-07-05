@@ -1,7 +1,9 @@
 # ADR-0001: Reserve `e2e_on_rails` as an alias gem now; full rename at 2.0
 
 Date: 2026-07-04
-Status: Accepted (@justin808)
+Status: Accepted (@justin808); amended same day by ADR-0002 (public brand
+"E2E on Rails", e2eonrails.com purchased, repo rename after v1.21.0, 2.0
+scheduled after v1.22). Wrapper-gem mechanics below remain in force.
 
 ## Context
 
