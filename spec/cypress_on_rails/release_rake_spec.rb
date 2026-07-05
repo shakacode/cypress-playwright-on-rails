@@ -205,6 +205,30 @@ RSpec.describe "release rake helpers" do
     end
   end
 
+  describe "sync_github_release task" do
+    it "rejects semver keywords with a task-specific error" do
+      task = Rake::Task["sync_github_release"]
+      task.reenable
+
+      expect do
+        task.invoke("patch", "true")
+      end.to raise_error(SystemExit, /sync_github_release expects an explicit version/)
+    end
+
+    it "defaults to the current gem version for dry runs" do
+      task = Rake::Task["sync_github_release"]
+      task.reenable
+      gem_root = File.expand_path("../..", __dir__)
+      expected_version = current_gem_version(gem_root)
+
+      output = capture_stdout do
+        task.invoke(nil, "true")
+      end
+
+      expect(output).to include("DRY RUN: Would create or update GitHub release v#{expected_version}")
+    end
+  end
+
   describe "#extract_changelog_section" do
     it "extracts body text for the requested version without including adjacent sections" do
       Dir.mktmpdir do |dir|
