@@ -1,200 +1,112 @@
 # Release Process
 
-This document describes how to release a new version of cypress-playwright-on-rails.
+This project follows the ShakaCode release shape used by Shakapacker and React on Rails:
+update and stamp the changelog first, merge that PR, then run the release task with no version argument.
 
 ## Prerequisites
 
-1. Maintainer access to the repository
-2. RubyGems account with publish permissions for `cypress-on-rails`
-3. Clean working directory on `master` branch
-4. Development dependencies installed: `bundle install`
-   - Includes `gem-release` for gem management (like react_on_rails)
+1. Maintainer access to `shakacode/cypress-playwright-on-rails`.
+2. RubyGems publish access for `cypress-on-rails`.
+3. Authenticated GitHub CLI with write access: `gh auth status`.
+4. Clean checkout on `master`.
+5. Dependencies installed: `bundle install`.
 
-## Release Command
+## Recommended Flow
 
-The project uses a single rake task to automate the entire release process:
+1. Update and stamp the changelog in a PR:
 
-```bash
-rake release[VERSION,DRY_RUN]
-```
-
-### Examples
-
-```bash
-# Release version 1.19.0
-rake release[1.19.0]
-
-# Automatic patch version bump (e.g., 1.18.0 -> 1.18.1)
-rake release
-
-# Dry run to preview what would happen
-rake release[1.19.0,true]
-```
-
-### What the Release Task Does
-
-The `rake release` task will:
-
-1. Pull latest changes from master
-2. Bump the version in `lib/cypress_on_rails/version.rb`
-3. Update `Gemfile.lock` via `bundle install`
-4. Commit the version bump and Gemfile.lock changes
-5. Create a git tag (e.g., `v1.19.0`)
-6. Push the commit and tag to GitHub
-7. Build and publish the gem to RubyGems (will prompt for OTP)
-
-### Post-Release Steps
-
-After publishing, complete these manual steps:
-
-1. **Update CHANGELOG.md**
    ```bash
-   bundle exec rake update_changelog
-   git commit -a -m 'Update CHANGELOG.md'
-   git push
+   # For a stable release
+   /update-changelog release
+
+   # For a release candidate
+   /update-changelog rc
+
+   # Or explicitly
+   /update-changelog 1.21.0.rc.0
    ```
 
-2. **Create GitHub Release**
-   - Go to the releases page: https://github.com/shakacode/cypress-playwright-on-rails/releases
-   - Click on the newly created tag
-   - Copy release notes from CHANGELOG.md
-   - Publish the release
+   The command should add user-visible entries to `## [Unreleased]`, then run the matching rake task:
 
-3. **Announce the Release** (optional)
-   - Post in Slack channel
-   - Tweet about the release
-   - Update forum posts if needed
+   ```bash
+   bundle exec rake update_changelog[release]
+   bundle exec rake update_changelog[rc]
+   bundle exec rake update_changelog[1.21.0.rc.0]
+   ```
+
+2. Merge the changelog PR.
+
+3. Release from an up-to-date `master`:
+
+   ```bash
+   git switch master
+   git pull --ff-only
+   bundle exec rake release
+   ```
+
+   With no version argument, `rake release` reads the newest version header in `CHANGELOG.md`.
+
+## Useful Commands
+
+```bash
+# Dry run using the changelog-stamped version
+bundle exec rake "release[,true]"
+
+# Explicit version
+bundle exec rake "release[1.21.0.rc.0]"
+
+# Override version-policy checks, only when intentional
+bundle exec rake "release[1.21.0,false,true]"
+
+# Re-sync GitHub release notes from CHANGELOG.md
+bundle exec rake "sync_github_release[1.21.0]"
+```
+
+## What `rake release` Does
+
+1. Verifies the worktree is clean.
+2. Verifies GitHub CLI auth and repository write access.
+3. Resolves the release version from `CHANGELOG.md`, or falls back to a patch bump.
+4. Validates the requested version is newer than existing tags and matches the changelog bump shape for stable releases.
+5. Bumps `lib/cypress_on_rails/version.rb`.
+6. Runs `bundle install` to update `Gemfile.lock`.
+7. Commits the release metadata.
+8. Creates and pushes `vVERSION`.
+9. Publishes the gem to RubyGems.
+10. Creates or updates the GitHub release from that version's `CHANGELOG.md` section.
+
+Dry runs use a temporary git worktree so the main checkout is not dirtied.
 
 ## Version Numbering
 
-Follow [Semantic Versioning](https://semver.org/):
-
-- **MAJOR** (X.0.0): Breaking changes
-- **MINOR** (1.X.0): New features, backwards compatible
-- **PATCH** (1.19.X): Bug fixes, backwards compatible
-
-### Examples
-
-```bash
-# Patch release (bug fixes)
-rake release[1.18.1]
-
-# Minor release (new features)
-rake release[1.19.0]
-
-# Major release (breaking changes)
-rake release[2.0.0]
-
-# Automatic patch bump
-rake release
-```
-
-## Pre-Release Checklist
-
-Before running `rake release`:
-
-- [ ] All PRs for the release are merged
-- [ ] CI is passing on master
-- [ ] CHANGELOG.md has [Unreleased] section with all changes
-- [ ] Major changes have been tested manually
-- [ ] Documentation is up to date
+- Major: breaking changes.
+- Minor: backward-compatible features.
+- Patch: backward-compatible fixes.
+- Prerelease: use RubyGems dot notation, such as `1.21.0.rc.0` or `1.21.0.beta.0`.
 
 ## Troubleshooting
 
-### "Must be on master branch" error
+### Missing changelog section
+
+Run `/update-changelog release`, `/update-changelog rc`, or:
 
 ```bash
-git checkout master
-git pull --rebase
+bundle exec rake update_changelog[1.21.0.rc.0]
 ```
 
-### "Working directory is not clean" error
+### RubyGems publish failure
+
+Fix authentication or OTP issues, then retry from the same checkout:
 
 ```bash
-# Commit or stash your changes
-git status
-git add -A && git commit -m "Your message"
-# or
-git stash
+gem release
+bundle exec rake "sync_github_release[VERSION]"
 ```
 
+### Version policy failure
 
-### "Failed to push gem to RubyGems" error
-
-Ensure you're authenticated with RubyGems:
-```bash
-gem signin
-# Enter your RubyGems credentials
-```
-
-### Tag already exists
-
-If you need to re-release the same version:
-```bash
-# Delete local tag
-git tag -d v1.19.0
-
-# Delete remote tag
-git push origin :v1.19.0
-
-# Reset to before the release commit
-git reset --hard HEAD~1
-
-# Try the release again
-rake release[1.19.0]
-```
-
-## Rollback
-
-If you need to rollback a release:
-
-### Yank the gem from RubyGems
-```bash
-gem yank cypress-on-rails -v 1.19.0
-```
-
-### Delete the git tag
-```bash
-git tag -d v1.19.0
-git push origin :v1.19.0
-```
-
-### Revert the version commit
-```bash
-git revert HEAD
-git push origin master
-```
-
-## Example Release Flow
+Confirm the latest git tags and changelog headings. If the release is intentionally unusual:
 
 ```bash
-# 1. Ensure you're on master and up to date
-git checkout master
-git pull --rebase
-
-# 2. Check CI is passing
-# Visit: https://github.com/shakacode/cypress-playwright-on-rails/actions
-
-# 3. Release (will handle everything automatically)
-rake release[1.19.0]
-# Enter your RubyGems OTP when prompted
-
-# 4. Update the changelog
-bundle exec rake update_changelog
-git commit -a -m 'Update CHANGELOG.md'
-git push
-
-# 5. Create GitHub release
-open "https://github.com/shakacode/cypress-playwright-on-rails/releases"
-# Click on the new tag, add release notes from CHANGELOG.md
-
-# 6. Celebrate! 🎉
+RELEASE_VERSION_POLICY_OVERRIDE=true bundle exec rake release
 ```
-
-## Notes
-
-- The release task handles all git operations (commit, tag, push) automatically
-- Always ensure CI is green before releasing
-- The task will fail fast if working directory is not clean
-- Failed releases can be retried after fixing issues
-- Use dry run mode (`rake release[VERSION,true]`) to preview changes
