@@ -84,6 +84,17 @@ Dry runs use a temporary git worktree so the main checkout is not dirtied.
 - Patch: backward-compatible fixes.
 - Prerelease: use RubyGems dot notation, such as `1.21.0.rc.0` or `1.21.0.beta.0`.
 
+## Release Candidate Smoke Targets
+
+Before promoting a release candidate to stable, validate it against downstream apps that exercise the generated Cypress and Playwright helpers:
+
+- `shakacode/cypress-playwright-on-rails`: run the full gem test suite and Rails matrix.
+- `shakacode/react_on_rails`: bump `react_on_rails/Gemfile.development_dependencies` and run the dummy app E2E checks.
+- `shakacode/react-on-rails-demos`: bump `packages/shakacode_demo_common/shakacode_demo_common.gemspec`, then run the `basic-v16-webpack` and `basic-v16-rspack` demo E2E checks.
+- Private ShakaCode production apps that already use the gem should smoke-test the release candidate before the stable release.
+
+React on Rails source-backed demos listed on https://reactonrails.com/examples/ should be added to this list as they adopt `cypress-on-rails`.
+
 ## Troubleshooting
 
 ### Missing changelog section
