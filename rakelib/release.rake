@@ -559,6 +559,18 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
   }
 end
 
+def perform_sync_github_release(gem_root:, version_input:, dry_run:)
+  version = version_input.to_s.strip
+  version = current_gem_version(gem_root) if version.empty?
+  if semver_keyword?(version)
+    abort "sync_github_release expects an explicit version like 1.21.0 or 1.21.0.rc.0; semver keywords are only supported by the release task."
+  end
+  validate_requested_version_input!(version)
+
+  verify_gh_auth(gem_root: gem_root) unless dry_run
+  sync_github_release_after_publish(gem_root: gem_root, gem_version: normalize_release_version_string(version), dry_run: dry_run)
+end
+
 desc("Releases the gem using the given version.
 
 Recommended flow:
@@ -598,14 +610,6 @@ Arguments:
 ")
 task :sync_github_release, %i[gem_version dry_run] do |_t, args|
   gem_root = File.expand_path("..", __dir__)
-  version = args[:gem_version].to_s.strip
-  version = current_gem_version(gem_root) if version.empty?
-  if semver_keyword?(version)
-    abort "sync_github_release expects an explicit version like 1.21.0 or 1.21.0.rc.0; semver keywords are only supported by the release task."
-  end
-  validate_requested_version_input!(version)
-
   dry_run = release_truthy?(args[:dry_run])
-  verify_gh_auth(gem_root: gem_root) unless dry_run
-  sync_github_release_after_publish(gem_root: gem_root, gem_version: normalize_release_version_string(version), dry_run: dry_run)
+  perform_sync_github_release(gem_root: gem_root, version_input: args[:gem_version], dry_run: dry_run)
 end
