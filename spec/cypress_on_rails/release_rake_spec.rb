@@ -214,18 +214,16 @@ RSpec.describe "release rake helpers" do
         task.invoke("patch", "true")
       end.to raise_error(SystemExit, /sync_github_release expects an explicit version/)
     end
+  end
 
-    it "defaults to the current gem version for dry runs" do
-      task = Rake::Task["sync_github_release"]
-      task.reenable
-      gem_root = File.expand_path("../..", __dir__)
-      expected_version = current_gem_version(gem_root)
+  describe "#perform_sync_github_release" do
+    it "defaults to the current gem version for dry runs without checking GitHub auth" do
+      allow(self).to receive(:current_gem_version).with("/repo").and_return("1.20.0")
+      expect(self).not_to receive(:verify_gh_auth)
+      expect(self).to receive(:sync_github_release_after_publish)
+        .with(gem_root: "/repo", gem_version: "1.20.0", dry_run: true)
 
-      output = capture_stdout do
-        task.invoke(nil, "true")
-      end
-
-      expect(output).to include("DRY RUN: Would create or update GitHub release v#{expected_version}")
+      perform_sync_github_release(gem_root: "/repo", version_input: "", dry_run: true)
     end
   end
 
