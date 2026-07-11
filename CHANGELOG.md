@@ -11,7 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - **Rails 8.1 compatibility**: Required ActiveSupport delegation explicitly so the railtie loads under Rails 8.1. [PR 207](https://github.com/shakacode/cypress-playwright-on-rails/pull/207) by [justin808](https://github.com/justin808).
-- **Playwright helper JSON responses**: Updated generated `appCommands`, `appVcrInsertCassette`, and `appVcrEjectCassette` helpers to return parsed JSON rather than a `Buffer`. [PR 219](https://github.com/shakacode/cypress-playwright-on-rails/pull/219) by [justin808](https://github.com/justin808).
+- **Playwright helper JSON responses**: Updated generated `appCommands`, `appVcrInsertCassette`, and `appVcrEjectCassette` helpers to return parsed JSON rather than a `Buffer`. [PR 219](https://github.com/shakacode/cypress-playwright-on-rails/pull/219) by [justin808](https://github.com/justin808). Original fix by [helio3197](https://github.com/helio3197) in [PR 168](https://github.com/shakacode/cypress-playwright-on-rails/pull/168).
 - **Configured Rails environment**: Preserved an existing `RAILS_ENV` when starting the managed test server, allowing E2E runs to target a configured environment. [PR 210](https://github.com/shakacode/cypress-playwright-on-rails/pull/210) by [arielj](https://github.com/arielj).
 
 ---
