@@ -1,0 +1,30 @@
+name: Trigger docs site rebuild
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+
+jobs:
+  notify-docs-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.DOCS_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.DOCS_DISPATCH_APP_KEY }}
+          owner: shakacode
+          repositories: e2eonrails-com
+
+      - uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          repository: shakacode/e2eonrails-com
+          event-type: docs-updated
+          client-payload: '{"ref":"${{ github.ref_name }}","sha":"${{ github.sha }}"}'

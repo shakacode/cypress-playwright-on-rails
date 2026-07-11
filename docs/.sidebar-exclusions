@@ -1,0 +1,6 @@
+# Historical and planning docs are source-controlled but not published navigation.
+RELEASE
+adr/0001-reserve-e2e_on_rails-rename-at-2.0
+adr/0002-public-rebrand-e2e-on-rails
+roadmap/2026-07-e2e-on-rails-naming-decision
+roadmap/2026-07-release-and-adoption-plan
