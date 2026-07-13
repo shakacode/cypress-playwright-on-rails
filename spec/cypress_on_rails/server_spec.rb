@@ -79,6 +79,61 @@ RSpec.describe CypressOnRails::Server do
       end
     end
 
+    it 'cleans a surviving process group after its fast launcher exits' do
+      pid = 12_345
+      prepare_lifecycle_server(pid)
+      allow(server).to receive(:start_server_output_capture)
+      allow(server).to receive(:spawn).and_return(pid)
+      expect(Process).not_to receive(:getpgid)
+
+      server.send(:spawn_server)
+      server.instance_variable_set(:@server_exit_status, exited_process_status)
+      allow(server).to receive(:process_group_exists?).and_return(false)
+
+      expect(Process).to receive(:kill).with('TERM', -pid)
+      expect(server.send(:stop_server, pid)).to eq(:terminal_group_signaled)
+      expect(server.instance_variable_get(:@server_pgid)).to eq(pid)
+    end
+
+    it 'escalates a terminal leader process group to KILL after the bounded TERM wait' do
+      pid = 12_345
+      signals = []
+      prepare_lifecycle_server(pid)
+      server.instance_variable_set(:@server_pgid, pid)
+      server.instance_variable_set(:@server_exit_status, exited_process_status)
+      allow(Process).to receive(:kill) { |signal, target| signals << [signal, target] }
+      expect(server).to receive(:process_group_exists?).and_return(true, true, false)
+      allow(server).to receive(:monotonic_time).and_return(0.0, 10.0)
+      allow(server).to receive(:sleep)
+
+      expect(server.send(:stop_server, pid)).to eq(:terminal_group_signaled)
+
+      expect(signals).to eq([['TERM', -pid], ['KILL', -pid]])
+    end
+
+    it 'escalates a live leader process group after the leader exits on TERM' do
+      pid = 12_345
+      signals = []
+      polls = 0
+      prepare_lifecycle_server(pid)
+      status = exited_process_status
+      server.instance_variable_set(:@server_pgid, pid)
+      allow(Process).to receive(:waitpid2).with(pid, Process::WNOHANG) do
+        polls += 1
+        polls == 1 ? nil : [pid, status]
+      end
+      allow(Process).to receive(:kill) { |signal, target| signals << [signal, target] }
+      expect(server).to receive(:process_group_exists?).and_return(true, true, false)
+      allow(server).to receive(:monotonic_time).and_return(0.0, 10.0)
+      allow(server).to receive(:sleep)
+
+      expect(server.send(:stop_server, pid)).to eq(:signaled)
+
+      expect(signals).to eq([['TERM', -pid], ['KILL', -pid]])
+      expect(server.instance_variable_get(:@server_exit_status)).to eq(status)
+      expect(polls).to eq(2)
+    end
+
     it 'treats an externally reaped server as terminal with unavailable status without TERM' do
       prepare_lifecycle_server(12_345)
       allow(Process).to receive(:waitpid2).with(12_345, Process::WNOHANG).and_raise(Errno::ECHILD)
@@ -213,13 +268,13 @@ RSpec.describe CypressOnRails::Server do
       prepare_lifecycle_server(pid)
       allow(server).to receive(:server_exited?).and_return(false)
       allow(server).to receive(:send_term_signal) { signals << 'TERM' }
-      allow(server).to receive(:safe_kill_process) { |signal, _pid| signals << signal }
+      allow(server).to receive(:send_kill_signal) { signals << 'KILL' }
       allow(server).to receive(:wait_for_server_exit).and_return(false, true)
 
       server.send(:stop_server, pid)
 
       expect(signals).to eq(['TERM', 'KILL'])
-      expect(server).to have_received(:safe_kill_process).once.with('KILL', pid)
+      expect(server).to have_received(:send_kill_signal).once.with(pid)
     end
 
     it 'returns false without a negative sleep when the deadline passes between clock reads' do
@@ -284,6 +339,39 @@ RSpec.describe CypressOnRails::Server do
         expect(error.message).to include('still starting')
       }
       expect(signal_attempts).to eq(1)
+    end
+
+    it 'runs the stop hook before signaling a live readiness timeout' do
+      captured_output = Queue.new
+      events = []
+      allow(CypressOnRails.configuration).to receive(:before_server_stop).and_return(-> { events << :hook })
+      allow(server).to receive(:capture_server_output).and_wrap_original do |original, output|
+        original.call(output).tap { captured_output << true }
+      end
+      allow(server).to receive(:server_responding?) do
+        captured_output.pop
+        raise Timeout::Error
+      end
+      allow(server).to receive(:send_term_signal).and_wrap_original do |original, pid|
+        events << :term
+        original.call(pid)
+      end
+      spawn_running_child("final diagnostic line\n")
+      allow(Timeout).to receive(:timeout).and_wrap_original do |original, timeout, exception_class = nil, &block|
+        if timeout == 30
+          expect(exception_class).to eq(Timeout::Error)
+          block.call
+        else
+          original.call(timeout, exception_class, &block)
+        end
+      end
+
+      expect { server.open }.to raise_error(CypressOnRails::ServerError) { |error|
+        expect(error.message).to include('bundle exec rails server -p 4321 -b 127.0.0.1')
+        expect(error.message).to include('process status running')
+        expect(error.message).to include('final diagnostic line')
+      }
+      expect(events).to eq([:hook, :term])
     end
 
     it 'drains a lagging reader before building a live-timeout error' do

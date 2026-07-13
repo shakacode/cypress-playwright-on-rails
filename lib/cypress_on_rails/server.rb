@@ -91,29 +91,34 @@ module CypressOnRails
         raise
       end
 
+      timeout_result = nil
+      stop_result = nil
       begin
-        wait_for_server
-        run_hook(config.after_server_start)
-        
-        puts "Rails server started on #{base_url}"
-        
-        if @transactional && defined?(ActiveRecord::Base)
-          ActiveRecord::Base.connection.begin_transaction(joinable: false)
-          run_hook(config.after_transaction_start)
+        timeout_result = wait_for_server
+        unless timeout_result
+          run_hook(config.after_server_start)
+
+          puts "Rails server started on #{base_url}"
+
+          if @transactional && defined?(ActiveRecord::Base)
+            ActiveRecord::Base.connection.begin_transaction(joinable: false)
+            run_hook(config.after_transaction_start)
+          end
+
+          yield
         end
-        
-        yield
-        
       ensure
         run_hook(config.before_server_stop)
-        
+
         if @transactional && defined?(ActiveRecord::Base)
           ActiveRecord::Base.connection.rollback_transaction if ActiveRecord::Base.connection.transaction_open?
         end
         
-        stop_server(server_pid)
+        stop_result = stop_server(server_pid)
         ENV.delete('CYPRESS')
       end
+
+      raise server_start_timeout_failure(timeout_result[:timeout], timeout_result[:status], stop_result) if timeout_result
     end
 
     def spawn_server
@@ -134,6 +139,7 @@ module CypressOnRails
       start_server_output_capture
       begin
         @server_pid = spawn(*server_args, out: @server_stdout_writer, err: @server_stderr_writer, pgroup: true)
+        @server_pgid = @server_pid
       rescue SystemCallError, ArgumentError => error
         close_server_output_writers
         drain_server_output
@@ -141,14 +147,6 @@ module CypressOnRails
                            "process status unavailable: #{error.class}: #{error.message}"
       ensure
         close_server_output_writers
-      end
-      begin
-        @server_pgid = Process.getpgid(@server_pid)
-      rescue Errno::ESRCH => e
-        # Edge case: process terminated before we could get pgid
-        # This is OK - send_term_signal will fall back to single-process kill
-        CypressOnRails.configuration.logger.warn("Process #{@server_pid} terminated immediately after spawn: #{e.message}")
-        @server_pgid = nil
       end
       @server_pid
     end
@@ -162,10 +160,14 @@ module CypressOnRails
           sleep 0.1
         end
       end
+      nil
     rescue Timeout::Error
       raise server_start_failure if server_exited?
 
-      raise server_start_timeout_failure(timeout)
+      {
+        timeout: timeout,
+        status: process_exists?(@server_pid) ? 'process status running' : 'process status unavailable'
+      }
     end
 
     def server_responding?
@@ -189,15 +191,24 @@ module CypressOnRails
     def stop_server(pid)
       return :terminal unless pid
       begin
-        return :terminal if server_terminal? || server_exited?
+        leader_terminal = server_terminal? || server_exited?
+        return :terminal if leader_terminal && !@server_pgid
 
         puts "Stopping Rails server (PID: #{pid})"
         send_term_signal(pid)
+        if @server_pgid
+          unless wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+            CypressOnRails.configuration.logger.warn("Server process group did not terminate after TERM signal, sending KILL")
+            send_kill_signal(pid)
+            wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+          end
+          return leader_terminal ? :terminal_group_signaled : :signaled
+        end
 
         unless wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
           CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
           unless server_exited?
-            safe_kill_process('KILL', pid)
+            send_kill_signal(pid)
             wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
           end
         end
@@ -210,6 +221,17 @@ module CypressOnRails
     def wait_for_server_exit(deadline)
       loop do
         return true if server_exited?
+        now = monotonic_time
+        return false if now >= deadline
+
+        sleep [SERVER_STOP_POLL_INTERVAL, deadline - now].min
+      end
+    end
+
+    def wait_for_server_group_exit(deadline)
+      loop do
+        server_exited? unless server_terminal?
+        return true unless process_group_exists?
         now = monotonic_time
         return false if now >= deadline
 
@@ -324,14 +346,19 @@ module CypressOnRails
       ServerError.new(message)
     end
 
-    def server_start_timeout_failure(timeout)
-      if server_exited?
-        status = startup_process_status
-        drain_server_output
+    def server_start_timeout_failure(timeout, timeout_status = nil, stop_result = nil)
+      if timeout_status
+        status = startup_process_status if terminal_stop_result?(stop_result)
+        status ||= timeout_status
       else
-        status = process_exists?(@server_pid) ? 'process status running' : 'process status unavailable'
-        stop_result = stop_server(@server_pid)
-        status = startup_process_status if stop_result == :terminal
+        if server_exited?
+          status = startup_process_status
+          drain_server_output
+        else
+          status = process_exists?(@server_pid) ? 'process status running' : 'process status unavailable'
+          stop_result = stop_server(@server_pid)
+          status = startup_process_status if stop_result == :terminal
+        end
       end
       message = "Rails server command #{@server_command.join(' ')} failed to become ready after #{timeout} seconds with #{status}"
       output = recent_server_output
@@ -351,6 +378,10 @@ module CypressOnRails
       return 'process status unavailable' if @server_status_unavailable
 
       process_status(@server_exit_status)
+    end
+
+    def terminal_stop_result?(result)
+      result == :terminal || result == :terminal_group_signaled
     end
 
     def server_terminal?
@@ -438,14 +469,35 @@ module CypressOnRails
     end
 
     def send_term_signal(pid)
-      if @server_pgid && process_exists?(pid)
-        Process.kill('TERM', -@server_pgid)
-      else
-        safe_kill_process('TERM', pid)
+      send_server_signal('TERM', pid)
+    end
+
+    def send_kill_signal(pid)
+      send_server_signal('KILL', pid)
+    end
+
+    def send_server_signal(signal, pid)
+      if @server_pgid
+        Process.kill(signal, -@server_pgid)
+      elsif process_exists?(pid)
+        safe_kill_process(signal, pid)
       end
     rescue Errno::ESRCH, Errno::EPERM => e
+      return if server_terminal?
+
       CypressOnRails.configuration.logger.warn("Failed to kill process group #{@server_pgid}: #{e.message}, trying single process")
-      safe_kill_process('TERM', pid)
+      safe_kill_process(signal, pid) if process_exists?(pid)
+    end
+
+    def process_group_exists?
+      return false unless @server_pgid
+
+      Process.kill(0, -@server_pgid)
+      true
+    rescue Errno::ESRCH
+      false
+    rescue Errno::EPERM
+      true
     end
 
     def process_exists?(pid)
