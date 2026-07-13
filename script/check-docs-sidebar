@@ -24,10 +24,24 @@ if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
   git fetch --no-tags --depth=50 origin master:refs/remotes/origin/master >/dev/null 2>&1 || true
 fi
 
-if MERGE_BASE=$(git merge-base "$BASE_REF" "$CURRENT_REF" 2>/dev/null); then
-  ADDED_FILES=$(git diff --name-only --diff-filter=AR "$MERGE_BASE" "$CURRENT_REF")
-else
-  ADDED_FILES=$(git diff --name-only --diff-filter=AR "$BASE_REF" "$CURRENT_REF" 2>/dev/null || echo "")
+if ! git rev-parse --verify "${BASE_REF}^{commit}" >/dev/null 2>&1; then
+  echo -e "${RED}Error: cannot resolve base ref: $BASE_REF${NC}" >&2
+  exit 1
+fi
+
+if ! git rev-parse --verify "${CURRENT_REF}^{commit}" >/dev/null 2>&1; then
+  echo -e "${RED}Error: cannot resolve current ref: $CURRENT_REF${NC}" >&2
+  exit 1
+fi
+
+if ! MERGE_BASE=$(git merge-base "$BASE_REF" "$CURRENT_REF" 2>/dev/null); then
+  echo -e "${RED}Error: cannot compute comparison between $BASE_REF and $CURRENT_REF${NC}" >&2
+  exit 1
+fi
+
+if ! ADDED_FILES=$(git diff --name-only --diff-filter=AR "$MERGE_BASE" "$CURRENT_REF"); then
+  echo -e "${RED}Error: cannot compute comparison between $BASE_REF and $CURRENT_REF${NC}" >&2
+  exit 1
 fi
 
 if [ -z "${CI:-}" ] && [ "$CURRENT_REF" = "HEAD" ]; then

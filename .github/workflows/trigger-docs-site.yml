@@ -14,7 +14,7 @@ jobs:
   notify-docs-site:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547
         id: app-token
         with:
           app-id: ${{ secrets.DOCS_DISPATCH_APP_ID }}
