@@ -2,10 +2,23 @@ require 'socket'
 require 'timeout'
 require 'fileutils'
 require 'net/http'
+require 'thread'
 require 'cypress_on_rails/configuration'
 
 module CypressOnRails
+  class ServerError < StandardError
+  end
+
   class Server
+    MAX_STARTUP_OUTPUT_BYTES = 4_096
+    MAX_STARTUP_OUTPUT_LINES = 50
+    SERVER_OUTPUT_DRAIN_TIMEOUT = 0.5
+    SERVER_OUTPUT_THREAD_JOIN_TIMEOUT = 0.05
+    SERVER_OUTPUT_FORWARD_QUEUE_SIZE = 16
+    SERVER_OUTPUT_FORWARD_BACKPRESSURE_TIMEOUT = 0.1
+    SERVER_STOP_TIMEOUT = 10
+    SERVER_STOP_POLL_INTERVAL = 0.05
+
     attr_reader :host, :port, :framework, :install_folder
 
     def initialize(options = {})
@@ -71,31 +84,41 @@ module CypressOnRails
       ENV['CYPRESS'] = '1'
       ENV['RAILS_ENV'] ||= 'test'
       
-      server_pid = spawn_server
-      
       begin
-        wait_for_server
-        run_hook(config.after_server_start)
-        
-        puts "Rails server started on #{base_url}"
-        
-        if @transactional && defined?(ActiveRecord::Base)
-          ActiveRecord::Base.connection.begin_transaction(joinable: false)
-          run_hook(config.after_transaction_start)
+        server_pid = spawn_server
+      rescue StandardError
+        ENV.delete('CYPRESS')
+        raise
+      end
+
+      timeout_result = nil
+      stop_result = nil
+      begin
+        timeout_result = wait_for_server
+        unless timeout_result
+          run_hook(config.after_server_start)
+
+          puts "Rails server started on #{base_url}"
+
+          if @transactional && defined?(ActiveRecord::Base)
+            ActiveRecord::Base.connection.begin_transaction(joinable: false)
+            run_hook(config.after_transaction_start)
+          end
+
+          yield
         end
-        
-        yield
-        
       ensure
         run_hook(config.before_server_stop)
-        
+
         if @transactional && defined?(ActiveRecord::Base)
           ActiveRecord::Base.connection.rollback_transaction if ActiveRecord::Base.connection.transaction_open?
         end
         
-        stop_server(server_pid)
+        stop_result = stop_server(server_pid)
         ENV.delete('CYPRESS')
       end
+
+      raise server_start_timeout_failure(timeout_result[:timeout], timeout_result[:status], stop_result) if timeout_result
     end
 
     def spawn_server
@@ -109,27 +132,42 @@ module CypressOnRails
 
       puts "Starting Rails server: #{server_args.join(' ')}"
 
-      @server_pid = spawn(*server_args, out: $stdout, err: $stderr, pgroup: true)
+      @server_command = server_args
+      @server_exit_status = nil
+      @server_status_unavailable = false
+      @server_stopped = false
+      start_server_output_capture
       begin
-        @server_pgid = Process.getpgid(@server_pid)
-      rescue Errno::ESRCH => e
-        # Edge case: process terminated before we could get pgid
-        # This is OK - send_term_signal will fall back to single-process kill
-        CypressOnRails.configuration.logger.warn("Process #{@server_pid} terminated immediately after spawn: #{e.message}")
-        @server_pgid = nil
+        @server_pid = spawn(*server_args, out: @server_stdout_writer, err: @server_stderr_writer, pgroup: true)
+        @server_pgid = @server_pid
+      rescue SystemCallError, ArgumentError => error
+        close_server_output_writers
+        drain_server_output
+        raise ServerError, "Rails server command #{@server_command.join(' ')} failed to spawn; " \
+                           "process status unavailable: #{error.class}: #{error.message}"
+      ensure
+        close_server_output_writers
       end
       @server_pid
     end
 
     def wait_for_server(timeout = 30)
-      Timeout.timeout(timeout) do
+      Timeout.timeout(timeout, Timeout::Error) do
         loop do
           break if server_responding?
+          raise server_start_failure if server_exited?
+
           sleep 0.1
         end
       end
+      nil
     rescue Timeout::Error
-      raise "Rails server failed to start on #{host}:#{port} after #{timeout} seconds"
+      raise server_start_failure if server_exited?
+
+      {
+        timeout: timeout,
+        status: process_exists?(@server_pid) ? 'process status running' : 'process status unavailable'
+      }
     end
 
     def server_responding?
@@ -151,33 +189,315 @@ module CypressOnRails
     end
 
     def stop_server(pid)
-      return unless pid
+      return :terminal unless pid
+      begin
+        leader_terminal = server_terminal? || server_exited?
+        return :terminal if leader_terminal && !@server_pgid
 
-      puts "Stopping Rails server (PID: #{pid})"
-      send_term_signal(pid)
+        puts "Stopping Rails server (PID: #{pid})"
+        send_term_signal(pid)
+        if @server_pgid
+          unless wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+            CypressOnRails.configuration.logger.warn("Server process group did not terminate after TERM signal, sending KILL")
+            send_kill_signal(pid)
+            wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+          end
+          return leader_terminal ? :terminal_group_signaled : :signaled
+        end
+
+        unless wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+          CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
+          unless server_exited?
+            send_kill_signal(pid)
+            wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+          end
+        end
+        :signaled
+      ensure
+        wait_for_server_output
+      end
+    end
+
+    def wait_for_server_exit(deadline)
+      loop do
+        return true if server_exited?
+        now = monotonic_time
+        return false if now >= deadline
+
+        sleep [SERVER_STOP_POLL_INTERVAL, deadline - now].min
+      end
+    end
+
+    def wait_for_server_group_exit(deadline)
+      loop do
+        server_exited? unless server_terminal?
+        return true unless process_group_exists?
+        now = monotonic_time
+        return false if now >= deadline
+
+        sleep [SERVER_STOP_POLL_INTERVAL, deadline - now].min
+      end
+    end
+
+    def start_server_output_capture
+      @server_output = +''
+      @server_output_mutex = Mutex.new
+      @server_output_streams = []
+      @server_output_readers = []
+      @server_output_forwarders = []
 
       begin
-        Timeout.timeout(10) do
-          Process.wait(pid)
+        stdout_reader, @server_stdout_writer = IO.pipe
+        @server_output_streams << [stdout_reader, SizedQueue.new(SERVER_OUTPUT_FORWARD_QUEUE_SIZE), $stdout]
+        stderr_reader, @server_stderr_writer = IO.pipe
+        @server_output_streams << [stderr_reader, SizedQueue.new(SERVER_OUTPUT_FORWARD_QUEUE_SIZE), $stderr]
+
+        @server_output_streams.each do |reader, queue, _stream|
+          @server_output_readers << start_server_output_reader(reader, queue)
         end
-      rescue Timeout::Error
-        CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
-        safe_kill_process('KILL', pid)
-        Process.wait(pid) rescue Errno::ESRCH
+        @server_output_streams.each do |_reader, queue, stream|
+          @server_output_forwarders << start_server_output_forwarder(queue, stream)
+        end
+      rescue StandardError
+        close_server_output_writers
+        Array(@server_output_streams).each do |reader, _queue, _stream|
+          reader.close unless reader.closed?
+        end
+        stop_server_output_readers
+        stop_server_output_forwarders
+        raise
       end
-    rescue Errno::ESRCH
-      # Process already terminated
+    end
+
+    def start_server_output_reader(reader, queue)
+      Thread.new do
+        forwarding = true
+        forwarding_deadline = nil
+        loop do
+          output = reader.readpartial(1_024)
+          capture_server_output(output)
+          if forwarding
+            forwarding, forwarding_deadline = enqueue_server_output(queue, output, forwarding_deadline)
+          end
+        end
+      rescue EOFError, IOError
+        # The server closed its output stream.
+      ensure
+        enqueue_server_output_end(queue, forwarding_deadline) if forwarding
+        reader.close unless reader.closed?
+      end
+    end
+
+    def start_server_output_forwarder(queue, stream)
+      Thread.new do
+        forwarding = true
+        loop do
+          output = queue.pop
+          break unless output
+
+          next unless forwarding
+
+          begin
+            stream.write(output)
+            stream.flush
+          rescue SystemCallError, IOError, EncodingError
+            forwarding = false
+          end
+        end
+      end
+    end
+
+    def capture_server_output(output)
+      @server_output_mutex.synchronize do
+        @server_output << output
+        if @server_output.bytesize > MAX_STARTUP_OUTPUT_BYTES
+          @server_output = @server_output.byteslice(-MAX_STARTUP_OUTPUT_BYTES, MAX_STARTUP_OUTPUT_BYTES)
+        end
+      end
+    end
+
+    def server_exited?
+      return true if server_terminal?
+
+      terminal = false
+      Thread.handle_interrupt(Timeout::Error => :never) do
+        begin
+          result = Process.waitpid2(@server_pid, Process::WNOHANG)
+          if result
+            @server_exit_status = result.last
+            @server_stopped = true
+            terminal = true
+          end
+        rescue Errno::ECHILD
+          @server_status_unavailable = true
+          @server_stopped = true
+          terminal = true
+        end
+      end
+      terminal
+    end
+
+    def server_start_failure
+      drain_server_output
+      status = @server_exit_status
+      message = "Rails server command #{@server_command.join(' ')} exited during startup with #{process_status(status)}"
+      output = recent_server_output
+      message += "\nRecent server output:\n#{output}" unless output.empty?
+      ServerError.new(message)
+    end
+
+    def server_start_timeout_failure(timeout, timeout_status = nil, stop_result = nil)
+      if timeout_status
+        status = startup_process_status if terminal_stop_result?(stop_result)
+        status ||= timeout_status
+      else
+        if server_exited?
+          status = startup_process_status
+          drain_server_output
+        else
+          status = process_exists?(@server_pid) ? 'process status running' : 'process status unavailable'
+          stop_result = stop_server(@server_pid)
+          status = startup_process_status if stop_result == :terminal
+        end
+      end
+      message = "Rails server command #{@server_command.join(' ')} failed to become ready after #{timeout} seconds with #{status}"
+      output = recent_server_output
+      message += "\nRecent server output:\n#{output}" unless output.empty?
+      ServerError.new(message)
+    end
+
+    def process_status(status)
+      return 'process status unavailable' if @server_status_unavailable
+      return 'an unknown process status' unless status
+      return "exit status #{status.exitstatus}" if status.exited?
+
+      "signal #{status.termsig}"
+    end
+
+    def startup_process_status
+      return 'process status unavailable' if @server_status_unavailable
+
+      process_status(@server_exit_status)
+    end
+
+    def terminal_stop_result?(result)
+      result == :terminal || result == :terminal_group_signaled
+    end
+
+    def server_terminal?
+      @server_exit_status || @server_status_unavailable || @server_stopped
+    end
+
+    def recent_server_output
+      @server_output_mutex.synchronize do
+        output = @server_output.each_line.to_a.last(MAX_STARTUP_OUTPUT_LINES).join
+        output = output.byteslice(-MAX_STARTUP_OUTPUT_BYTES, MAX_STARTUP_OUTPUT_BYTES) if output.bytesize > MAX_STARTUP_OUTPUT_BYTES
+        output.force_encoding(Encoding::UTF_8).scrub('')
+      end
+    end
+
+    def close_server_output_writers
+      [@server_stdout_writer, @server_stderr_writer].compact.each do |writer|
+        writer.close unless writer.closed?
+      end
+    end
+
+    def wait_for_server_output
+      drain_server_output
+    end
+
+    def drain_server_output
+      deadline = monotonic_time + SERVER_OUTPUT_DRAIN_TIMEOUT
+      close_server_output_writers
+      wait_for_server_output_readers(deadline)
+    ensure
+      Array(@server_output_streams).each do |reader, _queue, _stream|
+        reader.close unless reader.closed?
+      end
+      stop_server_output_readers
+      stop_server_output_forwarders(deadline)
+    end
+
+    def wait_for_server_output_readers(deadline)
+      Array(@server_output_readers).each do |reader|
+        timeout = deadline - monotonic_time
+        break if timeout <= 0
+
+        reader.join(timeout)
+      end
+    end
+
+    def enqueue_server_output_end(queue, deadline)
+      enqueue_server_output(queue, nil, deadline)
+    end
+
+    def enqueue_server_output(queue, output, deadline)
+      deadline = nil if deadline && queue.empty?
+      loop do
+        queue.push(output, true)
+        return [true, deadline]
+      rescue ThreadError
+        deadline ||= monotonic_time + SERVER_OUTPUT_FORWARD_BACKPRESSURE_TIMEOUT
+        return false if monotonic_time >= deadline
+
+        sleep 0.001
+      end
+    end
+
+    def stop_server_output_forwarders(deadline = nil)
+      deadline ||= monotonic_time + SERVER_OUTPUT_THREAD_JOIN_TIMEOUT
+      forwarders = Array(@server_output_forwarders)
+      forwarders.each do |forwarder|
+        timeout = deadline - monotonic_time
+        forwarder.join(timeout) if timeout > 0
+      end
+      forwarders.each do |forwarder|
+        forwarder.kill if forwarder.alive?
+        forwarder.join(SERVER_OUTPUT_THREAD_JOIN_TIMEOUT)
+      end
+    end
+
+    def stop_server_output_readers
+      Array(@server_output_readers).each do |reader|
+        reader.kill if reader.alive?
+      end
+      Array(@server_output_readers).each { |reader| reader.join(SERVER_OUTPUT_THREAD_JOIN_TIMEOUT) }
+    end
+
+    def monotonic_time
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
     def send_term_signal(pid)
-      if @server_pgid && process_exists?(pid)
-        Process.kill('TERM', -@server_pgid)
-      else
-        safe_kill_process('TERM', pid)
+      send_server_signal('TERM', pid)
+    end
+
+    def send_kill_signal(pid)
+      send_server_signal('KILL', pid)
+    end
+
+    def send_server_signal(signal, pid)
+      if @server_pgid
+        Process.kill(signal, -@server_pgid)
+      elsif process_exists?(pid)
+        safe_kill_process(signal, pid)
       end
     rescue Errno::ESRCH, Errno::EPERM => e
+      return if server_terminal?
+
       CypressOnRails.configuration.logger.warn("Failed to kill process group #{@server_pgid}: #{e.message}, trying single process")
-      safe_kill_process('TERM', pid)
+      safe_kill_process(signal, pid) if process_exists?(pid)
+    end
+
+    def process_group_exists?
+      return false unless @server_pgid
+
+      Process.kill(0, -@server_pgid)
+      true
+    rescue Errno::ESRCH
+      false
+    rescue Errno::EPERM
+      true
     end
 
     def process_exists?(pid)
