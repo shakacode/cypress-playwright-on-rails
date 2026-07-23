@@ -512,6 +512,7 @@ jobs:
 4. **Run tests in parallel** for faster CI
 5. **Use fixtures for static data**, factories for dynamic data
 6. **Commit test recordings** for debugging failures
+7. **See the [Streaming and Multi-Process Guide](./streaming-and-multi-process-apps.md)** for advanced React Server Components and parallel testing scenarios
 
 ## Debugging
 

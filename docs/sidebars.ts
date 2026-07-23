@@ -24,6 +24,7 @@ const sidebars: SidebarsConfig = {
         'TROUBLESHOOTING',
         'VCR_GUIDE',
         'DX_IMPROVEMENTS',
+        'streaming-and-multi-process-apps',
       ],
     },
     {

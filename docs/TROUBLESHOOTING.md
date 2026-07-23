@@ -344,7 +344,8 @@ If you encounter issues not covered here:
 1. Check existing [GitHub issues](https://github.com/shakacode/cypress-playwright-on-rails/issues)
 2. Search the [Slack channel](https://join.slack.com/t/reactrails/shared_invite/enQtNjY3NTczMjczNzYxLTlmYjdiZmY3MTVlMzU2YWE0OWM0MzNiZDI0MzdkZGFiZTFkYTFkOGVjODBmOWEyYWQ3MzA2NGE1YWJjNmVlMGE)
 3. Post in the [forum](https://forum.shakacode.com/c/cypress-on-rails/55)
-4. Create a new issue with:
+4. For streaming RSC and multi-process testing issues, see the [Streaming and Multi-Process Guide](streaming-and-multi-process-apps.md)
+5. Create a new issue with:
    - Your Rails version
    - cypress-on-rails version
    - Minimal reproduction steps

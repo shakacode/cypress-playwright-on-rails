@@ -42,3 +42,4 @@ app commands, scenarios, and test data setup.
 - Use [FactoryBot](./factory-bot.md) for test records.
 - Use [Scenarios](./scenarios.md) for named browser-test states.
 - Review [Best Practices](./BEST_PRACTICES.md) before adding a large suite.
+- Learn about [Streaming RSC and Multi-Process Testing](./streaming-and-multi-process-apps.md) for advanced React Server Components and parallel testing scenarios.

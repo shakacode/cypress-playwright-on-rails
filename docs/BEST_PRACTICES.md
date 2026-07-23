@@ -675,4 +675,6 @@ Following these best practices will help you:
 - Secure your test infrastructure
 - Debug issues more effectively
 
+For advanced scenarios including React Server Components streaming and multi-process test execution, see the [Streaming and Multi-Process Testing Guide](./streaming-and-multi-process-apps.md).
+
 Remember: E2E tests should focus on critical user journeys. Use unit and integration tests for comprehensive coverage of edge cases.
