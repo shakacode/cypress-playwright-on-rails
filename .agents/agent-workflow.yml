@@ -1,4 +1,8 @@
 # Non-command agent-workflow configuration for portable shared skills.
+untrusted_contributor_intake:
+  trusted_github_host: github.com
+  trusted_github_scheme: https
+  trusted_github_repo: shakacode/cypress-playwright-on-rails
 base_branch: master
 changelog: "CHANGELOG.md - user-visible changes only; version-stamp via bundle exec rake update_changelog[release|rc|beta|VERSION]; PR links use [PR N](https://github.com/shakacode/cypress-playwright-on-rails/pull/N) by [username](https://github.com/username)."
 follow_up_prefix: "Follow-up:"
