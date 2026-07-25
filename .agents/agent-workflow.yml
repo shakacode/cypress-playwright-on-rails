@@ -14,3 +14,4 @@ ci_parity_environment: "Use .github/workflows/ruby.yml; reproduce failures with 
 benchmark_labels: n/a
 merge_ledger: n/a
 ci_change_detector: n/a
+repo_prefix: CPOR
