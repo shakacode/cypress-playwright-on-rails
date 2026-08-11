@@ -4,6 +4,8 @@ untrusted_contributor_intake:
   trusted_github_scheme: https
   trusted_github_repo: shakacode/cypress-playwright-on-rails
 base_branch: master
+merge_submission:
+  mode: direct
 changelog: "CHANGELOG.md - user-visible changes only; version-stamp via bundle exec rake update_changelog[release|rc|beta|VERSION]; PR links use [PR N](https://github.com/shakacode/cypress-playwright-on-rails/pull/N) by [username](https://github.com/username)."
 follow_up_prefix: "Follow-up:"
 review_gate: "Ruby workflow green on the PR, local bundle exec rake evidence, and all review threads resolved."
