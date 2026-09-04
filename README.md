@@ -246,8 +246,10 @@ end
 ```
 
 Requests without a matching `X-Cypress-On-Rails-Token` header are answered with
-`403 {"message":"invalid or missing token"}`; the comparison is constant time. The
-generated `on-rails.js` helpers send the header for you when the value is present:
+`403 {"message":"invalid or missing token"}`; the comparison is constant time. A blank
+value counts as unset and leaves the check disabled — worth knowing if your CI expands a
+missing secret to an empty string. The generated `on-rails.js` helpers send the header
+for you when the value is present:
 
 ```shell
 # the same value for the rails server and for the test runner

@@ -29,11 +29,15 @@ if defined?(CypressOnRails)
     # c.after_state_reset = -> { Rails.cache.clear }
     # c.before_server_stop = -> { puts "Stopping test server..." }
 
-    # Require a shared secret on every CypressOnRails request. When set, requests
-    # without a matching X-Cypress-On-Rails-Token header are rejected with a 403.
+    # Require a shared secret on the command, VCR insert/eject and state reset
+    # endpoints (the use_cassette middleware wraps ordinary application requests,
+    # so it is not gated). When set, requests without a matching
+    # X-Cypress-On-Rails-Token header are rejected with a 403.
     # The generated cypress/playwright helpers send the header for you.
     # Defaults to ENV['CYPRESS_ON_RAILS_TOKEN'], so exporting that variable for
     # both the rails server and the test runner is usually all you need.
+    # A blank value counts as unset and leaves the check disabled, so watch out
+    # for CI setups that expand a missing secret to an empty string.
     # c.middleware_token = ENV['CYPRESS_ON_RAILS_TOKEN']
 
     # If you want to enable a before_request logic, such as authentication, logging, sending metrics, etc.
