@@ -636,8 +636,22 @@ CypressOnRails.configure do |c|
   c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
   c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
   c.transactional_server = true  # Enable automatic transaction rollback
+  c.server_shutdown_timeout = 10 # or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
 end
 ```
+
+### `server_shutdown_timeout`
+
+Seconds to wait after sending `TERM` to the test server before escalating to
+`KILL`. Defaults to `10`, and can also be set with the
+`CYPRESS_RAILS_SHUTDOWN_TIMEOUT` environment variable. It must be a finite
+number greater than zero; anything else raises an `ArgumentError` when you
+configure it, rather than producing an unbounded wait at shutdown.
+
+Raise it if your application needs longer to finish in-flight requests and
+release resources on shutdown. Lower it to fail faster in CI. After `KILL` the
+server is given a further fixed 5 second grace to be reaped, so a stop can
+never take longer than `server_shutdown_timeout + 5` seconds.
 
 ## `before_request` configuration
 
