@@ -3,13 +3,65 @@
 This project follows the ShakaCode release shape used by Shakapacker and React on Rails:
 update and stamp the changelog first, merge that PR, then run the release task with no version argument.
 
+## The Two Gems
+
+Each release publishes two gems at the same version:
+
+| Gem | Source | Purpose |
+| --- | --- | --- |
+| `cypress-on-rails` | repository root | the real gem |
+| `e2e_on_rails` | `alias_gem/` | thin alias that reserves the canonical name adopted at 2.0 (see `docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md`) |
+
+`alias_gem/e2e_on_rails.gemspec` reads `lib/cypress_on_rails/version.rb`, so the
+alias always mirrors the parent version and depends on `cypress-on-rails ~> MAJOR.MINOR`.
+There is nothing to bump by hand.
+
+`rake release` publishes `cypress-on-rails` first, then builds and pushes the
+alias. If the alias build or push fails, the task warns and continues — the main
+release is never rolled back. Retry the alias on its own with:
+
+```bash
+(cd alias_gem && gem build e2e_on_rails.gemspec && gem push e2e_on_rails-VERSION.gem)
+```
+
+The alias gemspec must be built from `alias_gem/`, because RubyGems resolves
+`spec.files` relative to the current directory. Building it from the repository
+root raises a descriptive error instead of packaging the wrong files.
+
 ## Prerequisites
 
 1. Maintainer access to `shakacode/cypress-playwright-on-rails`.
-2. RubyGems publish access for `cypress-on-rails`.
+2. RubyGems publish access for `cypress-on-rails` and `e2e_on_rails`.
 3. Authenticated GitHub CLI with write access: `gh auth status`.
 4. Clean checkout on `master`.
 5. Dependencies installed: `bundle install`.
+
+### One-time: first publish of `e2e_on_rails`
+
+`e2e_on_rails` has never been published. RubyGems will not accept a push from
+`rake release` for a gem that does not exist yet unless the pushing account
+becomes its owner, so the first publish is a manual maintainer step:
+
+1. Re-verify the name is still unclaimed: `gem owner e2e_on_rails` should report
+   that the gem does not exist. If someone else has claimed it, stop and revisit
+   ADR-0001 before releasing.
+2. From an up-to-date `master` at the version you are releasing:
+
+   ```bash
+   (cd alias_gem && gem build e2e_on_rails.gemspec)
+   gem push alias_gem/e2e_on_rails-VERSION.gem   # asks for your RubyGems OTP
+   rm alias_gem/e2e_on_rails-VERSION.gem
+   ```
+
+3. Confirm ownership and add the other release maintainers:
+
+   ```bash
+   gem owner e2e_on_rails
+   gem owner e2e_on_rails --add EMAIL
+   ```
+
+After that first push, `rake release` handles the alias automatically on every
+subsequent release.
 
 ## Recommended Flow
 
@@ -73,8 +125,9 @@ bundle exec rake "sync_github_release[1.21.0]"
 6. Runs `bundle install` to verify dependencies.
 7. Commits the release metadata.
 8. Creates and pushes `vVERSION`.
-9. Publishes the gem to RubyGems.
-10. Creates or updates the GitHub release from that version's `CHANGELOG.md` section.
+9. Publishes `cypress-on-rails` to RubyGems.
+10. Builds and pushes the `e2e_on_rails` alias gem at the same version; a failure here warns and continues.
+11. Creates or updates the GitHub release from that version's `CHANGELOG.md` section.
 
 Dry runs use a temporary git worktree so the main checkout is not dirtied.
 
@@ -113,6 +166,15 @@ Fix authentication or OTP issues, then retry from the same checkout:
 ```bash
 gem release
 bundle exec rake "sync_github_release[VERSION]"
+```
+
+### Alias gem publish failure
+
+The main release already succeeded; only the alias needs a retry:
+
+```bash
+(cd alias_gem && gem build e2e_on_rails.gemspec && gem push e2e_on_rails-VERSION.gem)
+rm -f alias_gem/e2e_on_rails-VERSION.gem
 ```
 
 ### Version policy failure
