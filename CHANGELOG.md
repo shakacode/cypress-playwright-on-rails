@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Rails server startup diagnostics**: Startup failures, immediate exits, and readiness timeouts now raise `CypressOnRails::ServerError` with the exact command, process status, and a bounded tail of server output, and shutdown is process-group aware with TERM-then-KILL escalation. [PR 243](https://github.com/shakacode/cypress-playwright-on-rails/pull/243) by [justin808](https://github.com/justin808).
+
 ## [1.20.1] - 2026-07-10
 
 ### Fixed
