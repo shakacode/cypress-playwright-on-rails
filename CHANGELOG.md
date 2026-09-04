@@ -7,8 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Server hardening**: New `config.server_shutdown_timeout` (default 10 seconds, also `CYPRESS_RAILS_SHUTDOWN_TIMEOUT`) for the TERM-then-KILL escalation, free-port acquisition retries on a lost bind race, and every configured hook is validated to respond to `call`. [PR 255](https://github.com/shakacode/cypress-playwright-on-rails/pull/255) by [justin808](https://github.com/justin808).
+
 ### Changed
 - **Rails server startup diagnostics**: Startup failures, immediate exits, and readiness timeouts now raise `CypressOnRails::ServerError` with the exact command, process status, and a bounded tail of server output, and shutdown is process-group aware with TERM-then-KILL escalation. [PR 243](https://github.com/shakacode/cypress-playwright-on-rails/pull/243) by [justin808](https://github.com/justin808).
+
+### Fixed
+- **State reset on Rails 7.1+**: `/cypress_rails_reset_state` no longer returns 500 when reloading is disabled (the default test environment); the autoloader clear is now guarded. [PR 255](https://github.com/shakacode/cypress-playwright-on-rails/pull/255) by [justin808](https://github.com/justin808).
 
 ## [1.20.1] - 2026-07-10
 
