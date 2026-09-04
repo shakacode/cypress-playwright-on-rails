@@ -16,6 +16,8 @@ module CypressOnRails
     SERVER_OUTPUT_THREAD_JOIN_TIMEOUT = 0.05
     SERVER_OUTPUT_FORWARD_QUEUE_SIZE = 16
     SERVER_OUTPUT_FORWARD_BACKPRESSURE_TIMEOUT = 0.1
+    # Fallback used when the configuration does not supply a usable
+    # server_shutdown_timeout; see Configuration#server_shutdown_timeout.
     SERVER_STOP_TIMEOUT = 10
     SERVER_STOP_POLL_INTERVAL = 0.05
 
@@ -195,27 +197,35 @@ module CypressOnRails
         return :terminal if leader_terminal && !@server_pgid
 
         puts "Stopping Rails server (PID: #{pid})"
+        shutdown_timeout = server_shutdown_timeout
         send_term_signal(pid)
         if @server_pgid
-          unless wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+          unless wait_for_server_group_exit(monotonic_time + shutdown_timeout)
             CypressOnRails.configuration.logger.warn("Server process group did not terminate after TERM signal, sending KILL")
             send_kill_signal(pid)
-            wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+            wait_for_server_group_exit(monotonic_time + shutdown_timeout)
           end
           return leader_terminal ? :terminal_group_signaled : :signaled
         end
 
-        unless wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+        unless wait_for_server_exit(monotonic_time + shutdown_timeout)
           CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
           unless server_exited?
             send_kill_signal(pid)
-            wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+            wait_for_server_exit(monotonic_time + shutdown_timeout)
           end
         end
         :signaled
       ensure
         wait_for_server_output
       end
+    end
+
+    # Seconds to wait after TERM before escalating to KILL. Falls back to the
+    # built-in default when a caller supplies a configuration double without it.
+    def server_shutdown_timeout
+      timeout = CypressOnRails.configuration.server_shutdown_timeout
+      timeout.is_a?(Numeric) && timeout > 0 ? timeout : SERVER_STOP_TIMEOUT
     end
 
     def wait_for_server_exit(deadline)

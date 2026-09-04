@@ -134,6 +134,52 @@ RSpec.describe CypressOnRails::Server do
       expect(polls).to eq(2)
     end
 
+    it 'derives the TERM wait deadline from the configured shutdown timeout' do
+      pid = 12_345
+      deadlines = []
+      CypressOnRails.configuration.server_shutdown_timeout = 2.5
+      prepare_lifecycle_server(pid)
+      server.instance_variable_set(:@server_pgid, pid)
+      server.instance_variable_set(:@server_exit_status, exited_process_status)
+      allow(Process).to receive(:kill)
+      allow(server).to receive(:monotonic_time).and_return(0.0)
+      allow(server).to receive(:wait_for_server_group_exit) do |deadline|
+        deadlines << deadline
+        true
+      end
+
+      expect(server.send(:stop_server, pid)).to eq(:terminal_group_signaled)
+
+      expect(deadlines).to eq([2.5])
+    end
+
+    it 'falls back to the built-in stop timeout when the configured value is unusable' do
+      allow(CypressOnRails.configuration).to receive(:server_shutdown_timeout).and_return(nil)
+
+      expect(server.send(:server_shutdown_timeout)).to eq(described_class::SERVER_STOP_TIMEOUT)
+    end
+
+    it 'KILLs and reaps a TERM-ignoring server within the configured shutdown timeout' do
+      shutdown_timeout = 0.5
+      CypressOnRails.configuration.server_shutdown_timeout = shutdown_timeout
+      trap_installed = Queue.new
+      allow(server).to receive(:capture_server_output).and_wrap_original do |original, output|
+        original.call(output).tap { trap_installed << true }
+      end
+      spawn_term_ignoring_child
+
+      pid = server.send(:spawn_server)
+      trap_installed.pop
+
+      result = Timeout.timeout(shutdown_timeout + 5) { server.send(:stop_server, pid) }
+
+      expect(result).to eq(:signaled)
+      status = server.instance_variable_get(:@server_exit_status)
+      expect(status).to be_a(Process::Status)
+      expect(status.termsig).to eq(Signal.list.fetch('KILL'))
+      expect(server.send(:process_exists?, pid)).to be(false)
+    end
+
     it 'treats an externally reaped server as terminal with unavailable status without TERM' do
       prepare_lifecycle_server(12_345)
       allow(Process).to receive(:waitpid2).with(12_345, Process::WNOHANG).and_raise(Errno::ECHILD)
@@ -570,6 +616,15 @@ RSpec.describe CypressOnRails::Server do
     def spawn_exiting_child(output, after_output = nil)
       allow(server).to receive(:spawn) do |*_command, **options|
         script = ["STDERR.write(#{output.dump})", after_output, 'exit 7'].compact.join('; ')
+        Process.spawn(RbConfig.ruby, '-e', script, **options)
+      end
+    end
+
+    # A child that installs a no-op TERM handler and keeps sleeping, so only
+    # KILL can end it.
+    def spawn_term_ignoring_child
+      allow(server).to receive(:spawn) do |*_command, **options|
+        script = "Signal.trap('TERM') {}; STDERR.write(\"trap installed\\n\"); loop { sleep 1 }"
         Process.spawn(RbConfig.ruby, '-e', script, **options)
       end
     end

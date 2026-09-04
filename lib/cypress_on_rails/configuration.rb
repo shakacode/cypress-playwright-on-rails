@@ -2,6 +2,8 @@ require 'logger'
 
 module CypressOnRails
   class Configuration
+    DEFAULT_SERVER_SHUTDOWN_TIMEOUT = 10
+
     attr_accessor :api_prefix
     attr_accessor :install_folder
     attr_accessor :use_middleware
@@ -28,6 +30,14 @@ module CypressOnRails
     # Timeout in seconds for individual HTTP readiness checks (default: 5)
     # Can be set via CYPRESS_RAILS_READINESS_TIMEOUT environment variable
     attr_accessor :server_readiness_timeout
+    # Seconds to wait after sending TERM before escalating to KILL when stopping
+    # the test server process group (default: 10)
+    # Can be set via CYPRESS_RAILS_SHUTDOWN_TIMEOUT environment variable
+    attr_reader :server_shutdown_timeout
+
+    def server_shutdown_timeout=(value)
+      @server_shutdown_timeout = positive_number!(:server_shutdown_timeout, value)
+    end
 
     # Attributes for backwards compatibility
     def cypress_folder
@@ -70,6 +80,7 @@ module CypressOnRails
       self.transactional_server = true
       self.server_readiness_path = ENV.fetch('CYPRESS_RAILS_READINESS_PATH', '/')
       self.server_readiness_timeout = ENV.fetch('CYPRESS_RAILS_READINESS_TIMEOUT', '5').to_i
+      self.server_shutdown_timeout = ENV.fetch('CYPRESS_RAILS_SHUTDOWN_TIMEOUT', DEFAULT_SERVER_SHUTDOWN_TIMEOUT)
     end
 
     def tagged_logged
@@ -77,6 +88,32 @@ module CypressOnRails
         logger.tagged('CY_DEV') { yield }
       else
         yield
+      end
+    end
+
+    private
+
+    # Accepts a Numeric or a numeric String and returns it as a number greater
+    # than zero, raising ArgumentError with the offending value otherwise.
+    def positive_number!(name, value)
+      number = coerce_number(value)
+      unless number && number > 0
+        raise ArgumentError, "#{name} must be a number of seconds greater than 0, got #{value.inspect}"
+      end
+
+      number
+    end
+
+    def coerce_number(value)
+      case value
+      when Numeric
+        value.respond_to?(:nan?) && value.nan? ? nil : value
+      when String
+        begin
+          Float(value)
+        rescue ArgumentError
+          nil
+        end
       end
     end
   end
