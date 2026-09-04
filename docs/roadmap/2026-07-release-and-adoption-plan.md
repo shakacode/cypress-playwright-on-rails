@@ -19,6 +19,16 @@ Owner: @justin808
   [#224](https://github.com/shakacode/cypress-playwright-on-rails/issues/224) (M3 outreach, gated).
 - Remaining for v1.21.0: merge PR #225, then a maintainer runs
   `rake release[1.21.0]` (RELEASING.md) and publishes the GitHub Release.
+- 2026-07-11: the release above shipped as **v1.20.1** (patch number chosen by
+  the maintainer; contents unchanged: #205, #207, #210, #219). Every task gated
+  on "after v1.21.0 ships" (#226, #228, #224, #197, #209) is treated as
+  gate-satisfied from this date. PR #243 later landed #185 delivery 1.
+- 2026-09-03: release triage. PR #191 closed as superseded (release task already
+  reworked on master), #155 closed per its auto-close disposition, #241 root
+  cause recorded (missing `DOCS_DISPATCH_APP_ID`/`DOCS_DISPATCH_APP_KEY`
+  secrets), PR #249 adds the missing #243 changelog entry, and wave 1 of the
+  next release started as one coordinated batch: #185 remaining deliverables,
+  #13 security default, #226 alias gem. Release plan in section 7.
 
 ## Decisions (2026-07-04, @justin808)
 
@@ -284,7 +294,10 @@ Decisions section at the top of this document). Still genuinely open:
 1. Final sign-off on the M3 outreach comment text before posting (draft in
    issue #224; gated on v1.21.0 + #185 + #220 shipping).
 
-## 6. Suggested agent execution order
+## 6. Suggested agent execution order (superseded 2026-09-03)
+
+Superseded for the 1.21.0 line by section 7 below, which is the authoritative
+order; this block is kept as the July 2026 plan of record.
 
 ```text
 R4(human release)                        # only v1.21.0 step left
@@ -299,3 +312,57 @@ Every task above states its issue/PR, files, and acceptance criteria; tasks
 labeled `agent-ready` on GitHub carry the same contract. When in doubt:
 small PRs, `bundle exec rubocop` clean, CHANGELOG entry per user-visible
 change, files end with newline.
+
+---
+
+## 7. Release plan: 1.21.0 (added 2026-09-03)
+
+Theme: the "cypress-rails magnet" line from section 3, renumbered because
+v1.20.1 consumed the v1.21.0 slot. Ship it as **1.21.0** (minor: new
+`middleware_token`, `server_shutdown_timeout`, and the alias gem; the
+`use_middleware` default change is documented as a behaviour change).
+
+### Scope, in merge order
+
+Every PR in every wave passes the repository review gate from
+`.agents/agent-workflow.yml` (green Ruby workflow on the PR, local
+`bundle exec rake` evidence, all review threads resolved). The column below
+lists what is required in addition.
+
+| Wave | Targets | Additional gate before merge |
+|---|---|---|
+| 1 (running) | #185 remaining, #13, #226 | QA evidence per PR; maintainer risk decision for security/runtime/release-surface PRs |
+| 2 | #220 migration guide, #186 follow-ups, #157 environments doc, #175 VCR docs, #244 streaming guide (also exercises #241) | #185 merged first for #186/#220; docs secrets configured so `trigger-docs-site` can succeed |
+| 3 (optional for 1.21.0) | #114 state-management doc, #221 README split | standard gate only |
+
+Post-release, not in the gem: #228 repo rename (in-place, maintainer click),
+the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
+
+### Maintainer steps, in order
+
+1. Add repository secrets `DOCS_DISPATCH_APP_ID` and `DOCS_DISPATCH_APP_KEY`
+   (GitHub App installed on `shakacode/e2eonrails-com` with Contents: write)
+   so docs merges publish. Verify with the next `docs/**` merge (#241).
+2. Post `autonomous-merge-risk-decision:v1` comments on the wave-1 PRs that
+   the eligibility gate flags for human review (the coordinator supplies the
+   exact envelope per PR head).
+3. After wave 2 merges: `/update-changelog release` PR, then merge it.
+4. Immediately before releasing, re-verify that `e2e_on_rails` is still
+   unclaimed on RubyGems (`gem search -r -e e2e_on_rails` prints nothing), as
+   ADR-0001 requires for the first publish. If the name has been taken, stop
+   and decide the fallback name before running the release.
+5. From clean `master`: `bundle exec rake "release[,true]"` (dry run shows
+   both gems once #226 lands), then `bundle exec rake release`.
+6. First publish of `e2e_on_rails`: the release task pushes it after the main
+   gem; if that first push needs RubyGems ownership setup, run
+   `gem push alias_gem/pkg/e2e_on_rails-1.21.0.gem` manually once.
+7. Then #228: rename the repo in place and open the URL-sweep PR.
+
+### Definition of done for 1.21.0
+
+- CHANGELOG `## [1.21.0]` lists #243, #185 follow-ups, #13, #226, and every
+  wave-2 user-visible doc with `[PR N]` credit links.
+- `rake release` dry run green; tag `v1.21.0` on RubyGems with both gems.
+- GitHub Release notes synced from the changelog section.
+- README security section and migration guide published at e2eonrails.com.
+
