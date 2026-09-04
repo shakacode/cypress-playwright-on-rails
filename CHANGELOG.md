@@ -7,7 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Middleware token**: New `config.middleware_token` (defaults to `ENV['CYPRESS_ON_RAILS_TOKEN']`). When set, the command, VCR insert/eject, and state-reset endpoints require a matching `X-Cypress-On-Rails-Token` header and return 403 otherwise, compared in constant time; the generated Cypress and Playwright helpers send the header automatically. [PR 253](https://github.com/shakacode/cypress-playwright-on-rails/pull/253) by [justin808](https://github.com/justin808).
+
 ### Changed
+- **Safer `use_middleware` default (behaviour change)**: The library default is now disabled when `Rails.env` is production instead of unconditionally enabled. Apps that relied on the implicit default to mount the middleware in production must set `c.use_middleware = true` explicitly; the generated initializer already assigns it. [PR 253](https://github.com/shakacode/cypress-playwright-on-rails/pull/253) by [justin808](https://github.com/justin808).
 - **Rails server startup diagnostics**: Startup failures, immediate exits, and readiness timeouts now raise `CypressOnRails::ServerError` with the exact command, process status, and a bounded tail of server output, and shutdown is process-group aware with TERM-then-KILL escalation. [PR 243](https://github.com/shakacode/cypress-playwright-on-rails/pull/243) by [justin808](https://github.com/justin808).
 
 ## [1.20.1] - 2026-07-10
