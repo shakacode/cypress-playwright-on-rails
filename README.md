@@ -116,6 +116,8 @@ group :test, :development do
 end
 ```
 
+Also available as `e2e_on_rails`, the future 2.0 name (see [ADR-0001](docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md)).
+
 Generate the boilerplate code using:
 
 ```shell
