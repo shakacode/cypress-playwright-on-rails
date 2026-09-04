@@ -4,8 +4,9 @@
 # project adopts at 2.0. See ../docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md
 # and ../docs/adr/0002-public-rebrand-e2e-on-rails.md.
 #
-# The version and the dependency requirement are both derived from the parent
-# gem's lib/cypress_on_rails/version.rb so the two gems can never drift.
+# The version is read from the parent gem's lib/cypress_on_rails/version.rb and the
+# dependency is pinned to that exact version, so the two gems can never drift and a
+# prerelease alias always resolves the matching prerelease parent.
 alias_gem_root = __dir__
 
 # RubyGems resolves `spec.files` against the current directory, not against the
@@ -23,7 +24,6 @@ parent_version_match = File.read(parent_version_file).match(/VERSION\s*=\s*["'](
 raise "Unable to read CypressOnRails::VERSION from #{parent_version_file}" unless parent_version_match
 
 parent_version = parent_version_match[1]
-parent_major, parent_minor = parent_version.split(".")
 repo_uri = "https://github.com/shakacode/cypress-playwright-on-rails"
 adr_uri = "#{repo_uri}/blob/master/docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md"
 
@@ -37,8 +37,8 @@ Gem::Specification.new do |spec|
   spec.summary     = "E2E on Rails: the Rails test bridge for Cypress and Playwright " \
                      "(alias gem; canonical at 2.0)"
   spec.description = "Alias gem that reserves e2e_on_rails, the canonical name this project adopts " \
-                     "at 2.0, and installs the matching cypress-on-rails version. It ships no code " \
-                     "of its own: require 'e2e_on_rails' simply requires 'cypress_on_rails'. Use " \
+                     "at 2.0, and installs exactly the same cypress-on-rails version. It ships no " \
+                     "code of its own: require 'e2e_on_rails' simply requires 'cypress-on-rails'. Use " \
                      "cypress-on-rails directly if you are unsure. Rationale: ADR-0001, #{adr_uri}"
 
   # This directory's own files only; never glob the parent repository.
@@ -53,5 +53,5 @@ Gem::Specification.new do |spec|
     "source_code_uri"   => repo_uri
   }
 
-  spec.add_dependency "cypress-on-rails", "~> #{parent_major}.#{parent_minor}"
+  spec.add_dependency "cypress-on-rails", "= #{parent_version}"
 end

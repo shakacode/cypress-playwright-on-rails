@@ -137,6 +137,22 @@ RSpec.describe "release rake helpers" do
     end
   end
 
+  describe "alias gemspec" do
+    let(:gem_root) { File.expand_path("../..", __dir__) }
+
+    it "pins cypress-on-rails to the exact parent version" do
+      spec = Dir.chdir(File.join(gem_root, "alias_gem")) do
+        Gem::Specification.load("e2e_on_rails.gemspec")
+      end
+      dependency = spec.dependencies.find { |dep| dep.name == "cypress-on-rails" }
+
+      # An exact pin, not "~>": a prerelease alias must resolve the matching
+      # prerelease parent, and must never resolve a different minor line.
+      expect(spec.version.to_s).to eq(current_gem_version(gem_root))
+      expect(dependency.requirement.to_s).to eq("= #{current_gem_version(gem_root)}")
+    end
+  end
+
   describe "alias gem publishing" do
     def with_alias_gem_release_root
       Dir.mktmpdir do |dir|

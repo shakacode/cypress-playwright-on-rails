@@ -1,9 +1,8 @@
 # e2e_on_rails
 
-A thin alias gem with no code of its own. It depends on
-[`cypress-on-rails`](https://github.com/shakacode/cypress-playwright-on-rails)
-at the matching version, and `require "e2e_on_rails"` simply requires
-`cypress_on_rails`.
+A thin alias gem with no code of its own. It depends on exactly the same version
+of [`cypress-on-rails`](https://github.com/shakacode/cypress-playwright-on-rails),
+and `require "e2e_on_rails"` simply requires that gem.
 
 It exists to reserve this project's future canonical name. The project is
 rebranding to **E2E on Rails** (https://e2eonrails.com); at 2.0 `e2e_on_rails`

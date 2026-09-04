@@ -13,8 +13,10 @@ Each release publishes two gems at the same version:
 | `e2e_on_rails` | `alias_gem/` | thin alias that reserves the canonical name adopted at 2.0 (see `docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md`) |
 
 `alias_gem/e2e_on_rails.gemspec` reads `lib/cypress_on_rails/version.rb`, so the
-alias always mirrors the parent version and depends on `cypress-on-rails ~> MAJOR.MINOR`.
-There is nothing to bump by hand.
+alias always mirrors the parent version and depends on exactly that version
+(`cypress-on-rails = VERSION`). An exact pin keeps the two gems locked together
+and lets a prerelease alias resolve the matching prerelease parent, which a
+`~>` requirement would exclude. There is nothing to bump by hand.
 
 `rake release` publishes `cypress-on-rails` first, then builds and pushes the
 alias. If the alias build or push fails, the task warns and continues — the main
