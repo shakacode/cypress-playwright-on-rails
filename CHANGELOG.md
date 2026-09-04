@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`e2e_on_rails` alias gem**: Added a thin wrapper gem that reserves the canonical name adopted at 2.0 and installs the matching `cypress-on-rails` version, and taught `rake release` to publish it after the main gem. [PR 251](https://github.com/shakacode/cypress-playwright-on-rails/pull/251) by [justin808](https://github.com/justin808).
+
 ### Changed
 - **Rails server startup diagnostics**: Startup failures, immediate exits, and readiness timeouts now raise `CypressOnRails::ServerError` with the exact command, process status, and a bounded tail of server output, and shutdown is process-group aware with TERM-then-KILL escalation. [PR 243](https://github.com/shakacode/cypress-playwright-on-rails/pull/243) by [justin808](https://github.com/justin808).
 
