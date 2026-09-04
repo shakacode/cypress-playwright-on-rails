@@ -126,4 +126,87 @@ RSpec.describe CypressOnRails::Middleware do
       expect(response).to eq([200, {}, ["app did /test"]])
     end
   end
+
+  context 'with a middleware_token configured' do
+    let(:token) { 'super-secret-token' }
+    let(:forbidden) do
+      [403, { 'Content-Type' => 'application/json' }, ['{"message":"invalid or missing token"}']]
+    end
+
+    before do
+      CypressOnRails.configure { |config| config.middleware_token = token }
+      allow(command_executor).to receive(:perform).and_return({ id: 1 })
+      allow(file).to receive(:exist?).and_return(true)
+      env['PATH_INFO'] = '/__e2e__/command'
+      env['rack.input'] = rack_input(name: 'seed')
+    end
+
+    it 'rejects a request without the token header' do
+      aggregate_failures do
+        expect(response).to eq(forbidden)
+        expect(command_executor).to_not have_received(:perform)
+      end
+    end
+
+    it 'rejects a request with the wrong token' do
+      env['HTTP_X_CYPRESS_ON_RAILS_TOKEN'] = 'not-the-token'
+
+      aggregate_failures do
+        expect(response).to eq(forbidden)
+        expect(command_executor).to_not have_received(:perform)
+      end
+    end
+
+    it 'rejects the request before before_request runs' do
+      before_request_calls = 0
+      CypressOnRails.configure do |config|
+        config.before_request = ->(_request) { before_request_calls += 1 }
+      end
+
+      aggregate_failures do
+        expect(response).to eq(forbidden)
+        expect(before_request_calls).to eq(0)
+      end
+    end
+
+    it 'runs the command when the token matches' do
+      env['HTTP_X_CYPRESS_ON_RAILS_TOKEN'] = token
+
+      aggregate_failures do
+        expect(response).to eq([201,
+                                { 'Content-Type' => 'application/json' },
+                                ['[{"id":1}]']])
+        expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/seed.rb', nil)
+      end
+    end
+
+    it 'does not interfere with other paths' do
+      env['PATH_INFO'] = '/'
+
+      expect(subject.call(env)).to eq([200, {}, ['app did /']])
+    end
+  end
+
+  context 'without a middleware_token configured' do
+    before do
+      allow(command_executor).to receive(:perform).and_return({ id: 1 })
+      allow(file).to receive(:exist?).and_return(true)
+      env['PATH_INFO'] = '/__e2e__/command'
+      env['rack.input'] = rack_input(name: 'seed')
+    end
+
+    it 'runs the command without any token header' do
+      expect(response).to eq([201,
+                              { 'Content-Type' => 'application/json' },
+                              ['[{"id":1}]']])
+    end
+
+    it 'ignores a token header that is sent anyway' do
+      env['HTTP_X_CYPRESS_ON_RAILS_TOKEN'] = 'ignored'
+
+      expect(response).to eq([201,
+                              { 'Content-Type' => 'application/json' },
+                              ['[{"id":1}]']])
+    end
+  end
 end

@@ -2,11 +2,13 @@ require 'json'
 require 'rack'
 require 'cypress_on_rails/middleware_config'
 require 'cypress_on_rails/command_executor'
+require 'cypress_on_rails/token_authentication'
 
 module CypressOnRails
   # Middleware to handle testing framework commands and eval
   class Middleware
     include MiddlewareConfig
+    include TokenAuthentication
 
     def initialize(app, command_executor = CommandExecutor, file = ::File)
       @app = app
@@ -47,6 +49,11 @@ module CypressOnRails
     end
 
     def handle_command(req)
+      # The built-in token check runs first so that a request without the
+      # shared secret never reaches application code.
+      rejection = invalid_middleware_token_response(req.env)
+      return rejection unless rejection.nil?
+
       maybe_env = configuration.before_request.call(req)
       # Halt the middleware if an Rack Env was returned by `before_request`
       return maybe_env unless maybe_env.nil?

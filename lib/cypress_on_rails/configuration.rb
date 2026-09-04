@@ -8,6 +8,10 @@ module CypressOnRails
     attr_accessor :use_vcr_middleware
     attr_accessor :use_vcr_use_cassette_middleware
     attr_accessor :before_request
+    # Optional shared secret. When set, every middleware that executes
+    # commands or resets state requires a matching X-Cypress-On-Rails-Token
+    # header. Defaults to ENV['CYPRESS_ON_RAILS_TOKEN'].
+    attr_accessor :middleware_token
     attr_accessor :logger
     attr_accessor :vcr_options
     
@@ -43,17 +47,27 @@ module CypressOnRails
       reset
     end
 
-    alias :use_middleware? :use_middleware
     alias :use_vcr_middleware? :use_vcr_middleware
     alias :use_vcr_use_cassette_middleware? :use_vcr_use_cassette_middleware
+
+    # The middleware can execute arbitrary ruby code, so it must never be
+    # mounted in production. When `use_middleware` was never assigned we
+    # resolve the default lazily: enabled everywhere except Rails production.
+    # An explicit assignment (true or false) always wins.
+    def use_middleware?
+      return use_middleware unless use_middleware.nil?
+
+      !rails_production?
+    end
 
     def reset
       self.api_prefix = ''
       self.install_folder = 'spec/e2e'
-      self.use_middleware = true
+      self.use_middleware = nil # nil means "decide from the environment", see #use_middleware?
       self.use_vcr_middleware = false
       self.use_vcr_use_cassette_middleware = false
       self.before_request = -> (request) {}
+      self.middleware_token = ENV.fetch('CYPRESS_ON_RAILS_TOKEN', nil)
       self.logger = Logger.new(STDOUT)
       self.vcr_options = {}
       
@@ -78,6 +92,16 @@ module CypressOnRails
       else
         yield
       end
+    end
+
+    private
+
+    # Works whether or not Rails is loaded, and whether `Rails.env` is an
+    # ActiveSupport::StringInquirer, a plain String or not set up yet.
+    def rails_production?
+      return false unless defined?(Rails) && Rails.respond_to?(:env)
+
+      Rails.env.to_s == 'production'
     end
   end
 

@@ -1,10 +1,12 @@
 require_relative 'middleware_helpers'
+require 'cypress_on_rails/token_authentication'
 
 module CypressOnRails
   module Vcr
     # Middleware to handle vcr with insert/eject endpoints
     class InsertEjectMiddleware
       include MiddlewareHelpers
+      include TokenAuthentication
 
       def initialize(app, vcr = nil)
         @app = app
@@ -15,9 +17,11 @@ module CypressOnRails
       def call(env)
         request = Rack::Request.new(env)
         if request.path.start_with?('/__e2e__/vcr/insert')
-          configuration.tagged_logged { handle_insert(request) }
+          invalid_middleware_token_response(env) ||
+            configuration.tagged_logged { handle_insert(request) }
         elsif request.path.start_with?('/__e2e__/vcr/eject')
-          configuration.tagged_logged { handle_eject }
+          invalid_middleware_token_response(env) ||
+            configuration.tagged_logged { handle_eject }
         else
           do_first_call unless @first_call
           @app.call(env)
