@@ -475,6 +475,9 @@ end
 # Builds and pushes the alias gem after the main gem is published. The alias is
 # a convenience, so any failure here warns and returns instead of aborting: the
 # main release has already happened and must never be rolled back.
+#
+# Dry runs build the alias too, so a broken alias gemspec surfaces before a live
+# release; they never push. The built artifact is always removed.
 # Returns :dry_run, :published, :skipped, or :failed.
 def publish_alias_gem(release_root:, gem_version:, dry_run:)
   alias_dir = File.join(release_root, ALIAS_GEM_DIR_NAME)
@@ -486,22 +489,25 @@ def publish_alias_gem(release_root:, gem_version:, dry_run:)
     return :skipped
   end
 
-  if dry_run
-    puts "DRY RUN: Would build and push #{ALIAS_GEM_NAME} #{gem_version} (alias gem, same version as #{MAIN_GEM_NAME})."
-    puts "DRY RUN: Would run: #{alias_gem_manual_publish_command(gem_version)}"
-    return :dry_run
-  end
-
   begin
     # The alias gemspec must be built from its own directory: RubyGems resolves
-    # spec.files relative to the current directory.
+    # spec.files relative to the current directory. Building is offline, so dry
+    # runs do it too and catch a broken gemspec before a live release.
     sh_in_dir_for_release(alias_dir, "gem build #{Shellwords.escape(gemspec_file)}")
+
+    if dry_run
+      puts "DRY RUN: Built #{package_file} to verify the alias gemspec; not pushing."
+      puts "DRY RUN: Would run: #{alias_gem_manual_publish_command(gem_version)}"
+      return :dry_run
+    end
+
+    puts "Carefully add your OTP for RubyGems again. The alias gem is a second push, so MFA prompts once more."
     sh_in_dir_for_release(alias_dir, "gem push #{Shellwords.escape(package_file)}")
     puts "Published #{ALIAS_GEM_NAME} #{gem_version} to RubyGems."
     :published
   rescue StandardError => error
-    warn "WARNING: Failed to publish the #{ALIAS_GEM_NAME} alias gem #{gem_version}: #{error.message}"
-    warn "WARNING: #{MAIN_GEM_NAME} #{gem_version} is already published and is unaffected."
+    warn "WARNING: Failed to #{dry_run ? 'build' : 'publish'} the #{ALIAS_GEM_NAME} alias gem #{gem_version}: #{error.message}"
+    warn "WARNING: #{MAIN_GEM_NAME} #{gem_version} is #{dry_run ? 'unaffected' : 'already published and is unaffected'}."
     warn "WARNING: Retry the alias gem manually with: #{alias_gem_manual_publish_command(gem_version)}"
     :failed
   ensure
@@ -525,10 +531,13 @@ def print_release_summary(release_result)
     release_result.fetch(:staged_files, []).each { |file| puts "  - #{file}" }
     puts "Gems that would be published:"
     puts "  - #{MAIN_GEM_NAME} #{released_version}"
-    if alias_gem_status == :skipped
+    case alias_gem_status
+    when :skipped
       puts "  - #{ALIAS_GEM_NAME} #{released_version} (SKIPPED: #{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec not found)"
+    when :failed
+      puts "  - #{ALIAS_GEM_NAME} #{released_version} (alias gem, FAILED TO BUILD: fix #{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec before releasing)"
     else
-      puts "  - #{ALIAS_GEM_NAME} #{released_version} (alias gem)"
+      puts "  - #{ALIAS_GEM_NAME} #{released_version} (alias gem, built and verified, not pushed)"
     end
     puts "Changelog: #{changelog_section_found ? 'CHANGELOG.md section found' : 'No CHANGELOG.md section found'}"
     puts "To actually release, run: bundle exec rake \"release[#{released_version}]\""

@@ -187,9 +187,12 @@ RSpec.describe "release rake helpers" do
         end
 
         expect(result[:alias_gem_status]).to eq(:dry_run)
-        expect(output).to include("DRY RUN: Would build and push e2e_on_rails 1.21.0")
+        expect(output).to include("DRY RUN: Built e2e_on_rails-1.21.0.gem to verify the alias gemspec; not pushing.")
         expect(output).to include("  - cypress-on-rails 1.21.0")
-        expect(output).to include("  - e2e_on_rails 1.21.0 (alias gem)")
+        expect(output).to include("  - e2e_on_rails 1.21.0 (alias gem, built and verified, not pushed)")
+        # The alias is really built in a dry run so a broken gemspec surfaces early,
+        # but nothing is ever pushed.
+        expect(events).to include("gem build e2e_on_rails.gemspec")
         expect(events.grep(/gem push/)).to be_empty
         expect(events.grep(/gem release/)).to be_empty
       end
@@ -199,6 +202,9 @@ RSpec.describe "release rake helpers" do
       with_alias_gem_release_root do |release_root|
         events = []
         stub_release_flow(release_root, dry_run: false)
+        # The release must carry on past the alias failure: the GitHub release
+        # sync happens after the alias step and must still run.
+        expect(self).to receive(:sync_github_release_after_publish)
         allow(self).to receive(:sh_in_dir_for_release) do |_dir, command|
           events << command
           raise "Command failed with status (1): [gem push]" if command.start_with?("gem push")
@@ -215,9 +221,10 @@ RSpec.describe "release rake helpers" do
 
         expect(result[:released_gem_version]).to eq("1.21.0")
         expect(result[:alias_gem_status]).to eq(:failed)
-        expect(events).to include("gem release")
-        expect(events).to include("gem build e2e_on_rails.gemspec")
-        expect(events).to include("gem push e2e_on_rails-1.21.0.gem")
+        # The main gem is published before the alias is built, and built before pushed.
+        expect(events.index("gem release")).to be < events.index("gem build e2e_on_rails.gemspec")
+        expect(events.index("gem build e2e_on_rails.gemspec"))
+          .to be < events.index("gem push e2e_on_rails-1.21.0.gem")
         expect(output).to include("Published cypress-on-rails 1.21.0 to RubyGems.")
         expect(output).to include("WARNING: e2e_on_rails 1.21.0 was NOT published")
       end
