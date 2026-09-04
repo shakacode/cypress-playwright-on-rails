@@ -22,6 +22,13 @@ echo '-- cypress install'
 bundle exec ./bin/rails g cypress_on_rails:install --install_folder=test --framework cypress --install_with=npm --force
 rm -vf test/cypress/e2e/rails_examples/using_vcr.cy.js
 
+echo '-- transactional server smoke test (Puma with more than one thread)'
+# Boots a real server through CypressOnRails::Server with transactional_server
+# enabled, drives concurrent writes and /cypress_rails_reset_state between two
+# "specs", and is bounded by its own timeout so a hang fails instead of blocking
+# CI. Runs before the long-lived server below so the two never share a port.
+RAILS_MAX_THREADS=3 bundle exec ./bin/rails runner script/transactional_server_smoke_test.rb
+
 echo '-- start rails server'
 # make sure the server is not running
 (kill -9 `cat ../server.pid` || true )

@@ -2,22 +2,41 @@ require 'logger'
 
 module CypressOnRails
   class Configuration
+    DEFAULT_SERVER_SHUTDOWN_TIMEOUT = 10
+
     attr_accessor :api_prefix
     attr_accessor :install_folder
     attr_accessor :use_middleware
     attr_accessor :use_vcr_middleware
     attr_accessor :use_vcr_use_cassette_middleware
-    attr_accessor :before_request
     attr_accessor :logger
     attr_accessor :vcr_options
-    
-    # Server hooks for managing test lifecycle
-    attr_accessor :before_server_start
-    attr_accessor :after_server_start
-    attr_accessor :after_transaction_start
-    attr_accessor :after_state_reset
-    attr_accessor :before_server_stop
-    
+
+    # Hooks are user-supplied callables. `before_request` runs inside the
+    # middleware; the rest run around the rake-task server lifecycle.
+    HOOKS = %i[
+      before_request
+      before_server_start
+      after_server_start
+      after_transaction_start
+      after_state_reset
+      before_server_stop
+    ].freeze
+
+    HOOKS.each do |hook_name|
+      attr_reader hook_name
+
+      define_method("#{hook_name}=") do |hook|
+        unless hook.nil? || hook.respond_to?(:call)
+          raise ArgumentError,
+                "#{hook_name} must respond to :call (for example a lambda or proc) or be nil, " \
+                "got #{hook.inspect}"
+        end
+
+        instance_variable_set("@#{hook_name}", hook)
+      end
+    end
+
     # Server configuration
     attr_accessor :server_host
     attr_accessor :server_port
@@ -28,6 +47,14 @@ module CypressOnRails
     # Timeout in seconds for individual HTTP readiness checks (default: 5)
     # Can be set via CYPRESS_RAILS_READINESS_TIMEOUT environment variable
     attr_accessor :server_readiness_timeout
+    # Seconds to wait after sending TERM before escalating to KILL when stopping
+    # the test server process group (default: 10)
+    # Can be set via CYPRESS_RAILS_SHUTDOWN_TIMEOUT environment variable
+    attr_reader :server_shutdown_timeout
+
+    def server_shutdown_timeout=(value)
+      @server_shutdown_timeout = positive_number!(:server_shutdown_timeout, value)
+    end
 
     # Attributes for backwards compatibility
     def cypress_folder
@@ -70,6 +97,7 @@ module CypressOnRails
       self.transactional_server = true
       self.server_readiness_path = ENV.fetch('CYPRESS_RAILS_READINESS_PATH', '/')
       self.server_readiness_timeout = ENV.fetch('CYPRESS_RAILS_READINESS_TIMEOUT', '5').to_i
+      self.server_shutdown_timeout = ENV.fetch('CYPRESS_RAILS_SHUTDOWN_TIMEOUT', DEFAULT_SERVER_SHUTDOWN_TIMEOUT)
     end
 
     def tagged_logged
@@ -78,6 +106,39 @@ module CypressOnRails
       else
         yield
       end
+    end
+
+    private
+
+    # Accepts a Numeric or a numeric String and returns it as a finite number
+    # greater than zero, raising ArgumentError with the offending value
+    # otherwise. Infinity would make the shutdown deadline unreachable, so the
+    # escalation to KILL would never happen.
+    def positive_number!(name, value)
+      number = coerce_number(value)
+      unless number && number > 0
+        raise ArgumentError,
+              "#{name} must be a finite number of seconds greater than 0, got #{value.inspect}"
+      end
+
+      number
+    end
+
+    def coerce_number(value)
+      number = case value
+               when Numeric
+                 value
+               when String
+                 begin
+                   Float(value)
+                 rescue ArgumentError
+                   nil
+                 end
+               end
+      return nil if number.nil?
+      return nil if number.respond_to?(:finite?) && !number.finite?
+
+      number
     end
   end
 

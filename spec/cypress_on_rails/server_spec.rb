@@ -5,6 +5,143 @@ require 'json'
 require 'stringio'
 
 RSpec.describe CypressOnRails::Server do
+  describe 'port bind race' do
+    let(:bind_failure_script) { 'STDERR.write("Address already in use - bind(2)\n"); exit 1' }
+
+    before do
+      allow($stderr).to receive(:write)
+      CypressOnRails.configuration.server_port = nil
+    end
+
+    def requested_port(command)
+      command[command.index('-p') + 1]
+    end
+
+    it 'respawns on a fresh port when an auto-selected port loses the bind race' do
+      server = described_class.new(host: '127.0.0.1')
+      ports = []
+      spawns = 0
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:spawn) do |*command, **options|
+        spawns += 1
+        ports << requested_port(command)
+        script = spawns == 1 ? bind_failure_script : 'STDERR.write("Listening\n"); sleep 10'
+        Process.spawn(RbConfig.ruby, '-e', script, **options)
+      end
+      allow(server).to receive(:server_responding?) { spawns >= 2 }
+
+      server.open
+
+      expect(spawns).to eq(2)
+      expect(ports.first).not_to eq(ports.last)
+      expect(ports.last).to eq(server.port.to_s)
+    end
+
+    it 'does not retry a bind failure when the port was configured explicitly' do
+      server = described_class.new(host: '127.0.0.1', port: 4321)
+      spawns = 0
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:server_responding?).and_return(false)
+      allow(server).to receive(:spawn) do |*_command, **options|
+        spawns += 1
+        Process.spawn(RbConfig.ruby, '-e', bind_failure_script, **options)
+      end
+
+      expect { server.open }.to raise_error(CypressOnRails::ServerError) { |error|
+        expect(error.message).to include('Address already in use')
+        expect(error.message).not_to include('could not bind an auto-selected port')
+      }
+      expect(spawns).to eq(1)
+    end
+
+    it 'gives up after the bounded number of bind attempts' do
+      server = described_class.new(host: '127.0.0.1')
+      ports = []
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:server_responding?).and_return(false)
+      allow(server).to receive(:spawn) do |*command, **options|
+        ports << requested_port(command)
+        Process.spawn(RbConfig.ruby, '-e', bind_failure_script, **options)
+      end
+
+      expect { server.open }.to raise_error(CypressOnRails::ServerError) { |error|
+        expect(error.message).to include('could not bind an auto-selected port after 3 attempts')
+        expect(error.message).to include('config.server_port')
+        expect(error.message).to include('Address already in use')
+      }
+      expect(ports.length).to eq(described_class::PORT_ACQUISITION_ATTEMPTS)
+      expect(ports.uniq.length).to eq(described_class::PORT_ACQUISITION_ATTEMPTS)
+    end
+
+    it 'does not retry an early exit that is not a bind failure' do
+      server = described_class.new(host: '127.0.0.1')
+      spawns = 0
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:server_responding?).and_return(false)
+      allow(server).to receive(:spawn) do |*_command, **options|
+        spawns += 1
+        Process.spawn(RbConfig.ruby, '-e', 'STDERR.write("some other boot failure\n"); exit 3', **options)
+      end
+
+      expect { server.open }.to raise_error(CypressOnRails::ServerError, /exit status 3/)
+      expect(spawns).to eq(1)
+    end
+  end
+
+  describe 'port acquisition' do
+    let(:server) { described_class.new(host: '127.0.0.1', port: 4321) }
+
+    it 'retries when the detected port is claimed before it can be bound' do
+      occupied = TCPServer.new(described_class::PORT_PROBE_HOST, 0)
+      occupied_port = occupied.addr[1]
+      detected = []
+      allow(server).to receive(:detect_free_port).and_wrap_original do |original|
+        port = detected.empty? ? occupied_port : original.call
+        detected << port
+        port
+      end
+
+      port = server.send(:find_available_port)
+
+      expect(detected.first).to eq(occupied_port)
+      expect(detected.length).to eq(2)
+      expect(port).to eq(detected.last)
+      expect(port).not_to eq(occupied_port)
+    ensure
+      occupied.close
+    end
+
+    it 'raises a ServerError after exhausting the bounded retries' do
+      occupied = TCPServer.new(described_class::PORT_PROBE_HOST, 0)
+      occupied_port = occupied.addr[1]
+      attempts = 0
+      allow(server).to receive(:detect_free_port) do
+        attempts += 1
+        occupied_port
+      end
+
+      expect { server.send(:find_available_port) }.to raise_error(CypressOnRails::ServerError) { |error|
+        expect(error.message).to include('Unable to acquire a free port')
+        expect(error.message).to include('Errno::EADDRINUSE')
+        expect(error.message).to include('config.server_port')
+      }
+      expect(attempts).to eq(described_class::PORT_ACQUISITION_ATTEMPTS)
+    ensure
+      occupied.close
+    end
+
+    it 'acquires a bindable port when no server_port is configured' do
+      CypressOnRails.configuration.server_port = nil
+
+      acquired = described_class.new(host: '127.0.0.1')
+      socket = TCPServer.new(described_class::PORT_PROBE_HOST, acquired.port)
+
+      expect(socket.addr[1]).to eq(acquired.port)
+    ensure
+      socket.close if socket
+    end
+  end
+
   describe '#open' do
     let(:server) { described_class.new(host: '127.0.0.1', port: 4321) }
 
@@ -132,6 +269,54 @@ RSpec.describe CypressOnRails::Server do
       expect(signals).to eq([['TERM', -pid], ['KILL', -pid]])
       expect(server.instance_variable_get(:@server_exit_status)).to eq(status)
       expect(polls).to eq(2)
+    end
+
+    it 'waits the configured timeout for TERM and a fixed grace after KILL' do
+      pid = 12_345
+      deadlines = []
+      results = [false, true]
+      CypressOnRails.configuration.server_shutdown_timeout = 2.5
+      prepare_lifecycle_server(pid)
+      server.instance_variable_set(:@server_pgid, pid)
+      server.instance_variable_set(:@server_exit_status, exited_process_status)
+      allow(Process).to receive(:kill)
+      allow(server).to receive(:monotonic_time).and_return(0.0)
+      allow(server).to receive(:wait_for_server_group_exit) do |deadline|
+        deadlines << deadline
+        results.shift
+      end
+
+      expect(server.send(:stop_server, pid)).to eq(:terminal_group_signaled)
+
+      # Bounds the whole stop at timeout + grace, not at twice the timeout.
+      expect(deadlines).to eq([2.5, described_class::SERVER_KILL_GRACE_TIMEOUT])
+    end
+
+    it 'falls back to the built-in stop timeout when the configured value is unusable' do
+      allow(CypressOnRails.configuration).to receive(:server_shutdown_timeout).and_return(nil)
+
+      expect(server.send(:server_shutdown_timeout)).to eq(described_class::SERVER_STOP_TIMEOUT)
+    end
+
+    it 'KILLs and reaps a TERM-ignoring server within the configured shutdown timeout' do
+      shutdown_timeout = 0.5
+      CypressOnRails.configuration.server_shutdown_timeout = shutdown_timeout
+      trap_installed = Queue.new
+      allow(server).to receive(:capture_server_output).and_wrap_original do |original, output|
+        original.call(output).tap { trap_installed << true }
+      end
+      spawn_term_ignoring_child
+
+      pid = server.send(:spawn_server)
+      trap_installed.pop
+
+      result = Timeout.timeout(shutdown_timeout + 5) { server.send(:stop_server, pid) }
+
+      expect(result).to eq(:signaled)
+      status = server.instance_variable_get(:@server_exit_status)
+      expect(status).to be_a(Process::Status)
+      expect(status.termsig).to eq(Signal.list.fetch('KILL'))
+      expect(server.send(:process_exists?, pid)).to be(false)
     end
 
     it 'treats an externally reaped server as terminal with unavailable status without TERM' do
@@ -570,6 +755,15 @@ RSpec.describe CypressOnRails::Server do
     def spawn_exiting_child(output, after_output = nil)
       allow(server).to receive(:spawn) do |*_command, **options|
         script = ["STDERR.write(#{output.dump})", after_output, 'exit 7'].compact.join('; ')
+        Process.spawn(RbConfig.ruby, '-e', script, **options)
+      end
+    end
+
+    # A child that installs a no-op TERM handler and keeps sleeping, so only
+    # KILL can end it.
+    def spawn_term_ignoring_child
+      allow(server).to receive(:spawn) do |*_command, **options|
+        script = "Signal.trap('TERM') {}; STDERR.write(\"trap installed\\n\"); loop { sleep 1 }"
         Process.spawn(RbConfig.ruby, '-e', script, **options)
       end
     end
