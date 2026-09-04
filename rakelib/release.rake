@@ -2,6 +2,7 @@
 
 require "bundler"
 require "English"
+require "fileutils"
 require "open3"
 require "rubygems/version"
 require "shellwords"
@@ -9,6 +10,12 @@ require "tempfile"
 require "tmpdir"
 
 GITHUB_REPO_SLUG_PATTERN = /\A[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\z/ unless defined?(GITHUB_REPO_SLUG_PATTERN)
+
+# The repository publishes two gems at the same version: the real gem, and the
+# `e2e_on_rails` alias that reserves the canonical name adopted at 2.0 (ADR-0001).
+MAIN_GEM_NAME = "cypress-on-rails" unless defined?(MAIN_GEM_NAME)
+ALIAS_GEM_NAME = "e2e_on_rails" unless defined?(ALIAS_GEM_NAME)
+ALIAS_GEM_DIR_NAME = "alias_gem" unless defined?(ALIAS_GEM_DIR_NAME)
 
 def release_truthy?(value)
   [true, "true", "yes", 1, "1", "t"].include?(value.instance_of?(String) ? value.downcase : value)
@@ -456,10 +463,57 @@ def release_staged_files
   ]
 end
 
+def alias_gem_package_file(gem_version)
+  "#{ALIAS_GEM_NAME}-#{gem_version}.gem"
+end
+
+def alias_gem_manual_publish_command(gem_version)
+  "(cd #{ALIAS_GEM_DIR_NAME} && gem build #{ALIAS_GEM_NAME}.gemspec && " \
+    "gem push #{alias_gem_package_file(gem_version)})"
+end
+
+# Builds and pushes the alias gem after the main gem is published. The alias is
+# a convenience, so any failure here warns and returns instead of aborting: the
+# main release has already happened and must never be rolled back.
+# Returns :dry_run, :published, :skipped, or :failed.
+def publish_alias_gem(release_root:, gem_version:, dry_run:)
+  alias_dir = File.join(release_root, ALIAS_GEM_DIR_NAME)
+  gemspec_file = "#{ALIAS_GEM_NAME}.gemspec"
+  package_file = alias_gem_package_file(gem_version)
+
+  unless File.exist?(File.join(alias_dir, gemspec_file))
+    puts "Skipping #{ALIAS_GEM_NAME}: #{ALIAS_GEM_DIR_NAME}/#{gemspec_file} not found in #{release_root}."
+    return :skipped
+  end
+
+  if dry_run
+    puts "DRY RUN: Would build and push #{ALIAS_GEM_NAME} #{gem_version} (alias gem, same version as #{MAIN_GEM_NAME})."
+    puts "DRY RUN: Would run: #{alias_gem_manual_publish_command(gem_version)}"
+    return :dry_run
+  end
+
+  begin
+    # The alias gemspec must be built from its own directory: RubyGems resolves
+    # spec.files relative to the current directory.
+    sh_in_dir_for_release(alias_dir, "gem build #{Shellwords.escape(gemspec_file)}")
+    sh_in_dir_for_release(alias_dir, "gem push #{Shellwords.escape(package_file)}")
+    puts "Published #{ALIAS_GEM_NAME} #{gem_version} to RubyGems."
+    :published
+  rescue StandardError => error
+    warn "WARNING: Failed to publish the #{ALIAS_GEM_NAME} alias gem #{gem_version}: #{error.message}"
+    warn "WARNING: #{MAIN_GEM_NAME} #{gem_version} is already published and is unaffected."
+    warn "WARNING: Retry the alias gem manually with: #{alias_gem_manual_publish_command(gem_version)}"
+    :failed
+  ensure
+    FileUtils.rm_f(File.join(alias_dir, package_file))
+  end
+end
+
 def print_release_summary(release_result)
   released_version = release_result[:released_gem_version]
   dry_run = release_result[:dry_run]
   changelog_section_found = release_result[:changelog_section_found]
+  alias_gem_status = release_result[:alias_gem_status]
 
   puts "\n#{'=' * 80}"
   puts(dry_run ? "DRY RUN COMPLETE" : "RELEASE COMPLETE")
@@ -469,10 +523,25 @@ def print_release_summary(release_result)
     puts "Version would be bumped to: #{released_version}"
     puts "Files that would be updated:"
     release_result.fetch(:staged_files, []).each { |file| puts "  - #{file}" }
+    puts "Gems that would be published:"
+    puts "  - #{MAIN_GEM_NAME} #{released_version}"
+    if alias_gem_status == :skipped
+      puts "  - #{ALIAS_GEM_NAME} #{released_version} (SKIPPED: #{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec not found)"
+    else
+      puts "  - #{ALIAS_GEM_NAME} #{released_version} (alias gem)"
+    end
     puts "Changelog: #{changelog_section_found ? 'CHANGELOG.md section found' : 'No CHANGELOG.md section found'}"
     puts "To actually release, run: bundle exec rake \"release[#{released_version}]\""
   else
-    puts "Published cypress-on-rails #{released_version} to RubyGems."
+    puts "Published #{MAIN_GEM_NAME} #{released_version} to RubyGems."
+    case alias_gem_status
+    when :published
+      puts "Published #{ALIAS_GEM_NAME} #{released_version} to RubyGems."
+    when :failed
+      puts "WARNING: #{ALIAS_GEM_NAME} #{released_version} was NOT published. Retry with: #{alias_gem_manual_publish_command(released_version)}"
+    else
+      puts "#{ALIAS_GEM_NAME} was not published (#{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec not found)."
+    end
     puts(changelog_section_found ? "GitHub release synced from CHANGELOG.md." : "GitHub release not synced because CHANGELOG.md section was missing.")
   end
 end
@@ -482,6 +551,7 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
   gem_root = File.expand_path("..", __dir__)
   released_gem_version = nil
   changelog_section_found = false
+  alias_gem_status = :skipped
   staged_files = release_staged_files
 
   verify_gh_auth(gem_root: gem_root) unless dry_run
@@ -520,9 +590,9 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
 
     if dry_run
       if version_already_current
-        puts "DRY RUN: Would tag v#{actual_version}, push, and release gem from the current commit."
+        puts "DRY RUN: Would tag v#{actual_version}, push, and release #{MAIN_GEM_NAME} #{actual_version} from the current commit."
       else
-        puts "DRY RUN: Would commit #{staged_files.join(', ')}, tag v#{actual_version}, push, and release gem."
+        puts "DRY RUN: Would commit #{staged_files.join(', ')}, tag v#{actual_version}, push, and release #{MAIN_GEM_NAME} #{actual_version}."
       end
     else
       unless version_already_current
@@ -534,6 +604,12 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
       puts "Carefully add your OTP for RubyGems. If you get an error, run 'gem release' again."
       sh_in_dir_for_release(release_root, "gem release")
     end
+
+    alias_gem_status = publish_alias_gem(
+      release_root: release_root,
+      gem_version: actual_version,
+      dry_run: dry_run
+    )
   end
 
   if released_gem_version
@@ -555,6 +631,7 @@ def perform_release(gem_version:, dry_run:, check_uncommitted: true, allow_versi
     dry_run: dry_run,
     released_gem_version: released_gem_version,
     changelog_section_found: changelog_section_found,
+    alias_gem_status: alias_gem_status,
     staged_files: staged_files
   }
 end
@@ -572,6 +649,10 @@ def perform_sync_github_release(gem_root:, version_input:, dry_run:)
 end
 
 desc("Releases the gem using the given version.
+
+Publishes two gems at the same version: cypress-on-rails, then the e2e_on_rails
+alias gem from alias_gem/. An alias-gem failure warns and continues; the main
+release is never rolled back.
 
 Recommended flow:
   1. Run /update-changelog release, /update-changelog rc, or an explicit version.

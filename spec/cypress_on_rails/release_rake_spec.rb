@@ -137,6 +137,77 @@ RSpec.describe "release rake helpers" do
     end
   end
 
+  describe "alias gem publishing" do
+    def with_alias_gem_release_root
+      Dir.mktmpdir do |dir|
+        FileUtils.mkdir_p(File.join(dir, "alias_gem"))
+        File.write(File.join(dir, "alias_gem", "e2e_on_rails.gemspec"), "# fixture\n")
+        yield dir
+      end
+    end
+
+    def stub_release_flow(release_root, dry_run:)
+      allow(self).to receive(:ensure_clean_worktree!)
+      allow(self).to receive(:verify_gh_auth)
+      allow(self).to receive(:with_release_checkout)
+        .with(gem_root: File.expand_path("../..", __dir__), dry_run: dry_run)
+        .and_yield(release_root)
+      allow(self).to receive(:current_gem_version).with(release_root).and_return("1.21.0")
+      allow(self).to receive(:warn_changelog_missing)
+      allow(self).to receive(:validate_release_version_policy!)
+      allow(self).to receive(:sync_github_release_after_publish)
+    end
+
+    it "reports both gems in a dry run without pushing either" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: true)
+        allow(self).to receive(:sh_in_dir_for_release) { |_dir, command| events << command }
+
+        result = nil
+        output = capture_stdout do
+          result = perform_release(gem_version: "1.21.0", dry_run: true)
+          print_release_summary(result)
+        end
+
+        expect(result[:alias_gem_status]).to eq(:dry_run)
+        expect(output).to include("DRY RUN: Would build and push e2e_on_rails 1.21.0")
+        expect(output).to include("  - cypress-on-rails 1.21.0")
+        expect(output).to include("  - e2e_on_rails 1.21.0 (alias gem)")
+        expect(events.grep(/gem push/)).to be_empty
+        expect(events.grep(/gem release/)).to be_empty
+      end
+    end
+
+    it "warns and continues when the alias gem push fails after the main release" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: false)
+        allow(self).to receive(:sh_in_dir_for_release) do |_dir, command|
+          events << command
+          raise "Command failed with status (1): [gem push]" if command.start_with?("gem push")
+        end
+
+        result = nil
+        output = nil
+        expect do
+          output = capture_stdout do
+            result = perform_release(gem_version: "1.21.0", dry_run: false)
+            print_release_summary(result)
+          end
+        end.to output(/WARNING: Failed to publish the e2e_on_rails alias gem 1\.21\.0/).to_stderr
+
+        expect(result[:released_gem_version]).to eq("1.21.0")
+        expect(result[:alias_gem_status]).to eq(:failed)
+        expect(events).to include("gem release")
+        expect(events).to include("gem build e2e_on_rails.gemspec")
+        expect(events).to include("gem push e2e_on_rails-1.21.0.gem")
+        expect(output).to include("Published cypress-on-rails 1.21.0 to RubyGems.")
+        expect(output).to include("WARNING: e2e_on_rails 1.21.0 was NOT published")
+      end
+    end
+  end
+
   describe "#resolve_version_input" do
     it "uses the changelog version when it is newer than the current gem version" do
       allow(self).to receive(:extract_latest_changelog_version).with(gem_root: "/repo").and_return("1.21.0.rc.0")
