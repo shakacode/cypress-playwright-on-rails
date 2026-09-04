@@ -9,17 +9,34 @@ module CypressOnRails
     attr_accessor :use_middleware
     attr_accessor :use_vcr_middleware
     attr_accessor :use_vcr_use_cassette_middleware
-    attr_accessor :before_request
     attr_accessor :logger
     attr_accessor :vcr_options
-    
-    # Server hooks for managing test lifecycle
-    attr_accessor :before_server_start
-    attr_accessor :after_server_start
-    attr_accessor :after_transaction_start
-    attr_accessor :after_state_reset
-    attr_accessor :before_server_stop
-    
+
+    # Hooks are user-supplied callables. `before_request` runs inside the
+    # middleware; the rest run around the rake-task server lifecycle.
+    HOOKS = %i[
+      before_request
+      before_server_start
+      after_server_start
+      after_transaction_start
+      after_state_reset
+      before_server_stop
+    ].freeze
+
+    HOOKS.each do |hook_name|
+      attr_reader hook_name
+
+      define_method("#{hook_name}=") do |hook|
+        unless hook.nil? || hook.respond_to?(:call)
+          raise ArgumentError,
+                "#{hook_name} must respond to :call (for example a lambda or proc) or be nil, " \
+                "got #{hook.inspect}"
+        end
+
+        instance_variable_set("@#{hook_name}", hook)
+      end
+    end
+
     # Server configuration
     attr_accessor :server_host
     attr_accessor :server_port

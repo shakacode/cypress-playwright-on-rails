@@ -40,6 +40,62 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.server_shutdown_timeout).to eq(30)
   end
 
+  describe 'hook validation' do
+    let(:configuration) { described_class.new }
+
+    it 'covers every lifecycle hook' do
+      expect(described_class::HOOKS).to contain_exactly(
+        :before_request,
+        :before_server_start,
+        :after_server_start,
+        :after_transaction_start,
+        :after_state_reset,
+        :before_server_stop
+      )
+    end
+
+    described_class::HOOKS.each do |hook_name|
+      it "accepts a callable for #{hook_name}" do
+        hook = -> {}
+
+        configuration.public_send("#{hook_name}=", hook)
+
+        expect(configuration.public_send(hook_name)).to eq(hook)
+      end
+
+      it "accepts an arbitrary object responding to :call for #{hook_name}" do
+        callable = Class.new { def call; end }.new
+
+        configuration.public_send("#{hook_name}=", callable)
+
+        expect(configuration.public_send(hook_name)).to eq(callable)
+      end
+
+      it "accepts nil for #{hook_name}" do
+        configuration.public_send("#{hook_name}=", nil)
+
+        expect(configuration.public_send(hook_name)).to be_nil
+      end
+
+      it "rejects a non-callable for #{hook_name}" do
+        expect { configuration.public_send("#{hook_name}=", 'DatabaseCleaner.clean') }
+          .to raise_error(
+            ArgumentError,
+            "#{hook_name} must respond to :call (for example a lambda or proc) or be nil, " \
+            'got "DatabaseCleaner.clean"'
+          )
+      end
+    end
+
+    it 'leaves the previous hook in place when an invalid value is rejected' do
+      hook = -> {}
+      configuration.before_server_start = hook
+
+      expect { configuration.before_server_start = :not_callable }.to raise_error(ArgumentError)
+      expect(configuration.before_server_start).to eq(hook)
+    end
+  end
+
   describe '#server_shutdown_timeout=' do
     let(:configuration) { described_class.new }
 
