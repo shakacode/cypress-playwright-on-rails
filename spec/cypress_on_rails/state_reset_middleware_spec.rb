@@ -6,24 +6,38 @@ RSpec.describe CypressOnRails::StateResetMiddleware do
   let(:cleared) { [] }
 
   before do
-    stub_const('Rails', double('Rails', cache: double('cache', clear: nil)))
+    stub_rails(reloading: true)
+    stub_dependencies(autoloader: double('autoloader'))
   end
 
-  # Stands in for ActiveSupport::Dependencies across Rails versions: Rails >= 7
-  # exposes .autoloader (nil whenever reloading is disabled) and its .clear
-  # calls .autoloader.reload, so clearing without an autoloader raises exactly
-  # as it does in a real app. Older versions do not expose .autoloader at all.
-  def stub_dependencies(with_autoloader:, autoloader_value: nil)
+  # Rails asks the application config whether reloading is on. Rails 7.1+ names
+  # it reloading_enabled?; 6.1 and 7.0 only expose cache_classes.
+  def stub_rails(reloading:, config_style: :modern)
+    config = if config_style == :modern
+               double('config', reloading_enabled?: reloading)
+             else
+               double('config', cache_classes: !reloading)
+             end
+    stub_const('Rails', double('Rails',
+                               application: double('application', config: config),
+                               cache: double('cache', clear: nil)))
+  end
+
+  # Stands in for ActiveSupport::Dependencies across Rails versions. Pass
+  # autoloader: :absent for the Rails 6.1 shape, which has no such accessor and
+  # instead raises from .clear when reloading is off.
+  def stub_dependencies(autoloader: :absent, raises: nil)
     recorder = cleared
-    value = autoloader_value
-    autoloader_exposed = with_autoloader
+    error = raises
+    value = autoloader
+    exposes_autoloader = autoloader != :absent
     dependencies = Module.new do
       define_singleton_method(:clear) do
-        raise NoMethodError, "undefined method 'reload' for nil" if autoloader_exposed && value.nil?
+        raise error if error
 
         recorder << :cleared
       end
-      define_singleton_method(:autoloader) { value } if with_autoloader
+      define_singleton_method(:autoloader) { value } if exposes_autoloader
     end
     stub_const('ActiveSupport::Dependencies', dependencies)
   end
@@ -38,8 +52,6 @@ RSpec.describe CypressOnRails::StateResetMiddleware do
 
   ['/cypress_rails_reset_state', '/__cypress__/reset_state'].each do |path|
     it "resets state for #{path}" do
-      stub_dependencies(with_autoloader: true, autoloader_value: nil)
-
       status, _headers, body = middleware.call('PATH_INFO' => path)
 
       expect(status).to eq(200)
@@ -48,25 +60,56 @@ RSpec.describe CypressOnRails::StateResetMiddleware do
   end
 
   describe 'clearing autoloaded constants' do
-    it 'skips the clear when reloading is disabled and there is no autoloader' do
-      stub_dependencies(with_autoloader: true, autoloader_value: nil)
+    context 'on Rails 7.0+, which leaves the autoloader nil when reloading is off' do
+      it 'skips the clear rather than raising NoMethodError after truncating' do
+        stub_rails(reloading: false)
+        stub_dependencies(autoloader: nil, raises: NoMethodError.new("undefined method 'reload' for nil"))
 
-      status, _headers, _body = reset_state
+        status, _headers, body = reset_state
 
-      expect(status).to eq(200)
-      expect(cleared).to be_empty
+        expect(status).to eq(200)
+        expect(body).to eq(['State reset completed'])
+        expect(cleared).to be_empty
+      end
+
+      it 'clears when reloading is enabled' do
+        stub_rails(reloading: true)
+        stub_dependencies(autoloader: double('autoloader'))
+
+        reset_state
+
+        expect(cleared).to eq([:cleared])
+      end
     end
 
-    it 'clears when an autoloader is present' do
-      stub_dependencies(with_autoloader: true, autoloader_value: double('autoloader'))
+    context 'on Rails 6.1, which has no autoloader accessor' do
+      it 'skips the clear rather than raising when cache_classes is true' do
+        stub_rails(reloading: false, config_style: :legacy)
+        stub_dependencies(
+          autoloader: :absent,
+          raises: RuntimeError.new('reloading is disabled because config.cache_classes is true')
+        )
 
-      reset_state
+        status, _headers, body = reset_state
 
-      expect(cleared).to eq([:cleared])
+        expect(status).to eq(200)
+        expect(body).to eq(['State reset completed'])
+        expect(cleared).to be_empty
+      end
+
+      it 'clears when reloading is enabled' do
+        stub_rails(reloading: true, config_style: :legacy)
+        stub_dependencies(autoloader: :absent)
+
+        reset_state
+
+        expect(cleared).to eq([:cleared])
+      end
     end
 
-    it 'clears on Rails versions that do not expose an autoloader' do
-      stub_dependencies(with_autoloader: false)
+    it 'clears when there is no Rails application to ask' do
+      stub_const('Rails', double('Rails', cache: double('cache', clear: nil)))
+      stub_dependencies(autoloader: :absent)
 
       reset_state
 
@@ -75,8 +118,6 @@ RSpec.describe CypressOnRails::StateResetMiddleware do
   end
 
   describe 'the after_state_reset hook' do
-    before { stub_dependencies(with_autoloader: true, autoloader_value: nil) }
-
     it 'runs the configured hook' do
       events = []
       CypressOnRails.configuration.after_state_reset = -> { events << :hook }
