@@ -1,3 +1,14 @@
+// Sends the shared secret when one is configured, see the "Security model"
+// section of the cypress-on-rails README. Set it in cypress.env.json as
+// CYPRESS_ON_RAILS_TOKEN, or in the shell as CYPRESS_CYPRESS_ON_RAILS_TOKEN
+// (cypress strips the CYPRESS_ prefix from OS environment variables).
+const cypressOnRailsHeaders = (headers) => {
+  const token = Cypress.env('CYPRESS_ON_RAILS_TOKEN') || Cypress.env('ON_RAILS_TOKEN')
+  if (!token) return headers
+
+  return Object.assign({}, headers, { 'X-Cypress-On-Rails-Token': token })
+}
+
 Cypress.Commands.add("vcr_insert_cassette", (cassette_name, options) => {
   if (!options) options = {};
 
@@ -7,6 +18,7 @@ Cypress.Commands.add("vcr_insert_cassette", (cassette_name, options) => {
     method: 'POST',
     url: "/__e2e__/vcr/insert",
     body: JSON.stringify([cassette_name,options]),
+    headers: cypressOnRailsHeaders({}),
     log: false,
     failOnStatusCode: false
   }).then((response) => {
@@ -24,6 +36,7 @@ Cypress.Commands.add("vcr_eject_cassette", () => {
   return cy.request({
     method: 'POST',
     url: "/__e2e__/vcr/eject",
+    headers: cypressOnRailsHeaders({}),
     log: false,
     failOnStatusCode: false
   }).then((response) => {
