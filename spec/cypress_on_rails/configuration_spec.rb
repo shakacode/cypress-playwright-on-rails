@@ -105,11 +105,25 @@ RSpec.describe CypressOnRails::Configuration do
       expect(configuration.server_shutdown_timeout).to eq(2.5)
     end
 
-    [nil, 0, -1, 'soon', '', true, Float::NAN].each do |value|
+    [nil, 0, -1, 'soon', '', true, Float::NAN, Float::INFINITY, -Float::INFINITY,
+     'Infinity', 'NaN', '1e10000', '-1e10000'].each do |value|
       it "rejects #{value.inspect}" do
         expect { configuration.server_shutdown_timeout = value }
-          .to raise_error(ArgumentError, /server_shutdown_timeout must be a number of seconds greater than 0/)
+          .to raise_error(ArgumentError, /server_shutdown_timeout must be a finite number of seconds greater than 0/)
       end
+    end
+
+    # An infinite timeout makes the shutdown deadline unreachable, so
+    # stop_server would wait on TERM forever and never escalate to KILL.
+    it 'reports an overflowing string by its original value' do
+      expect { configuration.server_shutdown_timeout = '1e10000' }
+        .to raise_error(ArgumentError, /got "1e10000"/)
+    end
+
+    it 'only ever stores a finite timeout' do
+      configuration.server_shutdown_timeout = '2.5'
+
+      expect(configuration.server_shutdown_timeout).to be_finite
     end
 
     it 'reports the rejected value in the error message' do

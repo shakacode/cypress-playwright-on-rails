@@ -110,28 +110,35 @@ module CypressOnRails
 
     private
 
-    # Accepts a Numeric or a numeric String and returns it as a number greater
-    # than zero, raising ArgumentError with the offending value otherwise.
+    # Accepts a Numeric or a numeric String and returns it as a finite number
+    # greater than zero, raising ArgumentError with the offending value
+    # otherwise. Infinity would make the shutdown deadline unreachable, so the
+    # escalation to KILL would never happen.
     def positive_number!(name, value)
       number = coerce_number(value)
       unless number && number > 0
-        raise ArgumentError, "#{name} must be a number of seconds greater than 0, got #{value.inspect}"
+        raise ArgumentError,
+              "#{name} must be a finite number of seconds greater than 0, got #{value.inspect}"
       end
 
       number
     end
 
     def coerce_number(value)
-      case value
-      when Numeric
-        value.respond_to?(:nan?) && value.nan? ? nil : value
-      when String
-        begin
-          Float(value)
-        rescue ArgumentError
-          nil
-        end
-      end
+      number = case value
+               when Numeric
+                 value
+               when String
+                 begin
+                   Float(value)
+                 rescue ArgumentError
+                   nil
+                 end
+               end
+      return nil if number.nil?
+      return nil if number.respond_to?(:finite?) && !number.finite?
+
+      number
     end
   end
 
