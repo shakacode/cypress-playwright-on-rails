@@ -271,7 +271,7 @@ RSpec.describe CypressOnRails::Server do
       expect(polls).to eq(2)
     end
 
-    it 'derives the TERM wait deadline from the configured shutdown timeout' do
+    it 'waits the configured timeout for TERM and a fixed grace after KILL' do
       pid = 12_345
       deadlines = []
       results = [false, true]
@@ -288,7 +288,8 @@ RSpec.describe CypressOnRails::Server do
 
       expect(server.send(:stop_server, pid)).to eq(:terminal_group_signaled)
 
-      expect(deadlines).to eq([2.5, 2.5])
+      # Bounds the whole stop at timeout + grace, not at twice the timeout.
+      expect(deadlines).to eq([2.5, described_class::SERVER_KILL_GRACE_TIMEOUT])
     end
 
     it 'falls back to the built-in stop timeout when the configured value is unusable' do

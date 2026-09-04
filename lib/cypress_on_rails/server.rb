@@ -19,6 +19,10 @@ module CypressOnRails
     # Fallback used when the configuration does not supply a usable
     # server_shutdown_timeout; see Configuration#server_shutdown_timeout.
     SERVER_STOP_TIMEOUT = 10
+    # A process cannot ignore KILL, so a short fixed grace is enough to reap it.
+    # Keeping it fixed bounds a whole stop at server_shutdown_timeout plus this,
+    # rather than at twice a configurable timeout.
+    SERVER_KILL_GRACE_TIMEOUT = 5
     SERVER_STOP_POLL_INTERVAL = 0.05
     # Bounded attempts shared by free-port selection and the respawn that
     # follows a lost bind race; see #find_available_port and
@@ -284,7 +288,7 @@ module CypressOnRails
           unless wait_for_server_group_exit(monotonic_time + shutdown_timeout)
             CypressOnRails.configuration.logger.warn("Server process group did not terminate after TERM signal, sending KILL")
             send_kill_signal(pid)
-            wait_for_server_group_exit(monotonic_time + shutdown_timeout)
+            wait_for_server_group_exit(monotonic_time + SERVER_KILL_GRACE_TIMEOUT)
           end
           return leader_terminal ? :terminal_group_signaled : :signaled
         end
@@ -293,7 +297,7 @@ module CypressOnRails
           CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
           unless server_exited?
             send_kill_signal(pid)
-            wait_for_server_exit(monotonic_time + shutdown_timeout)
+            wait_for_server_exit(monotonic_time + SERVER_KILL_GRACE_TIMEOUT)
           end
         end
         :signaled
