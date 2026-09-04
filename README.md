@@ -259,6 +259,11 @@ export CYPRESS_ON_RAILS_TOKEN=$(openssl rand -hex 16)
   from OS environment variables, and the helpers accept both spellings).
 * Playwright reads `process.env.CYPRESS_ON_RAILS_TOKEN`.
 
+The generated helpers cover every gem endpoint, including `cy.appResetState()` /
+`appResetState()` for the state reset endpoint. If you call a gem endpoint yourself with
+a raw `cy.request`, `fetch` or `curl`, you have to send the `X-Cypress-On-Rails-Token`
+header yourself once a token is configured, or the request is rejected with a 403.
+
 The optional `use_cassette` VCR middleware wraps ordinary application requests instead
 of exposing an endpoint of its own, so it is not affected by the token.
 

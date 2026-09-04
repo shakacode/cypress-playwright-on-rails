@@ -68,6 +68,16 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
       examples_path = File.join(destination_root, 'e2e', 'cypress', 'e2e', 'rails_examples')
       expect(File).to be_directory(examples_path)
     end
+
+    it 'generates helpers that reach every middleware endpoint with the token header' do
+      content = File.read(File.join(destination_root, 'e2e', 'cypress', 'support', 'on-rails.js'))
+
+      aggregate_failures do
+        expect(content).to include('appCommands')
+        expect(content).to include('appResetState')
+        expect(content).to include('X-Cypress-On-Rails-Token')
+      end
+    end
   end
 
   describe 'with playwright framework' do
@@ -110,6 +120,16 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
     it 'creates playwright examples in framework subdirectory' do
       examples_path = File.join(destination_root, 'e2e', 'playwright', 'e2e', 'rails_examples')
       expect(File).to be_directory(examples_path)
+    end
+
+    it 'generates helpers that reach every middleware endpoint with the token header' do
+      content = File.read(File.join(destination_root, 'e2e', 'playwright', 'support', 'on-rails.js'))
+
+      aggregate_failures do
+        expect(content).to include('appCommands')
+        expect(content).to include('appResetState')
+        expect(content).to include('X-Cypress-On-Rails-Token')
+      end
     end
   end
 
