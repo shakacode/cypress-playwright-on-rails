@@ -477,11 +477,21 @@ workflows:
 ## Security Considerations
 
 ### Protecting Test Endpoints
+
+The middleware can execute arbitrary ruby code, so it must never be reachable from
+production or an untrusted network. `use_middleware` now defaults to off in
+`Rails.env.production?`, and `c.middleware_token` adds a built-in shared secret
+(see the [security model](../README.md#security-model)). Use `before_request` when you
+need something the token cannot express:
+
 ```ruby
 # config/initializers/cypress_on_rails.rb
 CypressOnRails.configure do |c|
   # Only enable in test/development
   c.use_middleware = !Rails.env.production?
+
+  # Built-in shared secret, sent automatically by the generated JS helpers
+  c.middleware_token = ENV['CYPRESS_ON_RAILS_TOKEN']
   
   # Add authentication
   c.before_request = lambda { |request|
