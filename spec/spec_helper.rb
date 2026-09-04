@@ -99,6 +99,8 @@ RSpec.configure do |config|
     CypressOnRails.configure do |config|
       config.reset
       config.logger = Logger.new('spec/test.log')
+      # Keep the suite hermetic when the developer exports the token
+      config.middleware_token = nil
     end
   end
 end

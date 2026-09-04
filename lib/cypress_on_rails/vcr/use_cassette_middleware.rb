@@ -3,6 +3,12 @@ require_relative 'middleware_helpers'
 module CypressOnRails
   module Vcr
     # Middleware to handle vcr with use_cassette
+    #
+    # Unlike the command and vcr insert/eject endpoints, this middleware has no
+    # endpoint of its own: it transparently wraps every application request in a
+    # cassette. Enforcing `middleware_token` here would reject the browser
+    # traffic of the application under test, so the shared secret is only
+    # enforced by the middlewares that execute commands or reset state.
     class UseCassetteMiddleware
       include MiddlewareHelpers
 

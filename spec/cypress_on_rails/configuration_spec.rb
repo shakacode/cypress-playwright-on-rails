@@ -37,6 +37,32 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.server_readiness_timeout).to eq(10)
   end
 
+  describe '#middleware_token' do
+    it 'is not set when the environment variable is missing' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('CYPRESS_ON_RAILS_TOKEN', nil).and_return(nil)
+
+      CypressOnRails.configure { |config| config.reset }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'defaults to the CYPRESS_ON_RAILS_TOKEN environment variable' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('CYPRESS_ON_RAILS_TOKEN', nil).and_return('token-from-env')
+
+      CypressOnRails.configure { |config| config.reset }
+
+      expect(CypressOnRails.configuration.middleware_token).to eq('token-from-env')
+    end
+
+    it 'can be configured' do
+      CypressOnRails.configure { |config| config.middleware_token = 'my-token' }
+
+      expect(CypressOnRails.configuration.middleware_token).to eq('my-token')
+    end
+  end
+
   describe '#use_middleware?' do
     let(:configuration) { CypressOnRails.configuration }
 

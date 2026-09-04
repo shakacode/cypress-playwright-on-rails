@@ -8,6 +8,10 @@ module CypressOnRails
     attr_accessor :use_vcr_middleware
     attr_accessor :use_vcr_use_cassette_middleware
     attr_accessor :before_request
+    # Optional shared secret. When set, every middleware that executes
+    # commands or resets state requires a matching X-Cypress-On-Rails-Token
+    # header. Defaults to ENV['CYPRESS_ON_RAILS_TOKEN'].
+    attr_accessor :middleware_token
     attr_accessor :logger
     attr_accessor :vcr_options
     
@@ -63,6 +67,7 @@ module CypressOnRails
       self.use_vcr_middleware = false
       self.use_vcr_use_cassette_middleware = false
       self.before_request = -> (request) {}
+      self.middleware_token = ENV.fetch('CYPRESS_ON_RAILS_TOKEN', nil)
       self.logger = Logger.new(STDOUT)
       self.vcr_options = {}
       
