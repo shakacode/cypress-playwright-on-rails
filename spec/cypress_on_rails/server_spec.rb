@@ -5,6 +5,60 @@ require 'json'
 require 'stringio'
 
 RSpec.describe CypressOnRails::Server do
+  describe 'port acquisition' do
+    let(:server) { described_class.new(host: '127.0.0.1', port: 4321) }
+
+    it 'retries when the detected port is claimed before it can be bound' do
+      occupied = TCPServer.new(described_class::PORT_PROBE_HOST, 0)
+      occupied_port = occupied.addr[1]
+      detected = []
+      allow(server).to receive(:detect_free_port).and_wrap_original do |original|
+        port = detected.empty? ? occupied_port : original.call
+        detected << port
+        port
+      end
+
+      port = server.send(:find_available_port)
+
+      expect(detected.first).to eq(occupied_port)
+      expect(detected.length).to eq(2)
+      expect(port).to eq(detected.last)
+      expect(port).not_to eq(occupied_port)
+    ensure
+      occupied.close
+    end
+
+    it 'raises a ServerError after exhausting the bounded retries' do
+      occupied = TCPServer.new(described_class::PORT_PROBE_HOST, 0)
+      occupied_port = occupied.addr[1]
+      attempts = 0
+      allow(server).to receive(:detect_free_port) do
+        attempts += 1
+        occupied_port
+      end
+
+      expect { server.send(:find_available_port) }.to raise_error(CypressOnRails::ServerError) { |error|
+        expect(error.message).to include('Unable to acquire a free port')
+        expect(error.message).to include('Errno::EADDRINUSE')
+        expect(error.message).to include('config.server_port')
+      }
+      expect(attempts).to eq(described_class::PORT_ACQUISITION_ATTEMPTS)
+    ensure
+      occupied.close
+    end
+
+    it 'acquires a bindable port when no server_port is configured' do
+      CypressOnRails.configuration.server_port = nil
+
+      acquired = described_class.new(host: '127.0.0.1')
+      socket = TCPServer.new(described_class::PORT_PROBE_HOST, acquired.port)
+
+      expect(socket.addr[1]).to eq(acquired.port)
+    ensure
+      socket.close if socket
+    end
+  end
+
   describe '#open' do
     let(:server) { described_class.new(host: '127.0.0.1', port: 4321) }
 

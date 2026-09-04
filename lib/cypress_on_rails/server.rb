@@ -20,6 +20,9 @@ module CypressOnRails
     # server_shutdown_timeout; see Configuration#server_shutdown_timeout.
     SERVER_STOP_TIMEOUT = 10
     SERVER_STOP_POLL_INTERVAL = 0.05
+    # Bounded retries for the free-port bind race; see #find_available_port.
+    PORT_ACQUISITION_ATTEMPTS = 3
+    PORT_PROBE_HOST = '127.0.0.1'.freeze
 
     attr_reader :host, :port, :framework, :install_folder
 
@@ -71,11 +74,43 @@ module CypressOnRails
       end
     end
 
+    # Picks an ephemeral port and confirms it can still be bound. Another
+    # process can claim the port between the probe and the confirmation, so the
+    # acquisition is retried a bounded number of times before giving up.
     def find_available_port
-      server = TCPServer.new('127.0.0.1', 0)
-      port = server.addr[1]
-      server.close
+      attempts = 0
+      begin
+        attempts += 1
+        acquire_available_port
+      rescue Errno::EADDRINUSE => error
+        retry if attempts < PORT_ACQUISITION_ATTEMPTS
+
+        raise ServerError, "Unable to acquire a free port on #{PORT_PROBE_HOST} after " \
+                           "#{attempts} attempts: #{error.class}: #{error.message}. " \
+                           'Set config.server_port (or CYPRESS_RAILS_PORT) to a known free port.'
+      end
+    end
+
+    def acquire_available_port
+      port = detect_free_port
+      confirm_port_available(port)
       port
+    end
+
+    def detect_free_port
+      socket = TCPServer.new(PORT_PROBE_HOST, 0)
+      begin
+        socket.addr[1]
+      ensure
+        socket.close
+      end
+    end
+
+    # Re-binding the detected port is where a lost bind race surfaces as
+    # Errno::EADDRINUSE instead of a confusing Rails server boot failure.
+    def confirm_port_available(port)
+      socket = TCPServer.new(PORT_PROBE_HOST, port)
+      socket.close
     end
 
     def start_server(&block)
