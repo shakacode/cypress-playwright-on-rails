@@ -5,6 +5,89 @@ require 'json'
 require 'stringio'
 
 RSpec.describe CypressOnRails::Server do
+  describe 'port bind race' do
+    let(:bind_failure_script) { 'STDERR.write("Address already in use - bind(2)\n"); exit 1' }
+
+    before do
+      allow($stderr).to receive(:write)
+      CypressOnRails.configuration.server_port = nil
+    end
+
+    def requested_port(command)
+      command[command.index('-p') + 1]
+    end
+
+    it 'respawns on a fresh port when an auto-selected port loses the bind race' do
+      server = described_class.new(host: '127.0.0.1')
+      ports = []
+      spawns = 0
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:spawn) do |*command, **options|
+        spawns += 1
+        ports << requested_port(command)
+        script = spawns == 1 ? bind_failure_script : 'STDERR.write("Listening\n"); sleep 10'
+        Process.spawn(RbConfig.ruby, '-e', script, **options)
+      end
+      allow(server).to receive(:server_responding?) { spawns >= 2 }
+
+      server.open
+
+      expect(spawns).to eq(2)
+      expect(ports.first).not_to eq(ports.last)
+      expect(ports.last).to eq(server.port.to_s)
+    end
+
+    it 'does not retry a bind failure when the port was configured explicitly' do
+      server = described_class.new(host: '127.0.0.1', port: 4321)
+      spawns = 0
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:server_responding?).and_return(false)
+      allow(server).to receive(:spawn) do |*_command, **options|
+        spawns += 1
+        Process.spawn(RbConfig.ruby, '-e', bind_failure_script, **options)
+      end
+
+      expect { server.open }.to raise_error(CypressOnRails::ServerError) { |error|
+        expect(error.message).to include('Address already in use')
+        expect(error.message).not_to include('could not bind an auto-selected port')
+      }
+      expect(spawns).to eq(1)
+    end
+
+    it 'gives up after the bounded number of bind attempts' do
+      server = described_class.new(host: '127.0.0.1')
+      ports = []
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:server_responding?).and_return(false)
+      allow(server).to receive(:spawn) do |*command, **options|
+        ports << requested_port(command)
+        Process.spawn(RbConfig.ruby, '-e', bind_failure_script, **options)
+      end
+
+      expect { server.open }.to raise_error(CypressOnRails::ServerError) { |error|
+        expect(error.message).to include('could not bind an auto-selected port after 3 attempts')
+        expect(error.message).to include('config.server_port')
+        expect(error.message).to include('Address already in use')
+      }
+      expect(ports.length).to eq(described_class::PORT_ACQUISITION_ATTEMPTS)
+      expect(ports.uniq.length).to eq(described_class::PORT_ACQUISITION_ATTEMPTS)
+    end
+
+    it 'does not retry an early exit that is not a bind failure' do
+      server = described_class.new(host: '127.0.0.1')
+      spawns = 0
+      allow(server).to receive(:run_command)
+      allow(server).to receive(:server_responding?).and_return(false)
+      allow(server).to receive(:spawn) do |*_command, **options|
+        spawns += 1
+        Process.spawn(RbConfig.ruby, '-e', 'STDERR.write("some other boot failure\n"); exit 3', **options)
+      end
+
+      expect { server.open }.to raise_error(CypressOnRails::ServerError, /exit status 3/)
+      expect(spawns).to eq(1)
+    end
+  end
+
   describe 'port acquisition' do
     let(:server) { described_class.new(host: '127.0.0.1', port: 4321) }
 
@@ -191,6 +274,7 @@ RSpec.describe CypressOnRails::Server do
     it 'derives the TERM wait deadline from the configured shutdown timeout' do
       pid = 12_345
       deadlines = []
+      results = [false, true]
       CypressOnRails.configuration.server_shutdown_timeout = 2.5
       prepare_lifecycle_server(pid)
       server.instance_variable_set(:@server_pgid, pid)
@@ -199,12 +283,12 @@ RSpec.describe CypressOnRails::Server do
       allow(server).to receive(:monotonic_time).and_return(0.0)
       allow(server).to receive(:wait_for_server_group_exit) do |deadline|
         deadlines << deadline
-        true
+        results.shift
       end
 
       expect(server.send(:stop_server, pid)).to eq(:terminal_group_signaled)
 
-      expect(deadlines).to eq([2.5])
+      expect(deadlines).to eq([2.5, 2.5])
     end
 
     it 'falls back to the built-in stop timeout when the configured value is unusable' do

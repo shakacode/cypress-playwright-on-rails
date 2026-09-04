@@ -20,9 +20,14 @@ module CypressOnRails
     # server_shutdown_timeout; see Configuration#server_shutdown_timeout.
     SERVER_STOP_TIMEOUT = 10
     SERVER_STOP_POLL_INTERVAL = 0.05
-    # Bounded retries for the free-port bind race; see #find_available_port.
+    # Bounded attempts shared by free-port selection and the respawn that
+    # follows a lost bind race; see #find_available_port and
+    # #wait_for_server_with_bind_retry.
     PORT_ACQUISITION_ATTEMPTS = 3
     PORT_PROBE_HOST = '127.0.0.1'.freeze
+    # Rails reports a lost bind race through the adapter, so match both the
+    # errno name and the message Puma/Ruby print for it.
+    PORT_BIND_FAILURE_PATTERN = /Address already in use|EADDRINUSE/i.freeze
 
     attr_reader :host, :port, :framework, :install_folder
 
@@ -31,7 +36,11 @@ module CypressOnRails
 
       @framework = options[:framework] || :cypress
       @host = options[:host] || config.server_host
-      @port = options[:port] || config.server_port || find_available_port
+      configured_port = options[:port] || config.server_port
+      # Only an auto-selected port may be re-selected after a lost bind race;
+      # an explicitly configured port is the user's choice and is left alone.
+      @port_auto_selected = configured_port.nil?
+      @port = configured_port || find_available_port
       @port = @port.to_i if @port
       @install_folder = options[:install_folder] || config.install_folder || detect_install_folder
       @transactional = options.fetch(:transactional, config.transactional_server)
@@ -122,7 +131,7 @@ module CypressOnRails
       ENV['RAILS_ENV'] ||= 'test'
       
       begin
-        server_pid = spawn_server
+        spawn_server
       rescue StandardError
         ENV.delete('CYPRESS')
         raise
@@ -131,7 +140,7 @@ module CypressOnRails
       timeout_result = nil
       stop_result = nil
       begin
-        timeout_result = wait_for_server
+        timeout_result = wait_for_server_with_bind_retry
         unless timeout_result
           run_hook(config.after_server_start)
 
@@ -151,7 +160,8 @@ module CypressOnRails
           ActiveRecord::Base.connection.rollback_transaction if ActiveRecord::Base.connection.transaction_open?
         end
         
-        stop_result = stop_server(server_pid)
+        # @server_pid rather than the first pid: a bind-race retry respawns.
+        stop_result = stop_server(@server_pid)
         ENV.delete('CYPRESS')
       end
 
@@ -186,6 +196,42 @@ module CypressOnRails
         close_server_output_writers
       end
       @server_pid
+    end
+
+    # Confirming a free port cannot close the race entirely: the probe socket
+    # has to be released before Rails can bind it, and another process can take
+    # it in that window. When the port was auto-selected and the server exits
+    # reporting a bind failure, pick a fresh port and respawn, sharing the
+    # PORT_ACQUISITION_ATTEMPTS budget with #find_available_port.
+    def wait_for_server_with_bind_retry
+      attempts = 1
+      begin
+        wait_for_server
+      rescue ServerError => error
+        raise unless lost_port_bind_race?
+        raise port_bind_retries_exhausted(attempts, error) if attempts >= PORT_ACQUISITION_ATTEMPTS
+
+        attempts += 1
+        CypressOnRails.configuration.logger.warn(
+          "Rails server could not bind port #{port}, retrying on a new port " \
+          "(attempt #{attempts} of #{PORT_ACQUISITION_ATTEMPTS})"
+        )
+        @port = find_available_port
+        spawn_server
+        retry
+      end
+    end
+
+    def lost_port_bind_race?
+      return false unless @port_auto_selected
+
+      PORT_BIND_FAILURE_PATTERN.match?(recent_server_output)
+    end
+
+    def port_bind_retries_exhausted(attempts, error)
+      ServerError.new("Rails server could not bind an auto-selected port after #{attempts} attempts. " \
+                      'Set config.server_port (or CYPRESS_RAILS_PORT) to a known free port.' \
+                      "\n#{error.message}")
     end
 
     def wait_for_server(timeout = 30)
