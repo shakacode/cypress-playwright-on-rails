@@ -19,8 +19,10 @@ and lets a prerelease alias resolve the matching prerelease parent, which a
 `~>` requirement would exclude. There is nothing to bump by hand.
 
 `rake release` publishes `cypress-on-rails` first, then builds and pushes the
-alias. If the alias build or push fails, the task warns and continues — the main
-release is never rolled back. Retry the alias on its own with:
+alias. The alias is a second `gem push`, so with MFA enabled you are prompted
+for a second OTP after the one for the main gem. If the alias build or push
+fails, the task warns and continues — the main release is never rolled back.
+Retry the alias on its own with:
 
 ```bash
 (cd alias_gem && gem build e2e_on_rails.gemspec && gem push e2e_on_rails-VERSION.gem)
@@ -41,13 +43,26 @@ root raises a descriptive error instead of packaging the wrong files.
 ### One-time: first publish of `e2e_on_rails`
 
 `e2e_on_rails` has never been published. RubyGems will not accept a push from
-`rake release` for a gem that does not exist yet unless the pushing account
-becomes its owner, so the first publish is a manual maintainer step:
+Nothing blocks the push technically — a first `gem push` creates the gem and
+makes the pusher its owner. The first publish is a deliberate manual step for
+three reasons:
+
+- ADR-0001 requires re-checking on rubygems.org that the name is still unclaimed
+  immediately before the first publish. That check needs a human.
+- Whoever pushes first becomes the sole owner, so ownership should be set on
+  purpose and co-maintainers added right away, not left to whoever runs the
+  next release.
+- The alias pins `cypress-on-rails` to the exact same version, so that version
+  must already be live on RubyGems when the alias is pushed. Publishing the
+  alias first leaves it uninstallable until the parent lands.
+
+Steps:
 
 1. Re-verify the name is still unclaimed: `gem owner e2e_on_rails` should report
    that the gem does not exist. If someone else has claimed it, stop and revisit
    ADR-0001 before releasing.
-2. From an up-to-date `master` at the version you are releasing:
+2. After `cypress-on-rails VERSION` is live on RubyGems, from an up-to-date
+   `master` at that same version:
 
    ```bash
    (cd alias_gem && gem build e2e_on_rails.gemspec)
@@ -131,7 +146,10 @@ bundle exec rake "sync_github_release[1.21.0]"
 10. Builds and pushes the `e2e_on_rails` alias gem at the same version; a failure here warns and continues.
 11. Creates or updates the GitHub release from that version's `CHANGELOG.md` section.
 
-Dry runs use a temporary git worktree so the main checkout is not dirtied.
+Dry runs use a temporary git worktree so the main checkout is not dirtied. They
+also build the alias gem inside that worktree — building is offline, so a broken
+alias gemspec surfaces before a live release — and delete the artifact. Dry runs
+never push either gem.
 
 ## Version Numbering
 
