@@ -294,7 +294,10 @@ Decisions section at the top of this document). Still genuinely open:
 1. Final sign-off on the M3 outreach comment text before posting (draft in
    issue #224; gated on v1.21.0 + #185 + #220 shipping).
 
-## 6. Suggested agent execution order
+## 6. Suggested agent execution order (superseded 2026-09-03)
+
+Superseded for the 1.21.0 line by section 7 below, which is the authoritative
+order; this block is kept as the July 2026 plan of record.
 
 ```text
 R4(human release)                        # only v1.21.0 step left
@@ -328,7 +331,7 @@ v1.20.1 consumed the v1.21.0 slot. Ship it as **1.21.0** (minor: new
 | 3 (optional for 1.21.0) | #114 state-management doc, #221 README split | none |
 
 Post-release, not in the gem: #228 repo rename (in-place, maintainer click),
-#224 outreach comment, PR #193 RuboCop rebase (then #197, #209).
+the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
 
 ### Maintainer steps, in order
 
@@ -339,12 +342,16 @@ Post-release, not in the gem: #228 repo rename (in-place, maintainer click),
    the eligibility gate flags for human review (the coordinator supplies the
    exact envelope per PR head).
 3. After wave 2 merges: `/update-changelog release` PR, then merge it.
-4. From clean `master`: `bundle exec rake "release[,true]"` (dry run shows
+4. Immediately before releasing, re-verify that `e2e_on_rails` is still
+   unclaimed on RubyGems (`gem search -r -e e2e_on_rails` prints nothing), as
+   ADR-0001 requires for the first publish. If the name has been taken, stop
+   and decide the fallback name before running the release.
+5. From clean `master`: `bundle exec rake "release[,true]"` (dry run shows
    both gems once #226 lands), then `bundle exec rake release`.
-5. First publish of `e2e_on_rails`: the release task pushes it after the main
+6. First publish of `e2e_on_rails`: the release task pushes it after the main
    gem; if that first push needs RubyGems ownership setup, run
    `gem push alias_gem/pkg/e2e_on_rails-1.21.0.gem` manually once.
-6. Then #228: rename the repo in place and open the URL-sweep PR.
+7. Then #228: rename the repo in place and open the URL-sweep PR.
 
 ### Definition of done for 1.21.0
 
