@@ -324,11 +324,16 @@ v1.20.1 consumed the v1.21.0 slot. Ship it as **1.21.0** (minor: new
 
 ### Scope, in merge order
 
-| Wave | Targets | Gate before merge |
+Every PR in every wave passes the repository review gate from
+`.agents/agent-workflow.yml` (green Ruby workflow on the PR, local
+`bundle exec rake` evidence, all review threads resolved). The column below
+lists what is required in addition.
+
+| Wave | Targets | Additional gate before merge |
 |---|---|---|
-| 1 (running) | #185 remaining, #13, #226 | `ruby.yml` green at head, review threads resolved, QA evidence per PR, maintainer risk decision for security/runtime/release-surface PRs |
+| 1 (running) | #185 remaining, #13, #226 | QA evidence per PR; maintainer risk decision for security/runtime/release-surface PRs |
 | 2 | #220 migration guide, #186 follow-ups, #157 environments doc, #175 VCR docs, #244 streaming guide (also exercises #241) | #185 merged first for #186/#220; docs secrets configured so `trigger-docs-site` can succeed |
-| 3 (optional for 1.21.0) | #114 state-management doc, #221 README split | none |
+| 3 (optional for 1.21.0) | #114 state-management doc, #221 README split | standard gate only |
 
 Post-release, not in the gem: #228 repo rename (in-place, maintainer click),
 the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
