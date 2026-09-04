@@ -4,6 +4,7 @@ if defined?(CypressOnRails)
     c.install_folder = File.expand_path("#{__dir__}/../../<%= options.install_folder %>")
     # WARNING!! CypressOnRails can execute arbitrary ruby code
     # please use with extra caution if enabling on hosted servers or starting your local server on 0.0.0.0
+    # See https://github.com/shakacode/cypress-on-rails#security-model
     c.use_middleware = !Rails.env.production?
     <% unless options.experimental %># <% end %> c.use_vcr_middleware = !Rails.env.production?
     <% unless options.experimental %># <% end %> # Use this if you want to use use_cassette wrapper instead of manual insert/eject
@@ -27,6 +28,13 @@ if defined?(CypressOnRails)
     # c.after_transaction_start = -> { Rails.application.load_seed }
     # c.after_state_reset = -> { Rails.cache.clear }
     # c.before_server_stop = -> { puts "Stopping test server..." }
+
+    # Require a shared secret on every CypressOnRails request. When set, requests
+    # without a matching X-Cypress-On-Rails-Token header are rejected with a 403.
+    # The generated cypress/playwright helpers send the header for you.
+    # Defaults to ENV['CYPRESS_ON_RAILS_TOKEN'], so exporting that variable for
+    # both the rails server and the test runner is usually all you need.
+    # c.middleware_token = ENV['CYPRESS_ON_RAILS_TOKEN']
 
     # If you want to enable a before_request logic, such as authentication, logging, sending metrics, etc.
     #   Refer to https://www.rubydoc.info/gems/rack/Rack/Request for the `request` argument.
