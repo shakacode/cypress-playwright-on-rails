@@ -2,10 +2,12 @@ reviews:
   profile: chill
   review_status: false
   review_progress: false
+  commit_status: false
   in_progress_fortune: false
   collapse_walkthrough: true
   auto_review:
     enabled: false
+    auto_incremental_review: false
     labels:
       - coderabbit:first-pass
       - coderabbit:ready
