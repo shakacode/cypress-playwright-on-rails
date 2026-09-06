@@ -1,0 +1,11 @@
+reviews:
+  profile: chill
+  review_status: false
+  review_progress: false
+  in_progress_fortune: false
+  collapse_walkthrough: true
+  auto_review:
+    enabled: false
+    labels:
+      - coderabbit:first-pass
+      - coderabbit:ready
