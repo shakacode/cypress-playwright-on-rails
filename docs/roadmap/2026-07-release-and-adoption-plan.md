@@ -17,8 +17,9 @@ Owner: @justin808
   [#222](https://github.com/shakacode/cypress-playwright-on-rails/issues/222) (A1+A2 agent docs),
   [#223](https://github.com/shakacode/cypress-playwright-on-rails/issues/223) (A3 doctor),
   [#224](https://github.com/shakacode/cypress-playwright-on-rails/issues/224) (M3 outreach, gated).
-- Remaining for v1.21.0: merge PR #225, then a maintainer runs
-  `rake release[1.21.0]` (RELEASING.md) and publishes the GitHub Release.
+- Remaining for v1.21.0 *(as recorded 2026-07-04; superseded by the next entry
+  — the current 1.21.0 plan is section 7)*: merge PR #225, then a maintainer
+  runs `rake release[1.21.0]` (RELEASING.md) and publishes the GitHub Release.
 - 2026-07-11: the release above shipped as **v1.20.1** (patch number chosen by
   the maintainer; contents unchanged: #205, #207, #210, #219). Every task gated
   on "after v1.21.0 ships" (#226, #228, #224, #197, #209) is treated as
@@ -160,7 +161,12 @@ doesn't cover the reporter's case. Do not close silently.
 
 ## 3. Release plan
 
-### v1.21.0 — "current & compatible" (target: within 2 weeks)
+### v1.21.0 — "current & compatible" (superseded 2026-09-03)
+
+Superseded for the 1.21.0 line by section 7, which is the authoritative plan;
+this block is kept as the July 2026 plan of record. Its contents shipped as
+**v1.20.1** on 2026-07-11, so the 1.21.0 in section 7 is a different,
+renumbered release — release it from section 7, never from the tasks below.
 
 Goal: flush 9 months of unreleased fixes, restore release hygiene, signal
 active maintenance to anyone comparing us with cypress-rails.
@@ -175,14 +181,15 @@ Tasks (each independently implementable; IDs referenced below):
   rejected maintainer push; obsolete Rails 4.2 Gemfile commit dropped).
 - **R3 — CHANGELOG pass.** ✅ DONE 2026-07-04 (PR #225): #201/#203 entry moved
   under `## [1.20.0]`; Unreleased now lists #205, #207, #210, #219.
-- **R4 — Release.** ⏳ REMAINING (human step): follow `RELEASING.md`
-  (`rake release[1.21.0]`, gem-release based); requires RubyGems + git push
-  credentials. Then `gh release create v1.21.0` from the CHANGELOG section.
+- **R4 — Release.** ✅ DONE 2026-07-11 — shipped as **v1.20.1**, not 1.21.0
+  (patch number chosen by the maintainer; contents unchanged). The renumbered
+  1.21.0 release runs from section 7's maintainer steps, not from here.
 - **R5 — Backfill GitHub Releases.** ✅ DONE 2026-07-04 for v1.16.0–v1.20.0;
-  repo now shows v1.20.0 as Latest (was v1.15.0 · 2023). v1.21.0's release
-  is created as part of R4.
-- **R6 — Fix the release task** (PR #191's goal) only if R4 actually hits the
-  duplicate-task conflict; otherwise close #191 and note the finding.
+  repo now shows v1.20.0 as Latest (was v1.15.0 · 2023). v1.20.1's release
+  was created as part of R4.
+- **R6 — Fix the release task** (PR #191's goal). ✅ RESOLVED 2026-09-03: R4
+  did not hit the duplicate-task conflict and #191 was closed as superseded
+  (the release task was already reworked on master).
 
 ### v1.22.0 — "the cypress-rails magnet" (target: +4–6 weeks)
 
