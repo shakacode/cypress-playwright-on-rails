@@ -25,7 +25,7 @@ These requirements are non-negotiable. CI will fail if not followed.
 
 - **Update CHANGELOG.md for user-visible changes only** (features, bug fixes, breaking changes, deprecations, performance improvements)
 - **Do NOT add entries for**: linting, formatting, refactoring, tests, or documentation fixes
-- **Format**: `[PR 123](https://github.com/shakacode/cypress-on-rails/pull/123) by [username](https://github.com/username)` (no hash in PR number)
+- **Format**: `[PR 123](https://github.com/shakacode/cypress-playwright-on-rails/pull/123) by [username](https://github.com/username)` (no hash in PR number)
 - **Use `/update-changelog` command** for guided changelog updates with automatic formatting
 - **Version management**: Run `bundle exec rake update_changelog` after releases to update version headers (if rake task exists)
 - **Examples**: Run `grep -A 3 "^#### " CHANGELOG.md | head -30` to see real formatting examples

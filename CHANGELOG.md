@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`e2e_on_rails` alias gem**: Added a thin wrapper gem that reserves the canonical name adopted at 2.0 and installs the matching `cypress-on-rails` version, and taught `rake release` to publish it after the main gem. [PR 251](https://github.com/shakacode/cypress-playwright-on-rails/pull/251) by [justin808](https://github.com/justin808).
 - **Server hardening**: New `config.server_shutdown_timeout` (default 10 seconds, also `CYPRESS_RAILS_SHUTDOWN_TIMEOUT`, finite and positive) bounds the TERM-then-KILL escalation at the timeout plus a fixed 5 second grace, an auto-selected port that loses the bind race is re-selected and the server respawned up to 3 times, and every configured hook is validated to respond to `call` (behaviour change: a non-callable hook now raises `ArgumentError` at configuration time instead of being ignored). A `nil` `before_request` is now a no-op instead of raising `NoMethodError` on the next request. [PR 255](https://github.com/shakacode/cypress-playwright-on-rails/pull/255) by [justin808](https://github.com/justin808).
 
 ### Changed
