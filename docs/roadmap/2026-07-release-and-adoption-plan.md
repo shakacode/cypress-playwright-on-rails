@@ -346,7 +346,12 @@ the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
 2. Post `autonomous-merge-risk-decision:v1` comments on the wave-1 PRs that
    the eligibility gate flags for human review (the coordinator supplies the
    exact envelope per PR head).
-3. After wave 2 merges: `/update-changelog release` PR, then merge it.
+3. Decide wave 3 before stamping: either take #114/#221 into 1.21.0 or
+   defer them to the next release. After every wave included in 1.21.0 has
+   merged (wave 2, plus wave 3 when it is included):
+   `/update-changelog release` PR, then merge it. Nothing user-visible may
+   merge between that PR and the release, or its entry lands under the new
+   `Unreleased` section instead of `## [1.21.0]`.
 4. Immediately before releasing, re-verify that `e2e_on_rails` is still
    unclaimed on RubyGems (`gem search -r -e e2e_on_rails` prints nothing), as
    ADR-0001 requires for the first publish. If the name has been taken, stop
@@ -361,7 +366,7 @@ the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
 ### Definition of done for 1.21.0
 
 - CHANGELOG `## [1.21.0]` lists #243, #185 follow-ups, #13, #226, and every
-  wave-2 user-visible doc with `[PR N]` credit links.
+  user-visible doc from each included wave with `[PR N]` credit links.
 - `rake release` dry run green; tag `v1.21.0` on RubyGems with both gems.
 - GitHub Release notes synced from the changelog section.
 - README security section and migration guide published at e2eonrails.com.
