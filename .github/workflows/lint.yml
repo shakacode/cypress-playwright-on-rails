@@ -19,8 +19,11 @@ jobs:
         ruby-version: '3.4'
         bundler-cache: true
 
+    # Both steps go through Rake so the task definitions in rakelib/lint.rake
+    # are the single authoritative description of the lint gate. Adding a
+    # linter to `rake lint` then takes effect in CI without editing this file.
     - name: Run RuboCop
-      run: bundle exec rubocop
+      run: bundle exec rake lint
 
     - name: Check for files missing newlines
       run: bundle exec rake check_newlines

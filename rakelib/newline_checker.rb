@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'find'
+
 # Single source of truth for "which files must end with a final newline".
 #
 # Both `rake check_newlines` / `rake fix_newlines` (see rakelib/lint.rake) and
@@ -40,17 +42,21 @@ module NewlineChecker
     Capfile
   ].freeze
 
-  FILE_EXTENSIONS = "**/*.{#{EXTENSIONS.join(',')}}".freeze
-  EXTENSIONLESS_FILE_PATTERNS = EXTENSIONLESS_FILENAMES.map { |name| "**/#{name}" }.freeze
-  TEXT_FILE_PATTERNS = [FILE_EXTENSIONS, *EXTENSIONLESS_FILE_PATTERNS].freeze
+  # One POSIX ERE describing every checked path, derived from the two lists
+  # above. It is both the matcher used when walking the tree and the pattern
+  # interpolated into the generated pre-commit hook, so the rake tasks and the
+  # hook cannot disagree about which files are in scope.
+  TEXT_FILE_PATTERN = [
+    "(^|/)(#{EXTENSIONLESS_FILENAMES.map { |name| Regexp.escape(name) }.join('|')})$",
+    "\\.(#{EXTENSIONS.join('|')})$"
+  ].join('|').freeze
+  TEXT_FILE_MATCHER = Regexp.new(TEXT_FILE_PATTERN)
 
   module_function
 
-  # POSIX ERE matching the same basenames/extensions as TEXT_FILE_PATTERNS.
   # Interpolated into the generated pre-commit hook by bin/install-hooks.
   def staged_file_pattern
-    names = EXTENSIONLESS_FILENAMES.map { |name| Regexp.escape(name) }.join('|')
-    "(^|/)(#{names})$|\\.(#{EXTENSIONS.join('|')})$"
+    TEXT_FILE_PATTERN
   end
 
   # Space-separated excluded prefixes for the generated pre-commit hook.
@@ -79,11 +85,32 @@ module NewlineChecker
     true
   end
 
+  # Walks the working tree, pruning EXCLUDED_DIRS during traversal rather than
+  # filtering them out afterwards.
+  #
+  # Dir.glob cannot express an exclusion, so the previous implementation
+  # descended into every directory and discarded the results. In a checkout
+  # where specs_e2e/*/test.sh has been run -- which populates
+  # specs_e2e/*/vendor/bundle and specs_e2e/*/test/node_modules -- that meant
+  # collecting tens of thousands of paths to keep about a hundred.
   def text_files
-    Dir.glob(TEXT_FILE_PATTERNS, File::FNM_DOTMATCH)
-       .uniq
-       .reject { |f| excluded?(f) }
-       .select { |f| File.file?(f) && File.size(f) < MAX_FILE_SIZE && !binary_file?(f) }
+    files = []
+
+    Find.find('.') do |path|
+      relative = path.delete_prefix('./')
+
+      if File.directory?(path)
+        Find.prune if excluded?("#{relative}/")
+        next
+      end
+
+      next unless TEXT_FILE_MATCHER.match?(relative)
+      next unless File.file?(path) && File.size(path) < MAX_FILE_SIZE && !binary_file?(path)
+
+      files << relative
+    end
+
+    files
   end
 
   # True when the file has content and its last byte is not a newline.

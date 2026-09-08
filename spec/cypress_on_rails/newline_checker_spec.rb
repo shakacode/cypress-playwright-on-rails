@@ -60,6 +60,19 @@ RSpec.describe NewlineChecker do
         'spec/fixtures/example.rb'
       )
     end
+
+    # Running specs_e2e/*/test.sh populates these two trees with tens of
+    # thousands of files. They sit under the excluded specs_e2e/ prefix, so
+    # traversal is pruned at specs_e2e/ and never descends into them.
+    it 'excludes installed dependencies under an excluded tree' do
+      write_file('specs_e2e/rails_6_1/test/node_modules/cypress/index.js')
+      write_file('specs_e2e/rails_6_1/vendor/bundle/ruby/3.0.0/gems/rake/lib/rake.rb')
+
+      expect(described_class.text_files).not_to include(
+        'specs_e2e/rails_6_1/test/node_modules/cypress/index.js',
+        'specs_e2e/rails_6_1/vendor/bundle/ruby/3.0.0/gems/rake/lib/rake.rb'
+      )
+    end
   end
 
   describe '.missing_final_newline?' do
@@ -82,12 +95,12 @@ RSpec.describe NewlineChecker do
     end
   end
 
-  # The generated pre-commit hook matches staged paths with this ERE, so it must
-  # agree with the globs used by check_newlines / fix_newlines.
+  # The same ERE drives both the tree walk in .text_files and the generated
+  # pre-commit hook, so the rake tasks and the hook cannot disagree on scope.
   describe '.staged_file_pattern' do
     subject(:pattern) { Regexp.new(described_class.staged_file_pattern) }
 
-    it 'matches the same extensions and basenames as the globs' do
+    it 'matches every configured extension and extensionless basename' do
       expect(pattern).to match('lib/example.rb')
       expect(pattern).to match('Gemfile')
       expect(pattern).to match('sub/dir/Rakefile')
