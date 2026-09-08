@@ -191,22 +191,28 @@ Tasks (each independently implementable; IDs referenced below):
   did not hit the duplicate-task conflict and #191 was closed as superseded
   (the release task was already reworked on master).
 
-### v1.22.0 — "the cypress-rails magnet" (target: +4–6 weeks)
+### v1.22.0 — "the cypress-rails magnet" (superseded 2026-09-03)
+
+Superseded for scope by section 7, which is authoritative for what ships when:
+H1–H3 and M1/M2/M4 were pulled forward into the 1.21.0 waves. Read the tasks
+below as the specs they always were, not as a v1.22 work list — each one now
+records where it actually landed.
 
 Theme: harden the server/transactional path, then actively convert
 cypress-rails users.
 
-- **H1 (issue #185) — server & state-reset hardening.** `priority: high`.
-  Scope from the issue: spawn-failure error handling, SIGTERM→SIGKILL
-  escalation with timeout, port-detection retry, process-group cleanup, and
-  tests for `lib/cypress_on_rails/server.rb` +
+- **H1 (issue #185) — server & state-reset hardening.** *(→ 1.21.0 wave 1.)*
+  `priority: high`. Scope from the issue: spawn-failure error handling,
+  SIGTERM→SIGKILL escalation with timeout, port-detection retry,
+  process-group cleanup, and tests for `lib/cypress_on_rails/server.rb` +
   `lib/cypress_on_rails/state_reset_middleware.rb`. Acceptance: new specs
   covering each failure mode; multi-threaded Puma smoke test in one example
   app (this is the exact failure mode that killed cypress-rails — see
   testdouble/cypress-rails#164).
-- **H2 (issue #186) — PR #180 review follow-ups.** Small; do with H1.
-- **H3 (issue #13) — security hardening.** ⚠️ Two verified facts constrain the
-  design (2026-07-05 review): (1) the gem's own default is **unsafe** —
+- **H2 (issue #186) — PR #180 review follow-ups.** *(→ 1.21.0 wave 2.)* Small.
+- **H3 (issue #13) — security hardening.** *(→ 1.21.0 wave 1.)* ⚠️ Two
+  verified facts constrain the design (2026-07-05 review): (1) the gem's own
+  default is **unsafe** —
   `Configuration#reset` sets `use_middleware = true` unconditionally; the
   `!Rails.env.production?` guard exists only in the *generated* initializer
   template, so apps configured by hand get the middleware in every
@@ -217,7 +223,8 @@ cypress-rails users.
   it. H3 must first evaluate hardening/documenting `before_request` (or
   building `middleware_token` as thin sugar over it) rather than shipping a
   second, overlapping auth mechanism. Full spec in issue #13.
-- **M1 — `docs/MIGRATE_FROM_CYPRESS_RAILS.md`.** The centerpiece. Structure:
+- **M1 — `docs/MIGRATE_FROM_CYPRESS_RAILS.md`.** *(→ 1.21.0 wave 2, #220.)*
+  The centerpiece. Structure:
   1. Why (dormant since 2024, Rails 7.2+ broken, no Playwright — with links);
   2. Concept map table (their env vars/hooks/reset endpoint → ours; most map 1:1 since v1.19.0);
   3. Step-by-step swap (Gemfile, generator, initializer);
@@ -225,15 +232,18 @@ cypress-rails users.
   5. Honest trade-offs (middleware security model + mitigation from H3).
   Acceptance: a real cypress-rails example app converted by following only the
   guide, committed under `specs_e2e/` as a CI job if practical.
-- **M2 — README repositioning.** Add "Migrating from cypress-rails" link near
-  the top; add a short comparison table; move the ShakaCode consulting block
+- **M2 — README repositioning.** *(→ 1.21.0 wave 3, optional; issue #221.)*
+  Add "Migrating from cypress-rails" link near the top; add a short
+  comparison table; move the ShakaCode consulting block
   below the fold (match current react_on_rails/shakapacker style); add badges
   (gem version, downloads, CI).
-- **M3 — Outreach (human, not agent):** ShakaCode blog post
+- **M3 — Outreach (human, not agent):** *(→ post-release, not in the gem;
+  issue #224.)* ShakaCode blog post
   ("cypress-rails is stuck on Rails 7.1 — here's the maintained path, with
   Playwright"), a respectful comment on testdouble/cypress-rails#164
   pointing to M1, Reddit/r/rails + Rails Discord, changelog.com pitch.
-- **M4 — Test-env docs (issue #157, PRs #173/#210).** Document the two
+- **M4 — Test-env docs (issue #157, PRs #173/#210).** *(→ 1.21.0 wave 2.)*
+  Document the two
   supported modes (dev-env with `ENV['CYPRESS']` vs test-env with code
   reloading enabled) in README + `docs/`; then close #157 and resolve #173.
 
@@ -287,7 +297,9 @@ spec headlessly, and get a deterministic pass/fail without clicking around.
   renames to `shakacode/e2e-on-rails` + README hero rebrand → v1.22 campaign
   runs under the new brand with `gem 'cypress-on-rails'` still the install →
   **2.0 = the gem flip** (`e2e_on_rails` canonical, `cypress-on-rails` shim,
-  module `E2eOnRails`), scheduled right after v1.22. See
+  module `E2eOnRails`), scheduled right after v1.22. Scope note (2026-09-03):
+  M1/M2/M4 moved into 1.21.0, so the doc work ships *before* the rename; what
+  runs under the new brand is the M3 outreach (#224), not the docs. See
   `docs/roadmap/2026-07-e2e-on-rails-naming-decision.md`, ADR-0002, and
   `CONTEXT.md`.
 
@@ -385,5 +397,7 @@ the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
   user-visible doc from each included wave with `[PR N]` credit links.
 - `rake release` dry run green; tag `v1.21.0` on RubyGems with both gems.
 - GitHub Release notes synced from the changelog section.
-- README security section and migration guide published at e2eonrails.com.
+- README security section and migration guide published at e2eonrails.com —
+  only if wave 3 is included, since S2 stands the site up once #221 lands. The
+  #220 migration guide markdown ships in wave 2 either way.
 
