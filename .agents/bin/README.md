@@ -8,9 +8,9 @@ is absent means that capability is n/a in this repository.
 | Script | Purpose | This repo runs |
 | --- | --- | --- |
 | `setup` | Install dependencies | n/a |
-| `validate` | Pre-push gate | `bundle exec rake` (no filter arguments) |
-| `test` | Run tests | `bundle exec rake` (the same supported core-suite gate; no filter arguments) |
-| `lint` | Lint / format | n/a |
+| `validate` | Pre-push gate | `bundle exec rake ci` (specs + lint + newlines; no filter arguments) |
+| `test` | Run tests | `bundle exec rake` (the default core spec suite; no filter arguments) |
+| `lint` | Lint / format | `bundle exec rake lint check_newlines` (RuboCop + trailing newlines) |
 | `build` | Build / type-check | n/a |
 | `docs` | Docs checks | n/a |
 | `ci-detect` | CI change detector | n/a |
@@ -18,5 +18,11 @@ is absent means that capability is n/a in this repository.
 Non-command policy lives in [`../agent-workflow.yml`](../agent-workflow.yml).
 
 For an ad-hoc targeted RSpec run, invoke `bundle exec rspec` directly. The
-portable workflow wrappers deliberately run the repository's default Rake gate
-so their result matches the supported CI contract.
+portable workflow wrappers deliberately run the repository's Rake tasks so
+their result matches the supported CI contract.
+
+`validate` runs `rake ci` rather than the default `rake` task because CI
+enforces linting and trailing newlines as well as the specs (see
+`.github/workflows/lint.yml`); a specs-only gate would pass branches that CI
+then rejects. `test` stays on the default `rake` task, which is the core spec
+suite on its own.

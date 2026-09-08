@@ -6,7 +6,9 @@ module CypressOnRails
     def self.perform(file,command_options = nil)
       load_e2e_helper
       file_data = File.read(file)
-      eval file_data, binding, file
+      # Intentional: executes test-only Ruby commands sent from Cypress/Playwright via the local middleware.
+      # The middleware is only mounted in test/development environments.
+      eval file_data, binding, file # rubocop:disable Security/Eval
     rescue => e
       logger.error("fail to execute #{file}: #{e.message}")
       logger.error(e.backtrace.join("\n"))

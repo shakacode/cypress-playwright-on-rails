@@ -310,7 +310,7 @@ RSpec.describe CypressOnRails::Server do
         expect(error.message).to include('process status unavailable')
         expect(error.message).to include('No such file or directory')
       }
-      expect(ENV['CYPRESS']).to be_nil
+      expect(ENV.fetch('CYPRESS', nil)).to be_nil
       expect(before_stop).not_to have_received(:call)
       expect(server.instance_variable_get(:@server_output_readers)).to all(satisfy { |reader| !reader.alive? })
     end
@@ -331,7 +331,7 @@ RSpec.describe CypressOnRails::Server do
       end
 
       expect { server.open }.to raise_error(ThreadError, 'injected capture setup failure')
-      expect(ENV['CYPRESS']).to be_nil
+      expect(ENV.fetch('CYPRESS', nil)).to be_nil
       expect([stdout_reader, stdout_writer, stderr_reader, stderr_writer]).to all(be_closed)
       expect(created_threads).to all(satisfy { |thread| !thread.alive? })
     end

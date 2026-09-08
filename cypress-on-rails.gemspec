@@ -14,8 +14,8 @@ Gem::Specification.new do |s|
   # alias_gem/ is the separate e2e_on_rails wrapper gem (ADR-0001); it must not
   # be packaged into this gem.
   s.files         = `git ls-files`.split("\n").reject { |file| file.start_with?("alias_gem/") }
-  s.test_files    = `git ls-files -- {spec}/*`.split("\n")
-  s.executables   = `git ls-files -- bin/*`.split("\n").map { |f| File.basename(f) }
+  # bin/install-hooks is a repo-local dev tool, not a gem executable.
+  s.executables   = `git ls-files -- bin/*`.split("\n").map { |f| File.basename(f) } - ['install-hooks']
   s.require_paths = ["lib"]
   s.add_dependency 'rack'
   s.add_development_dependency 'rake'
@@ -24,11 +24,21 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'factory_bot', '!= 6.4.5'
   s.add_development_dependency 'vcr'
   s.add_development_dependency 'gem-release'
+  # Patch-range pins, deliberately. .rubocop.yml sets `NewCops: enable`, so a
+  # minor bump of any of these would silently activate new cops and fail CI on
+  # an unrelated PR. Bumping a pin here is the deliberate moment to also run
+  # `bundle exec rubocop --auto-gen-config`.
+  s.add_development_dependency 'rubocop', '~> 1.90.0'
+  s.add_development_dependency 'rubocop-rake', '~> 0.7.1'
+  s.add_development_dependency 'rubocop-rspec', '~> 3.10.0'
+
+  s.required_ruby_version = '>= 3.0.0'
+
   s.metadata = {
     "bug_tracker_uri"   => "https://github.com/shakacode/cypress-on-rails/issues",
     "changelog_uri"     => "https://github.com/shakacode/cypress-on-rails/blob/master/CHANGELOG.md",
     "documentation_uri" => "https://github.com/shakacode/cypress-on-rails/blob/master/README.md",
     "homepage_uri"      => "http://github.com/shakacode/cypress-on-rails",
     "source_code_uri"   => "http://github.com/shakacode/cypress-on-rails"
-}
+  }
 end

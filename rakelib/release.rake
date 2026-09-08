@@ -420,7 +420,7 @@ def publish_or_update_github_release(gem_root:, release_context:, dry_run:)
       notes_file_path: "release-notes-file",
       probe_existing: false
     )
-    puts "DRY RUN: Would create or update GitHub release #{release_context[:tag]}#{release_context[:prerelease] ? ' (prerelease)' : ''}"
+    puts "DRY RUN: Would create or update GitHub release #{release_context[:tag]}#{' (prerelease)' if release_context[:prerelease]}"
     puts "DRY RUN: Would run: #{Shellwords.join(preview_command)}"
     return
   end
@@ -435,7 +435,7 @@ def publish_or_update_github_release(gem_root:, release_context:, dry_run:)
       notes_file_path: tmp.path
     )
 
-    puts "Publishing GitHub release #{release_context[:tag]}#{release_context[:prerelease] ? ' (prerelease)' : ''}"
+    puts "Publishing GitHub release #{release_context[:tag]}#{' (prerelease)' if release_context[:prerelease]}"
     success = system(*release_command, chdir: gem_root)
     abort "Failed to publish GitHub release #{release_context[:tag]}." unless success
   end

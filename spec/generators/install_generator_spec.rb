@@ -225,10 +225,7 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
   end
 
   def run_generator(args, options)
-    generator_options = []
-    options.each do |key, value|
-      generator_options << "--#{key}=#{value}"
-    end
+    generator_options = options.map { |key, value| "--#{key}=#{value}" }
 
     CypressOnRails::InstallGenerator.start(
       args + generator_options,

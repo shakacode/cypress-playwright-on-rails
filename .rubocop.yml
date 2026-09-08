@@ -1,0 +1,77 @@
+inherit_from: .rubocop_todo.yml
+
+plugins:
+  - rubocop-rake
+  - rubocop-rspec
+
+# NewCops: enable is safe here ONLY because the RuboCop gems are pinned to patch
+# ranges in cypress-on-rails.gemspec ('~> 1.90.0', '~> 3.10.0', '~> 0.7.1').
+# New cops therefore arrive only when someone deliberately bumps a pin, and that
+# bump is exactly when .rubocop_todo.yml should be regenerated. They can never
+# turn up unannounced and fail CI on an unrelated PR, which was the original
+# objection to `enable`.
+#
+# Do NOT switch this back to `pending` without also unpinning: with 167 cops
+# pending, RuboCop printed a 342-line warning block on every single run, which
+# buried real offenses and made `rake lint` useless as a local gate.
+AllCops:
+  TargetRubyVersion: 3.0
+  NewCops: enable
+  # Suppresses the recurring "rubocop-factory_bot might be helpful" suggestion,
+  # which printed on every run.
+  SuggestExtensions: false
+  Exclude:
+    - 'vendor/**/*'
+    - 'spec/fixtures/**/*'
+    - 'tmp/**/*'
+    - 'pkg/**/*'
+    - 'node_modules/**/*'
+    - 'specs_e2e/**/*'
+    - 'e2e/**/*'
+
+# Ensure all files end with a newline
+Layout/TrailingEmptyLines:
+  Enabled: true
+  EnforcedStyle: final_newline
+
+# Ensure no trailing whitespace
+Layout/TrailingWhitespace:
+  Enabled: true
+
+# Line length is configured in .rubocop_todo.yml for existing violations
+
+# Allow longer blocks in specs and rake tasks
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '**/*.rake'
+    - 'Rakefile'
+    - '*.gemspec'
+
+# Allow longer methods in rake tasks
+Metrics/MethodLength:
+  Exclude:
+    - '**/*.rake'
+    - 'Rakefile'
+
+# String literals - configured in .rubocop_todo.yml for gradual adoption
+
+# Frozen string literal pragma - configured in .rubocop_todo.yml for gradual adoption
+
+# Documentation
+Style/Documentation:
+  Enabled: false
+
+# Allow compact module/class definitions
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+# RSpec specific
+RSpec/ExampleLength:
+  Max: 20
+
+RSpec/MultipleExpectations:
+  Max: 5
+
+RSpec/NestedGroups:
+  Max: 4

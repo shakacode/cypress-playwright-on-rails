@@ -3,4 +3,14 @@
 set -euo pipefail
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 # This is the full pre-push Rake gate, not a filtered test runner.
-exec bundle exec rake
+#
+# `rake ci` (specs + lint + newlines), not the default `rake` (specs only),
+# because CI enforces all three: .github/workflows/ruby.yml runs the specs and
+# .github/workflows/lint.yml runs `rake lint` + `rake check_newlines`. A gate
+# that only ran the specs would green-light a branch the lint job then rejects.
+#
+# The Rakefile comment explains why *CI* splits this work across jobs -- to
+# avoid running the specs a fourth time and to keep RuboCop off the Ruby 3.0.7
+# job. Neither reason applies to a single local pre-push gate, which wants the
+# union rather than any one slice of it.
+exec bundle exec rake ci

@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Breaking
+* **Minimum Ruby version**: Raised `required_ruby_version` to `>= 3.0.0`. Ruby 2.x is no longer supported. [PR 193](https://github.com/shakacode/cypress-playwright-on-rails/pull/193) by [justin808](https://github.com/justin808)
+
 ### Added
 - **Middleware token**: New `config.middleware_token` (defaults to `ENV['CYPRESS_ON_RAILS_TOKEN']`). When set, the command, VCR insert/eject, and state-reset endpoints require a matching `X-Cypress-On-Rails-Token` header and return 403 otherwise, compared in constant time; the generated Cypress and Playwright helpers send the header automatically (Cypress from `cypress.env.json`, or from a shell `CYPRESS_ON_RAILS_TOKEN` that Cypress exposes as `ON_RAILS_TOKEN` after stripping the prefix; Playwright from `process.env.CYPRESS_ON_RAILS_TOKEN`). `nil`, `false`, and blank values all mean "no token required"; `true` raises an `ArgumentError` rather than quietly requiring the literal secret `"true"`. [PR 253](https://github.com/shakacode/cypress-playwright-on-rails/pull/253) by [justin808](https://github.com/justin808).
 - **`e2e_on_rails` alias gem**: Added a thin wrapper gem that reserves the canonical name adopted at 2.0 and installs the matching `cypress-on-rails` version, and taught `rake release` to publish it after the main gem. [PR 251](https://github.com/shakacode/cypress-playwright-on-rails/pull/251) by [justin808](https://github.com/justin808).

@@ -1,0 +1,181 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'fileutils'
+require_relative '../rakelib/newline_checker'
+
+# Marks hooks written by this installer so re-running it never clobbers a
+# developer's own pre-commit hook (see the backup logic below).
+HOOK_SENTINEL = '# Pre-commit hook installed by cypress-on-rails bin/install-hooks'
+
+# Find the git directory (could be .git file in worktree or .git directory)
+git_dir = nil
+current = File.expand_path('..', __dir__)
+
+while current != '/'
+  git_path = File.join(current, '.git')
+  unless File.exist?(git_path)
+    current = File.dirname(current)
+    next
+  end
+
+  unless File.file?(git_path)
+    git_dir = git_path
+    break
+  end
+
+  # It's a worktree, read the actual git dir
+  git_dir_line = File.read(git_path).lines.find { |l| l.start_with?('gitdir:') }
+  if git_dir_line
+    relative_path = git_dir_line.sub('gitdir:', '').strip
+    git_dir = File.expand_path(relative_path, current)
+  end
+  break
+end
+
+unless git_dir && File.exist?(git_dir)
+  puts 'Error: Not in a git repository. Please run this from the project root.'
+  exit 1
+end
+
+hooks_dir = File.join(git_dir, 'hooks')
+pre_commit_hook = File.join(hooks_dir, 'pre-commit')
+
+# The hook's scope is generated from NewlineChecker so it always matches what
+# `rake check_newlines` / `rake fix_newlines` can actually repair. Without this,
+# the hook could reject a file and then tell the developer to run a task that
+# skips it.
+hook_content = <<~HOOK
+  #!/usr/bin/env bash
+  #{HOOK_SENTINEL}
+  # Regenerate with: ./bin/install-hooks
+
+  # Portability note: this hook deliberately avoids `grep -z` / `xargs -0`.
+  # `-z` is a GNU extension that is absent from some BSD/busybox greps, and a
+  # grep that rejects the flag exits non-zero with empty output, which would
+  # silently skip the whole check. Bash's own `=~` and `case` do the matching
+  # instead, so NUL-delimited paths survive intact and nothing fails quietly.
+
+  newline_file_pattern='#{NewlineChecker.staged_file_pattern}'
+  newline_excluded_prefixes='#{NewlineChecker.staged_excluded_prefixes}'
+
+  is_excluded() {
+    local candidate="$1"
+    local prefix
+    for prefix in $newline_excluded_prefixes; do
+      case "$candidate" in
+        "$prefix"*) return 0 ;;
+      esac
+    done
+    return 1
+  }
+
+  # Mirrors NewlineChecker.text_file?: a known basename/extension, or an
+  # extensionless script identified by its shebang. The `*.*` test is the shell
+  # equivalent of "basename contains no dot", chosen so both implementations
+  # classify dotfiles like .gitignore the same way.
+  is_text_candidate() {
+    local candidate="$1"
+
+    [[ $candidate =~ $newline_file_pattern ]] && return 0
+
+    local base="${candidate##*/}"
+    case "$base" in
+      *.*) return 1 ;;
+    esac
+
+    [ -f "$candidate" ] || return 1
+    [ "$(head -c 2 "$candidate" 2>/dev/null)" = '#!' ]
+  }
+
+  newline_files=()
+  ruby_files=()
+  while IFS= read -r -d '' file; do
+    case "$file" in
+      *.rb|*.rake) ruby_files+=("$file") ;;
+    esac
+
+    is_excluded "$file" && continue
+
+    if is_text_candidate "$file"; then
+      newline_files+=("$file")
+    fi
+  done < <(git diff --cached --name-only -z --diff-filter=ACM)
+
+  # Check staged files for missing newlines
+  echo "Checking staged files for missing newlines..."
+  missing_newline=0
+  if [ ${#newline_files[@]} -gt 0 ]; then
+    for file in "${newline_files[@]}"; do
+      # Skip empty files and anything grep considers binary; `tail -c 1` is
+      # empty when the last byte is a newline because $(...) strips it.
+      if [ -f "$file" ] && [ -s "$file" ] && LC_ALL=C grep -Iq . "$file" && [ -n "$(tail -c 1 "$file")" ]; then
+        echo "  Missing final newline: $file"
+        missing_newline=1
+      fi
+    done
+  fi
+  if [ "$missing_newline" -ne 0 ]; then
+    echo "Some files are missing final newlines. Run 'bundle exec rake fix_newlines' to fix."
+    exit 1
+  fi
+
+  # Run RuboCop on staged Ruby files. --force-exclusion makes RuboCop honour the
+  # Exclude list in .rubocop.yml even for explicitly listed paths.
+  if [ ${#ruby_files[@]} -gt 0 ]; then
+    echo "Running RuboCop on staged files..."
+    if ! bundle exec rubocop --force-exclusion "${ruby_files[@]}"; then
+      echo "RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
+      exit 1
+    fi
+  fi
+
+  echo "All checks passed!"
+HOOK
+
+# Create hooks directory if it doesn't exist
+begin
+  FileUtils.mkdir_p(hooks_dir)
+rescue SystemCallError => e
+  puts "Error: Failed to create hooks directory: #{e.message}"
+  exit 1
+end
+
+# Back up existing hook if present
+if File.exist?(pre_commit_hook)
+  existing_content = File.read(pre_commit_hook)
+  if existing_content.include?(HOOK_SENTINEL)
+    puts 'Replacing previously installed hook (no backup needed)'
+  else
+    backup = "#{pre_commit_hook}.bak"
+    if File.exist?(backup)
+      timestamp = Time.now.utc.strftime('%Y%m%d%H%M%S')
+      backup = "#{pre_commit_hook}.#{timestamp}.bak"
+    end
+    FileUtils.cp(pre_commit_hook, backup)
+    puts "Backed up existing hook to #{backup}"
+  end
+end
+
+# Write the pre-commit hook
+begin
+  File.write(pre_commit_hook, hook_content)
+rescue SystemCallError => e
+  puts "Error: Failed to write pre-commit hook: #{e.message}"
+  exit 1
+end
+
+# Make it executable
+begin
+  File.chmod(0o755, pre_commit_hook)
+rescue SystemCallError => e
+  puts "Error: Failed to make hook executable: #{e.message}"
+  exit 1
+end
+
+puts 'Pre-commit hook installed successfully!'
+puts 'The hook will:'
+puts '  - Check that staged files end with a newline'
+puts '  - Run RuboCop on staged Ruby files'
+puts ''
+puts 'To skip the hook temporarily, use: git commit --no-verify'
