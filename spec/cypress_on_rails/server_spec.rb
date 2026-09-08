@@ -1,5 +1,6 @@
 require 'cypress_on_rails/server'
 require 'rbconfig'
+require 'tempfile'
 require 'thread'
 require 'json'
 require 'stringio'
@@ -23,6 +24,46 @@ RSpec.describe CypressOnRails::Server do
     def set_server_output(server, output)
       server.instance_variable_set(:@server_output, +output)
       server.instance_variable_set(:@server_output_mutex, Mutex.new)
+    end
+
+    # A boot that starts a worker before losing the port. The worker inherits
+    # the leader's process group and outlives it, so only a group signal
+    # removes it. Its output goes to /dev/null so it does not hold the
+    # capture pipes open once the leader is gone.
+    def orphaning_bind_failure_script(pid_path, port)
+      "child = Process.spawn(#{RbConfig.ruby.dump}, '-e', 'sleep 30', " \
+        "out: File::NULL, err: File::NULL); " \
+        "File.write(#{pid_path.dump}, child); " +
+        bind_failure_script(port)
+    end
+
+    def recorded_child_pid(path)
+      contents = File.read(path)
+      contents.empty? ? nil : Integer(contents)
+    rescue Errno::ENOENT
+      nil
+    end
+
+    def wait_for_process_exit(pid, timeout = 5)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+      loop do
+        begin
+          Process.kill(0, pid)
+        rescue Errno::ESRCH
+          return true
+        end
+        return false if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+        sleep 0.05
+      end
+    end
+
+    def kill_leftover_process(pid)
+      return unless pid
+
+      Process.kill('KILL', pid)
+    rescue Errno::ESRCH, Errno::EPERM
+      nil
     end
 
     it 'respawns on a fresh port when an auto-selected port loses the bind race' do
@@ -122,6 +163,36 @@ RSpec.describe CypressOnRails::Server do
       expect(spawns).to eq(2)
       expect(ports.first).not_to eq(ports.last)
       expect(ports.last).to eq(server.port.to_s)
+    end
+
+    it 'terminates the failed attempt process group before respawning' do
+      server = described_class.new(host: '127.0.0.1')
+      child_pid_file = Tempfile.new('cypress_on_rails_orphan')
+      spawns = 0
+      allow(server).to receive(:run_command)
+      # The surviving group keeps the failed attempt "running" until the
+      # readiness timeout, so shorten it rather than waiting the full 30s.
+      allow(server).to receive(:wait_for_server).and_wrap_original { |original| original.call(1) }
+      allow(server).to receive(:spawn) do |*command, **options|
+        spawns += 1
+        script = if spawns == 1
+          orphaning_bind_failure_script(child_pid_file.path, requested_port(command))
+        else
+          'STDERR.write("Listening\n"); sleep 10'
+        end
+        Process.spawn(RbConfig.ruby, '-e', script, **options)
+      end
+      allow(server).to receive(:server_responding?) { spawns >= 2 }
+
+      server.open
+
+      child_pid = recorded_child_pid(child_pid_file.path)
+      expect(spawns).to eq(2)
+      expect(child_pid).not_to be_nil
+      expect(wait_for_process_exit(child_pid)).to be(true)
+    ensure
+      kill_leftover_process(recorded_child_pid(child_pid_file.path))
+      child_pid_file.close!
     end
 
     it 'does not retry a bind failure reported for an unrelated port' do

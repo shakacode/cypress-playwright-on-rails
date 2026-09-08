@@ -222,6 +222,14 @@ module CypressOnRails
           "Rails server could not bind port #{port}, retrying on a new port " \
           "(attempt #{attempts} of #{PORT_ACQUISITION_ATTEMPTS})"
         )
+        # Reaping the leader does not remove anything it spawned before losing
+        # the port, and the respawn below overwrites @server_pgid, which would
+        # strand that group beyond the final #stop_server: an orphan can hold a
+        # port or a database connection into later runs. Reuse the normal
+        # TERM-then-KILL escalation; a group that is already gone is a no-op
+        # there, since the signal helpers treat ESRCH on a reaped server as
+        # success.
+        stop_server(@server_pid)
         @port = find_available_port
         spawn_server
         retry
