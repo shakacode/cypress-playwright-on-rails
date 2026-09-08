@@ -16,8 +16,24 @@ module CypressOnRails
     SERVER_OUTPUT_THREAD_JOIN_TIMEOUT = 0.05
     SERVER_OUTPUT_FORWARD_QUEUE_SIZE = 16
     SERVER_OUTPUT_FORWARD_BACKPRESSURE_TIMEOUT = 0.1
+    # Fallback used when the configuration does not supply a usable
+    # server_shutdown_timeout; see Configuration#server_shutdown_timeout.
     SERVER_STOP_TIMEOUT = 10
+    # A process cannot ignore KILL, so a short fixed grace is enough to reap it.
+    # Keeping it fixed bounds a whole stop at server_shutdown_timeout plus this,
+    # rather than at twice a configurable timeout.
+    SERVER_KILL_GRACE_TIMEOUT = 5
     SERVER_STOP_POLL_INTERVAL = 0.05
+    # Bounded attempts shared by free-port selection and the respawn that
+    # follows a lost bind race; see #find_available_port and
+    # #wait_for_server_with_bind_retry.
+    PORT_ACQUISITION_ATTEMPTS = 3
+    PORT_PROBE_HOST = '127.0.0.1'.freeze
+    # Rails reports a lost bind race through the adapter, so match both the
+    # errno name and the message Puma/Ruby print for it. The errno text alone
+    # is ambiguous, so #lost_port_bind_race? also requires the failing line to
+    # name this listener's port; see #server_port_reference_pattern.
+    PORT_BIND_FAILURE_PATTERN = /Address already in use|EADDRINUSE/i.freeze
 
     attr_reader :host, :port, :framework, :install_folder
 
@@ -26,7 +42,11 @@ module CypressOnRails
 
       @framework = options[:framework] || :cypress
       @host = options[:host] || config.server_host
-      @port = options[:port] || config.server_port || find_available_port
+      configured_port = options[:port] || config.server_port
+      # Only an auto-selected port may be re-selected after a lost bind race;
+      # an explicitly configured port is the user's choice and is left alone.
+      @port_auto_selected = configured_port.nil?
+      @port = configured_port || find_available_port
       @port = @port.to_i if @port
       @install_folder = options[:install_folder] || config.install_folder || detect_install_folder
       @transactional = options.fetch(:transactional, config.transactional_server)
@@ -69,11 +89,43 @@ module CypressOnRails
       end
     end
 
+    # Picks an ephemeral port and confirms it can still be bound. Another
+    # process can claim the port between the probe and the confirmation, so the
+    # acquisition is retried a bounded number of times before giving up.
     def find_available_port
-      server = TCPServer.new('127.0.0.1', 0)
-      port = server.addr[1]
-      server.close
+      attempts = 0
+      begin
+        attempts += 1
+        acquire_available_port
+      rescue Errno::EADDRINUSE => error
+        retry if attempts < PORT_ACQUISITION_ATTEMPTS
+
+        raise ServerError, "Unable to acquire a free port on #{PORT_PROBE_HOST} after " \
+                           "#{attempts} attempts: #{error.class}: #{error.message}. " \
+                           'Set config.server_port (or CYPRESS_RAILS_PORT) to a known free port.'
+      end
+    end
+
+    def acquire_available_port
+      port = detect_free_port
+      confirm_port_available(port)
       port
+    end
+
+    def detect_free_port
+      socket = TCPServer.new(PORT_PROBE_HOST, 0)
+      begin
+        socket.addr[1]
+      ensure
+        socket.close
+      end
+    end
+
+    # Re-binding the detected port is where a lost bind race surfaces as
+    # Errno::EADDRINUSE instead of a confusing Rails server boot failure.
+    def confirm_port_available(port)
+      socket = TCPServer.new(PORT_PROBE_HOST, port)
+      socket.close
     end
 
     def start_server(&block)
@@ -85,7 +137,7 @@ module CypressOnRails
       ENV['RAILS_ENV'] ||= 'test'
       
       begin
-        server_pid = spawn_server
+        spawn_server
       rescue StandardError
         ENV.delete('CYPRESS')
         raise
@@ -94,7 +146,7 @@ module CypressOnRails
       timeout_result = nil
       stop_result = nil
       begin
-        timeout_result = wait_for_server
+        timeout_result = wait_for_server_with_bind_retry
         unless timeout_result
           run_hook(config.after_server_start)
 
@@ -114,7 +166,8 @@ module CypressOnRails
           ActiveRecord::Base.connection.rollback_transaction if ActiveRecord::Base.connection.transaction_open?
         end
         
-        stop_result = stop_server(server_pid)
+        # @server_pid rather than the first pid: a bind-race retry respawns.
+        stop_result = stop_server(@server_pid)
         ENV.delete('CYPRESS')
       end
 
@@ -151,11 +204,74 @@ module CypressOnRails
       @server_pid
     end
 
+    # Confirming a free port cannot close the race entirely: the probe socket
+    # has to be released before Rails can bind it, and another process can take
+    # it in that window. When the port was auto-selected and the server exits
+    # reporting a bind failure, pick a fresh port and respawn, sharing the
+    # PORT_ACQUISITION_ATTEMPTS budget with #find_available_port.
+    def wait_for_server_with_bind_retry
+      attempts = 1
+      begin
+        wait_for_server
+      rescue ServerError => error
+        raise unless lost_port_bind_race?
+        raise port_bind_retries_exhausted(attempts, error) if attempts >= PORT_ACQUISITION_ATTEMPTS
+
+        attempts += 1
+        CypressOnRails.configuration.logger.warn(
+          "Rails server could not bind port #{port}, retrying on a new port " \
+          "(attempt #{attempts} of #{PORT_ACQUISITION_ATTEMPTS})"
+        )
+        # Reaping the leader does not remove anything it spawned before losing
+        # the port, and the respawn below overwrites @server_pgid, which would
+        # strand that group beyond the final #stop_server: an orphan can hold a
+        # port or a database connection into later runs. Reuse the normal
+        # TERM-then-KILL escalation; a group that is already gone is a no-op
+        # there, since the signal helpers treat ESRCH on a reaped server as
+        # success.
+        stop_server(@server_pid)
+        @port = find_available_port
+        spawn_server
+        retry
+      end
+    end
+
+    def lost_port_bind_race?
+      return false unless @port_auto_selected
+
+      port_reference = server_port_reference_pattern
+      recent_server_output.each_line.any? do |line|
+        PORT_BIND_FAILURE_PATTERN.match?(line) && port_reference.match?(line)
+      end
+    end
+
+    # An initializer or dependency that cannot bind an unrelated port (a
+    # database, a metrics endpoint, an embedded service) prints the same errno
+    # text as a lost Rails bind race. Respawning on a fresh port would retry a
+    # deterministic boot failure and then blame a port that was never the
+    # problem, so only a failure naming this listener counts. Adapters spell
+    # that as `port 4321` (Ruby's bind(2) message) or as `127.0.0.1:4321` in a
+    # host/URI form; a failure that names neither is reported as-is.
+    def server_port_reference_pattern
+      /(?:\bport\s+|:)#{Regexp.escape(port.to_s)}\b/
+    end
+
+    def port_bind_retries_exhausted(attempts, error)
+      ServerError.new("Rails server could not bind an auto-selected port after #{attempts} attempts. " \
+                      'Set config.server_port (or CYPRESS_RAILS_PORT) to a known free port.' \
+                      "\n#{error.message}")
+    end
+
     def wait_for_server(timeout = 30)
       Timeout.timeout(timeout, Timeout::Error) do
         loop do
-          break if server_responding?
-          raise server_start_failure if server_exited?
+          ready = server_responding?
+          # Check the spawned server after probing, and before accepting the
+          # probe: a readiness response only proves that some process owns the
+          # port, so a competing server that won the final bind race must not
+          # be mistaken for ours.
+          raise server_start_failure unless server_still_running?
+          break if ready
 
           sleep 0.1
         end
@@ -168,6 +284,16 @@ module CypressOnRails
         timeout: timeout,
         status: process_exists?(@server_pid) ? 'process status running' : 'process status unavailable'
       }
+    end
+
+    # The spawned leader may hand its listener to another member of its process
+    # group and exit (see #stop_server), so a reaped leader alone does not mean
+    # the server is gone. Once the whole group is gone, nothing we spawned can
+    # be answering, and a readiness response belongs to a competing process.
+    def server_still_running?
+      return true unless server_exited?
+
+      process_group_exists?
     end
 
     def server_responding?
@@ -195,27 +321,35 @@ module CypressOnRails
         return :terminal if leader_terminal && !@server_pgid
 
         puts "Stopping Rails server (PID: #{pid})"
+        shutdown_timeout = server_shutdown_timeout
         send_term_signal(pid)
         if @server_pgid
-          unless wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+          unless wait_for_server_group_exit(monotonic_time + shutdown_timeout)
             CypressOnRails.configuration.logger.warn("Server process group did not terminate after TERM signal, sending KILL")
             send_kill_signal(pid)
-            wait_for_server_group_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+            wait_for_server_group_exit(monotonic_time + SERVER_KILL_GRACE_TIMEOUT)
           end
           return leader_terminal ? :terminal_group_signaled : :signaled
         end
 
-        unless wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+        unless wait_for_server_exit(monotonic_time + shutdown_timeout)
           CypressOnRails.configuration.logger.warn("Server did not terminate after TERM signal, sending KILL")
           unless server_exited?
             send_kill_signal(pid)
-            wait_for_server_exit(monotonic_time + SERVER_STOP_TIMEOUT)
+            wait_for_server_exit(monotonic_time + SERVER_KILL_GRACE_TIMEOUT)
           end
         end
         :signaled
       ensure
         wait_for_server_output
       end
+    end
+
+    # Seconds to wait after TERM before escalating to KILL. Falls back to the
+    # built-in default when a caller supplies a configuration double without it.
+    def server_shutdown_timeout
+      timeout = CypressOnRails.configuration.server_shutdown_timeout
+      timeout.is_a?(Numeric) && timeout > 0 ? timeout : SERVER_STOP_TIMEOUT
     end
 
     def wait_for_server_exit(deadline)
@@ -240,6 +374,11 @@ module CypressOnRails
     end
 
     def start_server_output_capture
+      # Identifies this capture generation. A bind-race respawn starts a new
+      # one while the previous attempt's readers may still be winding down
+      # (#drain_server_output kills them, which is asynchronous), and their
+      # bytes belong to the attempt they were started for.
+      @server_output_token = Object.new
       @server_output = +''
       @server_output_mutex = Mutex.new
       @server_output_streams = []
@@ -252,8 +391,9 @@ module CypressOnRails
         stderr_reader, @server_stderr_writer = IO.pipe
         @server_output_streams << [stderr_reader, SizedQueue.new(SERVER_OUTPUT_FORWARD_QUEUE_SIZE), $stderr]
 
+        token = @server_output_token
         @server_output_streams.each do |reader, queue, _stream|
-          @server_output_readers << start_server_output_reader(reader, queue)
+          @server_output_readers << start_server_output_reader(reader, queue, token)
         end
         @server_output_streams.each do |_reader, queue, stream|
           @server_output_forwarders << start_server_output_forwarder(queue, stream)
@@ -269,13 +409,13 @@ module CypressOnRails
       end
     end
 
-    def start_server_output_reader(reader, queue)
+    def start_server_output_reader(reader, queue, token = @server_output_token)
       Thread.new do
         forwarding = true
         forwarding_deadline = nil
         loop do
           output = reader.readpartial(1_024)
-          capture_server_output(output)
+          capture_server_output(output, token)
           if forwarding
             forwarding, forwarding_deadline = enqueue_server_output(queue, output, forwarding_deadline)
           end
@@ -307,8 +447,13 @@ module CypressOnRails
       end
     end
 
-    def capture_server_output(output)
+    def capture_server_output(output, token = @server_output_token)
       @server_output_mutex.synchronize do
+        # Ignore a reader that outlived its spawn attempt: its bytes would
+        # otherwise be attributed to the current attempt, both in the startup
+        # diagnostics and in #lost_port_bind_race?.
+        return unless token.equal?(@server_output_token)
+
         @server_output << output
         if @server_output.bytesize > MAX_STARTUP_OUTPUT_BYTES
           @server_output = @server_output.byteslice(-MAX_STARTUP_OUTPUT_BYTES, MAX_STARTUP_OUTPUT_BYTES)

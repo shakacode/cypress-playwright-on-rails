@@ -45,12 +45,45 @@ module CypressOnRails
       Rails.cache.clear if defined?(Rails) && Rails.cache
 
       # Reset any class-level state
-      ActiveSupport::Dependencies.clear if defined?(ActiveSupport::Dependencies)
+      clear_autoloaded_constants
 
       # Run after_state_reset hook after cleanup is complete
       run_hook(config.after_state_reset)
     end
-    
+
+    # Rails only builds a reloadable autoloader when reloading is enabled, and
+    # test environments normally disable it (config.enable_reloading = false on
+    # Rails 7.1+, config.cache_classes = true before that). Clearing anyway
+    # raises, and it raises differently per version: on Rails 7.0+
+    # ActiveSupport::Dependencies.autoloader is left nil and .clear fails with
+    # NoMethodError, while Rails 6.1 has no .autoloader accessor at all and
+    # .clear raises RuntimeError("reloading is disabled ..."). Either way it
+    # happened after the tables were truncated, so every state reset returned a
+    # 500 from a half-finished reset. Ask the application whether reloading is
+    # on first, and keep the nil-autoloader check as a second line of defence.
+    def clear_autoloaded_constants
+      return unless defined?(ActiveSupport::Dependencies)
+      return unless ActiveSupport::Dependencies.respond_to?(:clear)
+      return unless application_reloading_enabled?
+      if ActiveSupport::Dependencies.respond_to?(:autoloader)
+        return if ActiveSupport::Dependencies.autoloader.nil?
+      end
+
+      ActiveSupport::Dependencies.clear
+    end
+
+    # Defaults to true when there is no Rails application to ask, so plain Rack
+    # apps keep the previous behaviour.
+    def application_reloading_enabled?
+      return true unless defined?(Rails) && Rails.respond_to?(:application) && Rails.application
+
+      config = Rails.application.config
+      return config.reloading_enabled? if config.respond_to?(:reloading_enabled?)
+      return !config.cache_classes if config.respond_to?(:cache_classes)
+
+      true
+    end
+
     def run_hook(hook)
       hook.call if hook && hook.respond_to?(:call)
     end

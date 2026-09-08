@@ -20,6 +20,7 @@ if defined?(CypressOnRails)
     # c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
     # c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
     # c.transactional_server = true  # Enable automatic transaction rollback between tests
+    # c.server_shutdown_timeout = 10 # Seconds to wait after TERM before KILL, or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
 
     # Server lifecycle hooks for rake tasks
     # c.before_server_start = -> { DatabaseCleaner.clean_with(:truncation) }
