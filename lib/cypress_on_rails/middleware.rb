@@ -47,7 +47,7 @@ module CypressOnRails
     end
 
     def handle_command(req)
-      maybe_env = configuration.before_request.call(req)
+      maybe_env = run_before_request(req)
       # Halt the middleware if an Rack Env was returned by `before_request`
       return maybe_env unless maybe_env.nil?
 
@@ -77,6 +77,14 @@ module CypressOnRails
         output = {"message" => "could not find command file: #{missing_command.file_path}"}.to_json
         [404, {'Content-Type' => 'application/json'}, [output]]
       end
+    end
+
+    # `before_request` is one of Configuration::HOOKS, so nil is a valid value.
+    # Guard the call the way the server and state-reset hooks are guarded:
+    # configuration must not validate cleanly and then fail on the next request.
+    def run_before_request(req)
+      hook = configuration.before_request
+      hook.call(req) if hook.respond_to?(:call)
     end
   end
 end

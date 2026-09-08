@@ -512,6 +512,23 @@ RSpec.describe CypressOnRails::Server do
       expect(server.send(:wait_for_server, 5)).to be_nil
     end
 
+    it 'drops output from a reader that outlived its spawn attempt' do
+      server.send(:start_server_output_capture)
+      stale_token = server.instance_variable_get(:@server_output_token)
+      server.send(:capture_server_output, "first attempt\n", stale_token)
+      server.send(:drain_server_output)
+
+      # A bind-race respawn starts a fresh capture while the previous
+      # attempt's killed reader may still be winding down.
+      server.send(:start_server_output_capture)
+      server.send(:capture_server_output, "trailing byte from the first attempt\n", stale_token)
+      server.send(:capture_server_output, "second attempt\n")
+
+      expect(server.send(:recent_server_output)).to eq("second attempt\n")
+    ensure
+      server.send(:drain_server_output)
+    end
+
     it 'does not KILL after a wait has already reaped the server' do
       pid = 12_345
       signals = []

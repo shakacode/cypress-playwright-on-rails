@@ -366,6 +366,11 @@ module CypressOnRails
     end
 
     def start_server_output_capture
+      # Identifies this capture generation. A bind-race respawn starts a new
+      # one while the previous attempt's readers may still be winding down
+      # (#drain_server_output kills them, which is asynchronous), and their
+      # bytes belong to the attempt they were started for.
+      @server_output_token = Object.new
       @server_output = +''
       @server_output_mutex = Mutex.new
       @server_output_streams = []
@@ -378,8 +383,9 @@ module CypressOnRails
         stderr_reader, @server_stderr_writer = IO.pipe
         @server_output_streams << [stderr_reader, SizedQueue.new(SERVER_OUTPUT_FORWARD_QUEUE_SIZE), $stderr]
 
+        token = @server_output_token
         @server_output_streams.each do |reader, queue, _stream|
-          @server_output_readers << start_server_output_reader(reader, queue)
+          @server_output_readers << start_server_output_reader(reader, queue, token)
         end
         @server_output_streams.each do |_reader, queue, stream|
           @server_output_forwarders << start_server_output_forwarder(queue, stream)
@@ -395,13 +401,13 @@ module CypressOnRails
       end
     end
 
-    def start_server_output_reader(reader, queue)
+    def start_server_output_reader(reader, queue, token = @server_output_token)
       Thread.new do
         forwarding = true
         forwarding_deadline = nil
         loop do
           output = reader.readpartial(1_024)
-          capture_server_output(output)
+          capture_server_output(output, token)
           if forwarding
             forwarding, forwarding_deadline = enqueue_server_output(queue, output, forwarding_deadline)
           end
@@ -433,8 +439,13 @@ module CypressOnRails
       end
     end
 
-    def capture_server_output(output)
+    def capture_server_output(output, token = @server_output_token)
       @server_output_mutex.synchronize do
+        # Ignore a reader that outlived its spawn attempt: its bytes would
+        # otherwise be attributed to the current attempt, both in the startup
+        # diagnostics and in #lost_port_bind_race?.
+        return unless token.equal?(@server_output_token)
+
         @server_output << output
         if @server_output.bytesize > MAX_STARTUP_OUTPUT_BYTES
           @server_output = @server_output.byteslice(-MAX_STARTUP_OUTPUT_BYTES, MAX_STARTUP_OUTPUT_BYTES)

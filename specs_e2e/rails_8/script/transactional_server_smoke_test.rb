@@ -72,7 +72,6 @@ CypressOnRails.configure do |config|
 end
 
 server = CypressOnRails::Server.new(host: '127.0.0.1')
-base_url = "http://127.0.0.1:#{server.port}"
 spec_one_titles = %w[smoke-spec-one-a smoke-spec-one-b smoke-spec-one-c]
 spec_two_title = 'smoke-spec-two-a'
 
@@ -86,6 +85,11 @@ begin
     # entry points (#open / #run) additionally shell out to Cypress or
     # Playwright, which is not what we want to exercise here.
     server.send(:start_server) do
+      # Derive the URL only once the server is ready: an auto-selected port
+      # that loses the final bind race is re-selected and the server respawned,
+      # so the port this run ends up on is not necessarily the first one.
+      base_url = server.send(:base_url)
+
       report(failures, 'the transactional_server transaction was opened', transaction_opened)
 
       # Known-clean starting point, through the same endpoint under test.
@@ -139,9 +143,10 @@ rescue Timeout::Error
 end
 
 puts '-- after shutdown'
-report(failures, 'server process group is gone',
-       server.instance_variable_get(:@server_pgid).nil? ||
-         !server.send(:process_exists?, server.instance_variable_get(:@server_pid)))
+# The whole group has to be gone, not just its former leader: a surviving
+# member would keep the port and contaminate later CI steps. The predicate
+# signals the group (negative pgid) and is false when no group was recorded.
+report(failures, 'server process group is gone', !server.send(:process_group_exists?))
 
 # transactional_server rolls back a transaction held by *this* process. The
 # server has its own process and its own connections, so its committed writes
