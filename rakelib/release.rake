@@ -485,9 +485,14 @@ def publish_alias_gem(release_root:, gem_version:, dry_run:)
   package_file = alias_gem_package_file(gem_version)
 
   unless File.exist?(File.join(alias_dir, gemspec_file))
-    puts "Skipping #{ALIAS_GEM_NAME}: #{ALIAS_GEM_DIR_NAME}/#{gemspec_file} not found in #{release_root}."
+    warn "WARNING: Skipping #{ALIAS_GEM_NAME}: #{ALIAS_GEM_DIR_NAME}/#{gemspec_file} not found in #{release_root}."
+    warn "WARNING: The #{ALIAS_GEM_NAME} alias gem was NOT built or published; restore the gemspec and publish it manually."
     return :skipped
   end
+
+  # Tracks which step raised so the warning names the phase that actually
+  # failed: `gem build` runs unconditionally and can fail in a live release too.
+  stage = :build
 
   begin
     # The alias gemspec must be built from its own directory: RubyGems resolves
@@ -501,12 +506,13 @@ def publish_alias_gem(release_root:, gem_version:, dry_run:)
       return :dry_run
     end
 
+    stage = :publish
     puts "Carefully add your OTP for RubyGems again. The alias gem is a second push, so MFA prompts once more."
     sh_in_dir_for_release(alias_dir, "gem push #{Shellwords.escape(package_file)}")
     puts "Published #{ALIAS_GEM_NAME} #{gem_version} to RubyGems."
     :published
   rescue StandardError => error
-    warn "WARNING: Failed to #{dry_run ? 'build' : 'publish'} the #{ALIAS_GEM_NAME} alias gem #{gem_version}: #{error.message}"
+    warn "WARNING: Failed to #{stage} the #{ALIAS_GEM_NAME} alias gem #{gem_version}: #{error.message}"
     warn "WARNING: #{MAIN_GEM_NAME} #{gem_version} is #{dry_run ? 'unaffected' : 'already published and is unaffected'}."
     warn "WARNING: Retry the alias gem manually with: #{alias_gem_manual_publish_command(gem_version)}"
     :failed
@@ -549,7 +555,8 @@ def print_release_summary(release_result)
     when :failed
       puts "WARNING: #{ALIAS_GEM_NAME} #{released_version} was NOT published. Retry with: #{alias_gem_manual_publish_command(released_version)}"
     else
-      puts "#{ALIAS_GEM_NAME} was not published (#{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec not found)."
+      puts "WARNING: #{ALIAS_GEM_NAME} #{released_version} was NOT published " \
+           "(#{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec not found)."
     end
     puts(changelog_section_found ? "GitHub release synced from CHANGELOG.md." : "GitHub release not synced because CHANGELOG.md section was missing.")
   end

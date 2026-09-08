@@ -22,6 +22,16 @@ RSpec.describe "release rake helpers" do
     $stdout = original_stdout
   end
 
+  def capture_stderr
+    original_stderr = $stderr
+    output = StringIO.new
+    $stderr = output
+    yield
+    output.string
+  ensure
+    $stderr = original_stderr
+  end
+
   describe "#parse_release_tag_to_gem_version" do
     it "parses stable and prerelease tags" do
       expect(parse_release_tag_to_gem_version("v1.21.0")).to eq("1.21.0")
@@ -94,7 +104,7 @@ RSpec.describe "release rake helpers" do
       end
 
       result = nil
-      capture_stdout { result = perform_release(gem_version: "", dry_run: false) }
+      capture_stderr { capture_stdout { result = perform_release(gem_version: "", dry_run: false) } }
       bump_command = events.find { |command| command.include?("gem bump") }
 
       expect(result[:released_gem_version]).to eq("1.21.0")
@@ -126,7 +136,7 @@ RSpec.describe "release rake helpers" do
       end
 
       result = nil
-      capture_stdout { result = perform_release(gem_version: "", dry_run: false) }
+      capture_stderr { capture_stdout { result = perform_release(gem_version: "", dry_run: false) } }
 
       expect(result[:released_gem_version]).to eq("1.21.0")
       expect(events.grep(/gem bump/)).to be_empty
@@ -227,6 +237,47 @@ RSpec.describe "release rake helpers" do
           .to be < events.index("gem push e2e_on_rails-1.21.0.gem")
         expect(output).to include("Published cypress-on-rails 1.21.0 to RubyGems.")
         expect(output).to include("WARNING: e2e_on_rails 1.21.0 was NOT published")
+      end
+    end
+
+    it "names the build phase, not publish, when the live-release alias build fails" do
+      with_alias_gem_release_root do |release_root|
+        stub_release_flow(release_root, dry_run: false)
+        # A broken alias gemspec fails at `gem build`, which runs in live releases
+        # too: the warning must not claim the push step was reached.
+        allow(self).to receive(:sh_in_dir_for_release) do |_dir, command|
+          raise "Command failed with status (1): [gem build]" if command.start_with?("gem build")
+        end
+
+        result = nil
+        expect do
+          capture_stdout do
+            result = perform_release(gem_version: "1.21.0", dry_run: false)
+          end
+        end.to output(/WARNING: Failed to build the e2e_on_rails alias gem 1\.21\.0/).to_stderr
+
+        expect(result[:alias_gem_status]).to eq(:failed)
+      end
+    end
+
+    it "warns instead of silently skipping when the alias gemspec is missing" do
+      Dir.mktmpdir do |release_root|
+        stub_release_flow(release_root, dry_run: false)
+        allow(self).to receive(:sh_in_dir_for_release)
+
+        result = nil
+        output = nil
+        expect do
+          output = capture_stdout do
+            result = perform_release(gem_version: "1.21.0", dry_run: false)
+            print_release_summary(result)
+          end
+        end.to output(%r{WARNING: Skipping e2e_on_rails: alias_gem/e2e_on_rails\.gemspec not found}).to_stderr
+
+        expect(result[:alias_gem_status]).to eq(:skipped)
+        expect(output).to include(
+          "WARNING: e2e_on_rails 1.21.0 was NOT published (alias_gem/e2e_on_rails.gemspec not found)."
+        )
       end
     end
   end
