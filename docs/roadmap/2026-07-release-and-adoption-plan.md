@@ -22,8 +22,12 @@ Owner: @justin808
   runs `rake release[1.21.0]` (RELEASING.md) and publishes the GitHub Release.
 - 2026-07-11: the release above shipped as **v1.20.1** (patch number chosen by
   the maintainer; contents unchanged: #205, #207, #210, #219). Every task gated
-  on "after v1.21.0 ships" (#226, #228, #224, #197, #209) is treated as
-  gate-satisfied from this date. PR #243 later landed #185 delivery 1.
+  on "after v1.21.0 ships" (#226, #228, #224, #197, #209) was treated as
+  gate-satisfied from this date. *(Superseded by the 2026-09-03 entry, which
+  renumbered 1.21.0: only #226 is in flight on that basis. Section 7 re-gates
+  #228, #224, #197 and #209 to the renumbered 1.21.0, so the repo rename and
+  the outreach comment must not start until that release ships.)* PR #243 later
+  landed #185 delivery 1.
 - 2026-09-03: release triage. PR #191 closed as superseded (release task already
   reworked on master), #155 closed per its auto-close disposition, #241 root
   cause recorded (missing `DOCS_DISPATCH_APP_ID`/`DOCS_DISPATCH_APP_KEY`
