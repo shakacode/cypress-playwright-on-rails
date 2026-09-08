@@ -4,9 +4,22 @@ plugins:
   - rubocop-rake
   - rubocop-rspec
 
+# NewCops: enable is safe here ONLY because the RuboCop gems are pinned to patch
+# ranges in cypress-on-rails.gemspec ('~> 1.90.0', '~> 3.10.0', '~> 0.7.1').
+# New cops therefore arrive only when someone deliberately bumps a pin, and that
+# bump is exactly when .rubocop_todo.yml should be regenerated. They can never
+# turn up unannounced and fail CI on an unrelated PR, which was the original
+# objection to `enable`.
+#
+# Do NOT switch this back to `pending` without also unpinning: with 167 cops
+# pending, RuboCop printed a 342-line warning block on every single run, which
+# buried real offenses and made `rake lint` useless as a local gate.
 AllCops:
   TargetRubyVersion: 3.0
-  NewCops: pending
+  NewCops: enable
+  # Suppresses the recurring "rubocop-factory_bot might be helpful" suggestion,
+  # which printed on every run.
+  SuggestExtensions: false
   Exclude:
     - 'vendor/**/*'
     - 'spec/fixtures/**/*'

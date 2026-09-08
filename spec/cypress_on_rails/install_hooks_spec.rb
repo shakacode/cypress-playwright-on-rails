@@ -5,7 +5,7 @@ require 'open3'
 require 'rbconfig'
 require 'tmpdir'
 
-# rubocop:disable RSpec/DescribeClass
+# rubocop:disable-next RSpec/DescribeClass
 RSpec.describe 'bin/install-hooks' do
   let(:project_root) { File.expand_path('../..', __dir__) }
   let(:repo_dir) { Dir.mktmpdir }
@@ -153,4 +153,3 @@ RSpec.describe 'bin/install-hooks' do
     expect(stdout + stderr).not_to include('illegal option')
   end
 end
-# rubocop:enable RSpec/DescribeClass

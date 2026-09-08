@@ -12,7 +12,7 @@ RSpec.describe CypressOnRails::SmartFactoryWrapper do
   let(:mtime_hash) { {'file1.rb' => time_now, 'file2.rb' => time_now } }
   let(:files) { %w(file1.rb file2.rb) }
   let(:factory_double) do
-    class_double(FactoryBot, create: nil, create_list: nil, build: nil, build_list: nil, "definition_file_paths=": nil, reload: nil)
+    class_double(FactoryBot, create: nil, create_list: nil, build: nil, build_list: nil, 'definition_file_paths=': nil, reload: nil)
   end
   let(:kernel_double) { class_double(Kernel, load: true) }
   let(:file_double) { FileSystemDummy.new(mtime_hash) }
