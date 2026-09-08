@@ -16,6 +16,12 @@ GITHUB_REPO_SLUG_PATTERN = /\A[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\z/ unless defined
 MAIN_GEM_NAME = "cypress-on-rails" unless defined?(MAIN_GEM_NAME)
 ALIAS_GEM_NAME = "e2e_on_rails" unless defined?(ALIAS_GEM_NAME)
 ALIAS_GEM_DIR_NAME = "alias_gem" unless defined?(ALIAS_GEM_DIR_NAME)
+# The alias gem does not exist on RubyGems before this version. ADR-0001 puts a
+# human name/ownership check on its first publish, and that check happens during
+# the 1.21.0 release, so an earlier release line (a 1.20.x hotfix, say) must not
+# create the gem as a side effect. Prereleases of this version do publish, so the
+# alias can be exercised before a final release: 1.21.0.rc.0 compares as 1.21.0.
+ALIAS_GEM_FIRST_VERSION = "1.21.0" unless defined?(ALIAS_GEM_FIRST_VERSION)
 
 def release_truthy?(value)
   [true, "true", "yes", 1, "1", "t"].include?(value.instance_of?(String) ? value.downcase : value)
@@ -478,11 +484,18 @@ end
 #
 # Dry runs build the alias too, so a broken alias gemspec surfaces before a live
 # release; they never push. The built artifact is always removed.
-# Returns :dry_run, :published, :skipped, or :failed.
+# Releases before ALIAS_GEM_FIRST_VERSION do not publish the alias at all.
+# Returns :dry_run, :published, :below_first_version, :skipped, or :failed.
 def publish_alias_gem(release_root:, gem_version:, dry_run:)
   alias_dir = File.join(release_root, ALIAS_GEM_DIR_NAME)
   gemspec_file = "#{ALIAS_GEM_NAME}.gemspec"
   package_file = alias_gem_package_file(gem_version)
+
+  if Gem::Version.new(gem_version).release < Gem::Version.new(ALIAS_GEM_FIRST_VERSION)
+    puts "Skipping #{ALIAS_GEM_NAME}: the alias gem is first published at " \
+         "#{ALIAS_GEM_FIRST_VERSION}, and this release is #{gem_version}."
+    return :below_first_version
+  end
 
   unless File.exist?(File.join(alias_dir, gemspec_file))
     warn "WARNING: Skipping #{ALIAS_GEM_NAME}: #{ALIAS_GEM_DIR_NAME}/#{gemspec_file} not found in #{release_root}."
@@ -538,6 +551,8 @@ def print_release_summary(release_result)
     puts "Gems that would be published:"
     puts "  - #{MAIN_GEM_NAME} #{released_version}"
     case alias_gem_status
+    when :below_first_version
+      puts "  - #{ALIAS_GEM_NAME}: not published, the alias gem starts at #{ALIAS_GEM_FIRST_VERSION}"
     when :skipped
       puts "  - #{ALIAS_GEM_NAME} #{released_version} (SKIPPED: #{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec not found)"
     when :failed
@@ -554,6 +569,8 @@ def print_release_summary(release_result)
       puts "Published #{ALIAS_GEM_NAME} #{released_version} to RubyGems."
     when :failed
       puts "WARNING: #{ALIAS_GEM_NAME} #{released_version} was NOT published. Retry with: #{alias_gem_manual_publish_command(released_version)}"
+    when :below_first_version
+      puts "#{ALIAS_GEM_NAME} was not published: the alias gem starts at #{ALIAS_GEM_FIRST_VERSION}."
     else
       puts "WARNING: #{ALIAS_GEM_NAME} #{released_version} was NOT published " \
            "(#{ALIAS_GEM_DIR_NAME}/#{ALIAS_GEM_NAME}.gemspec not found)."

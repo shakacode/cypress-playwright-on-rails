@@ -172,13 +172,13 @@ RSpec.describe "release rake helpers" do
       end
     end
 
-    def stub_release_flow(release_root, dry_run:)
+    def stub_release_flow(release_root, dry_run:, version: "1.21.0")
       allow(self).to receive(:ensure_clean_worktree!)
       allow(self).to receive(:verify_gh_auth)
       allow(self).to receive(:with_release_checkout)
         .with(gem_root: File.expand_path("../..", __dir__), dry_run: dry_run)
         .and_yield(release_root)
-      allow(self).to receive(:current_gem_version).with(release_root).and_return("1.21.0")
+      allow(self).to receive(:current_gem_version).with(release_root).and_return(version)
       allow(self).to receive(:warn_changelog_missing)
       allow(self).to receive(:validate_release_version_policy!)
       allow(self).to receive(:sync_github_release_after_publish)
@@ -257,6 +257,64 @@ RSpec.describe "release rake helpers" do
         end.to output(/WARNING: Failed to build the e2e_on_rails alias gem 1\.21\.0/).to_stderr
 
         expect(result[:alias_gem_status]).to eq(:failed)
+      end
+    end
+
+    it "does not publish the alias gem for a release before 1.21.0" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: false, version: "1.20.2")
+        allow(self).to receive(:sh_in_dir_for_release) { |_dir, command| events << command }
+
+        result = nil
+        output = capture_stdout do
+          result = perform_release(gem_version: "1.20.2", dry_run: false)
+          print_release_summary(result)
+        end
+
+        # A 1.20.x hotfix must not bring e2e_on_rails into existence as a side
+        # effect: its first publish is a deliberate, human-checked step during
+        # the 1.21.0 release (ADR-0001), so nothing is built or pushed here.
+        expect(result[:alias_gem_status]).to eq(:below_first_version)
+        expect(events.grep(/gem build/)).to be_empty
+        expect(events.grep(/gem push/)).to be_empty
+        expect(events).to include("gem release")
+        expect(output).to include("e2e_on_rails was not published: the alias gem starts at 1.21.0.")
+      end
+    end
+
+    it "publishes the alias gem for a prerelease of the first alias version" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: false, version: "1.21.0.rc.0")
+        allow(self).to receive(:sh_in_dir_for_release) { |_dir, command| events << command }
+
+        result = nil
+        capture_stdout { result = perform_release(gem_version: "1.21.0.rc.0", dry_run: false) }
+
+        # The gate compares release segments, so a 1.21.0 prerelease is not
+        # "before 1.21.0": the alias ships with the rc rather than debuting
+        # untested on the final release.
+        expect(result[:alias_gem_status]).to eq(:published)
+        expect(events).to include("gem build e2e_on_rails.gemspec")
+        expect(events).to include("gem push e2e_on_rails-1.21.0.rc.0.gem")
+      end
+    end
+
+    it "reports the version gate in a dry run before 1.21.0" do
+      with_alias_gem_release_root do |release_root|
+        stub_release_flow(release_root, dry_run: true, version: "1.20.2")
+        allow(self).to receive(:sh_in_dir_for_release)
+
+        result = nil
+        output = capture_stdout do
+          result = perform_release(gem_version: "1.20.2", dry_run: true)
+          print_release_summary(result)
+        end
+
+        expect(result[:alias_gem_status]).to eq(:below_first_version)
+        expect(output).to include("  - cypress-on-rails 1.20.2")
+        expect(output).to include("  - e2e_on_rails: not published, the alias gem starts at 1.21.0")
       end
     end
 
