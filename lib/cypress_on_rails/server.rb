@@ -30,7 +30,9 @@ module CypressOnRails
     PORT_ACQUISITION_ATTEMPTS = 3
     PORT_PROBE_HOST = '127.0.0.1'.freeze
     # Rails reports a lost bind race through the adapter, so match both the
-    # errno name and the message Puma/Ruby print for it.
+    # errno name and the message Puma/Ruby print for it. The errno text alone
+    # is ambiguous, so #lost_port_bind_race? also requires the failing line to
+    # name this listener's port; see #server_port_reference_pattern.
     PORT_BIND_FAILURE_PATTERN = /Address already in use|EADDRINUSE/i.freeze
 
     attr_reader :host, :port, :framework, :install_folder
@@ -229,7 +231,21 @@ module CypressOnRails
     def lost_port_bind_race?
       return false unless @port_auto_selected
 
-      PORT_BIND_FAILURE_PATTERN.match?(recent_server_output)
+      port_reference = server_port_reference_pattern
+      recent_server_output.each_line.any? do |line|
+        PORT_BIND_FAILURE_PATTERN.match?(line) && port_reference.match?(line)
+      end
+    end
+
+    # An initializer or dependency that cannot bind an unrelated port (a
+    # database, a metrics endpoint, an embedded service) prints the same errno
+    # text as a lost Rails bind race. Respawning on a fresh port would retry a
+    # deterministic boot failure and then blame a port that was never the
+    # problem, so only a failure naming this listener counts. Adapters spell
+    # that as `port 4321` (Ruby's bind(2) message) or as `127.0.0.1:4321` in a
+    # host/URI form; a failure that names neither is reported as-is.
+    def server_port_reference_pattern
+      /(?:\bport\s+|:)#{Regexp.escape(port.to_s)}\b/
     end
 
     def port_bind_retries_exhausted(attempts, error)
@@ -241,8 +257,13 @@ module CypressOnRails
     def wait_for_server(timeout = 30)
       Timeout.timeout(timeout, Timeout::Error) do
         loop do
-          break if server_responding?
-          raise server_start_failure if server_exited?
+          ready = server_responding?
+          # Check the spawned server after probing, and before accepting the
+          # probe: a readiness response only proves that some process owns the
+          # port, so a competing server that won the final bind race must not
+          # be mistaken for ours.
+          raise server_start_failure unless server_still_running?
+          break if ready
 
           sleep 0.1
         end
@@ -255,6 +276,16 @@ module CypressOnRails
         timeout: timeout,
         status: process_exists?(@server_pid) ? 'process status running' : 'process status unavailable'
       }
+    end
+
+    # The spawned leader may hand its listener to another member of its process
+    # group and exit (see #stop_server), so a reaped leader alone does not mean
+    # the server is gone. Once the whole group is gone, nothing we spawned can
+    # be answering, and a readiness response belongs to a competing process.
+    def server_still_running?
+      return true unless server_exited?
+
+      process_group_exists?
     end
 
     def server_responding?
