@@ -7,6 +7,14 @@ on:
     branches: [master, main]
 
 jobs:
+  # Pinned to the gem's minimum supported Ruby (see required_ruby_version in
+  # cypress-on-rails.gemspec) so CI actually exercises that boundary.
+  #
+  # This is also the newest Ruby that can run the Rails 6.1 sample app:
+  #   - Ruby 3.1+ defaults to Psych 4, which cannot load the YAML aliases in
+  #     specs_e2e/rails_6_1/config/database.yml under Rails 6.1.
+  #   - Ruby 3.4 moved bigdecimal (and base64, drb, mutex_m, ...) out of the
+  #     default gems, so Rails 6.1 fails to boot with a bigdecimal LoadError.
   rails_6_1:
     runs-on: ubuntu-latest
 
@@ -15,7 +23,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.4'
+        ruby-version: '3.0.7'
         bundler-cache: true
     - name: Run tests
       run: bundle exec rake

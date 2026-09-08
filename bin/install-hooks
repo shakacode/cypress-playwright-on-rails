@@ -2,6 +2,11 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require_relative '../rakelib/newline_checker'
+
+# Marks hooks written by this installer so re-running it never clobbers a
+# developer's own pre-commit hook (see the backup logic below).
+HOOK_SENTINEL = '# Pre-commit hook installed by cypress-on-rails bin/install-hooks'
 
 # Find the git directory (could be .git file in worktree or .git directory)
 git_dir = nil
@@ -36,32 +41,72 @@ end
 hooks_dir = File.join(git_dir, 'hooks')
 pre_commit_hook = File.join(hooks_dir, 'pre-commit')
 
-# Create pre-commit hook content
+# The hook's scope is generated from NewlineChecker so it always matches what
+# `rake check_newlines` / `rake fix_newlines` can actually repair. Without this,
+# the hook could reject a file and then tell the developer to run a task that
+# skips it.
 hook_content = <<~HOOK
   #!/usr/bin/env bash
-  # Pre-commit hook to run linters and check for newlines
+  #{HOOK_SENTINEL}
+  # Regenerate with: ./bin/install-hooks
+
+  # Portability note: this hook deliberately avoids `grep -z` / `xargs -0`.
+  # `-z` is a GNU extension that is absent from some BSD/busybox greps, and a
+  # grep that rejects the flag exits non-zero with empty output, which would
+  # silently skip the whole check. Bash's own `=~` and `case` do the matching
+  # instead, so NUL-delimited paths survive intact and nothing fails quietly.
+
+  newline_file_pattern='#{NewlineChecker.staged_file_pattern}'
+  newline_excluded_prefixes='#{NewlineChecker.staged_excluded_prefixes}'
+
+  is_excluded() {
+    local candidate="$1"
+    local prefix
+    for prefix in $newline_excluded_prefixes; do
+      case "$candidate" in
+        "$prefix"*) return 0 ;;
+      esac
+    done
+    return 1
+  }
+
+  newline_files=()
+  ruby_files=()
+  while IFS= read -r -d '' file; do
+    case "$file" in
+      *.rb|*.rake) ruby_files+=("$file") ;;
+    esac
+
+    is_excluded "$file" && continue
+
+    if [[ $file =~ $newline_file_pattern ]]; then
+      newline_files+=("$file")
+    fi
+  done < <(git diff --cached --name-only -z --diff-filter=ACM)
 
   # Check staged files for missing newlines
   echo "Checking staged files for missing newlines..."
   missing_newline=0
-  newline_file_pattern='(^|/)(Gemfile|Rakefile|Gemfile\.lock|Dockerfile|Procfile|Guardfile|Capfile)$|\.(rb|rake|yml|yaml|md|gemspec|ru|erb|js|json)$'
-  while IFS= read -r -d '' file; do
-    if [ -f "$file" ] && [ -s "$file" ] && LC_ALL=C grep -Iq . "$file" && [ -n "$(tail -c 1 "$file")" ]; then
-      echo "  Missing final newline: $file"
-      missing_newline=1
-    fi
-  done < <(git diff --cached --name-only -z --diff-filter=ACM | grep -zE "$newline_file_pattern")
+  if [ ${#newline_files[@]} -gt 0 ]; then
+    for file in "${newline_files[@]}"; do
+      # Skip empty files and anything grep considers binary; `tail -c 1` is
+      # empty when the last byte is a newline because $(...) strips it.
+      if [ -f "$file" ] && [ -s "$file" ] && LC_ALL=C grep -Iq . "$file" && [ -n "$(tail -c 1 "$file")" ]; then
+        echo "  Missing final newline: $file"
+        missing_newline=1
+      fi
+    done
+  fi
   if [ "$missing_newline" -ne 0 ]; then
     echo "Some files are missing final newlines. Run 'bundle exec rake fix_newlines' to fix."
     exit 1
   fi
 
-  # Run RuboCop on staged Ruby files
-  echo "Running RuboCop on staged files..."
-  if git diff --cached --name-only -z --diff-filter=ACM | grep -qzE '\\.(rb|rake)$'; then
-    if ! git diff --cached --name-only -z --diff-filter=ACM \\
-         | grep -zE '\\.(rb|rake)$' \\
-         | xargs -0 bundle exec rubocop; then
+  # Run RuboCop on staged Ruby files. --force-exclusion makes RuboCop honour the
+  # Exclude list in .rubocop.yml even for explicitly listed paths.
+  if [ ${#ruby_files[@]} -gt 0 ]; then
+    echo "Running RuboCop on staged files..."
+    if ! bundle exec rubocop --force-exclusion "${ruby_files[@]}"; then
       echo "RuboCop failed. Fix issues or run 'bundle exec rake lint:fix'"
       exit 1
     fi
@@ -81,7 +126,7 @@ end
 # Back up existing hook if present
 if File.exist?(pre_commit_hook)
   existing_content = File.read(pre_commit_hook)
-  if existing_content.include?('# Pre-commit hook to run linters and check for newlines')
+  if existing_content.include?(HOOK_SENTINEL)
     puts 'Replacing previously installed hook (no backup needed)'
   else
     backup = "#{pre_commit_hook}.bak"
