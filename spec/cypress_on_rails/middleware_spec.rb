@@ -34,6 +34,19 @@ RSpec.describe CypressOnRails::Middleware do
       end
     end
 
+    it 'runs the command when before_request is nil' do
+      CypressOnRails.configuration.before_request = nil
+      env['rack.input'] = rack_input(name: 'seed')
+      allow(file).to receive(:exist?).with('spec/e2e/app_commands/seed.rb').and_return(true)
+
+      aggregate_failures do
+        expect(response).to eq([201,
+                                {"Content-Type"=>"application/json"},
+                                ["[{\"id\":1,\"title\":\"some result\"}]"]])
+        expect(command_executor).to have_received(:perform).with('spec/e2e/app_commands/seed.rb', nil)
+      end
+    end
+
     it 'command file exist with options' do
       env['rack.input'] = rack_input(name: 'seed', options: ['my_options'])
       allow(file).to receive(:exist?).with('spec/e2e/app_commands/seed.rb').and_return(true)

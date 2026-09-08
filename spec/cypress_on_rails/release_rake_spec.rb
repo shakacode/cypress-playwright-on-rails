@@ -22,6 +22,16 @@ RSpec.describe "release rake helpers" do
     $stdout = original_stdout
   end
 
+  def capture_stderr
+    original_stderr = $stderr
+    output = StringIO.new
+    $stderr = output
+    yield
+    output.string
+  ensure
+    $stderr = original_stderr
+  end
+
   describe "#parse_release_tag_to_gem_version" do
     it "parses stable and prerelease tags" do
       expect(parse_release_tag_to_gem_version("v1.21.0")).to eq("1.21.0")
@@ -94,7 +104,7 @@ RSpec.describe "release rake helpers" do
       end
 
       result = nil
-      capture_stdout { result = perform_release(gem_version: "", dry_run: false) }
+      capture_stderr { capture_stdout { result = perform_release(gem_version: "", dry_run: false) } }
       bump_command = events.find { |command| command.include?("gem bump") }
 
       expect(result[:released_gem_version]).to eq("1.21.0")
@@ -126,7 +136,7 @@ RSpec.describe "release rake helpers" do
       end
 
       result = nil
-      capture_stdout { result = perform_release(gem_version: "", dry_run: false) }
+      capture_stderr { capture_stdout { result = perform_release(gem_version: "", dry_run: false) } }
 
       expect(result[:released_gem_version]).to eq("1.21.0")
       expect(events.grep(/gem bump/)).to be_empty
@@ -134,6 +144,199 @@ RSpec.describe "release rake helpers" do
       expect(events).to include("git tag v1.21.0")
       expect(events).to include("git push && git push --tags")
       expect(events).to include("gem release")
+    end
+  end
+
+  describe "alias gemspec" do
+    let(:gem_root) { File.expand_path("../..", __dir__) }
+
+    it "pins cypress-on-rails to the exact parent version" do
+      spec = Dir.chdir(File.join(gem_root, "alias_gem")) do
+        Gem::Specification.load("e2e_on_rails.gemspec")
+      end
+      dependency = spec.dependencies.find { |dep| dep.name == "cypress-on-rails" }
+
+      # An exact pin, not "~>": a prerelease alias must resolve the matching
+      # prerelease parent, and must never resolve a different minor line.
+      expect(spec.version.to_s).to eq(current_gem_version(gem_root))
+      expect(dependency.requirement.to_s).to eq("= #{current_gem_version(gem_root)}")
+    end
+  end
+
+  describe "alias gem publishing" do
+    def with_alias_gem_release_root
+      Dir.mktmpdir do |dir|
+        FileUtils.mkdir_p(File.join(dir, "alias_gem"))
+        File.write(File.join(dir, "alias_gem", "e2e_on_rails.gemspec"), "# fixture\n")
+        yield dir
+      end
+    end
+
+    def stub_release_flow(release_root, dry_run:, version: "1.21.0")
+      allow(self).to receive(:ensure_clean_worktree!)
+      allow(self).to receive(:verify_gh_auth)
+      allow(self).to receive(:with_release_checkout)
+        .with(gem_root: File.expand_path("../..", __dir__), dry_run: dry_run)
+        .and_yield(release_root)
+      allow(self).to receive(:current_gem_version).with(release_root).and_return(version)
+      allow(self).to receive(:warn_changelog_missing)
+      allow(self).to receive(:validate_release_version_policy!)
+      allow(self).to receive(:sync_github_release_after_publish)
+    end
+
+    it "reports both gems in a dry run without pushing either" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: true)
+        allow(self).to receive(:sh_in_dir_for_release) { |_dir, command| events << command }
+
+        result = nil
+        output = capture_stdout do
+          result = perform_release(gem_version: "1.21.0", dry_run: true)
+          print_release_summary(result)
+        end
+
+        expect(result[:alias_gem_status]).to eq(:dry_run)
+        expect(output).to include("DRY RUN: Built e2e_on_rails-1.21.0.gem to verify the alias gemspec; not pushing.")
+        expect(output).to include("  - cypress-on-rails 1.21.0")
+        expect(output).to include("  - e2e_on_rails 1.21.0 (alias gem, built and verified, not pushed)")
+        # The alias is really built in a dry run so a broken gemspec surfaces early,
+        # but nothing is ever pushed.
+        expect(events).to include("gem build e2e_on_rails.gemspec")
+        expect(events.grep(/gem push/)).to be_empty
+        expect(events.grep(/gem release/)).to be_empty
+      end
+    end
+
+    it "warns and continues when the alias gem push fails after the main release" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: false)
+        # The release must carry on past the alias failure: the GitHub release
+        # sync happens after the alias step and must still run.
+        expect(self).to receive(:sync_github_release_after_publish)
+        allow(self).to receive(:sh_in_dir_for_release) do |_dir, command|
+          events << command
+          raise "Command failed with status (1): [gem push]" if command.start_with?("gem push")
+        end
+
+        result = nil
+        output = nil
+        expect do
+          output = capture_stdout do
+            result = perform_release(gem_version: "1.21.0", dry_run: false)
+            print_release_summary(result)
+          end
+        end.to output(/WARNING: Failed to publish the e2e_on_rails alias gem 1\.21\.0/).to_stderr
+
+        expect(result[:released_gem_version]).to eq("1.21.0")
+        expect(result[:alias_gem_status]).to eq(:failed)
+        # The main gem is published before the alias is built, and built before pushed.
+        expect(events.index("gem release")).to be < events.index("gem build e2e_on_rails.gemspec")
+        expect(events.index("gem build e2e_on_rails.gemspec"))
+          .to be < events.index("gem push e2e_on_rails-1.21.0.gem")
+        expect(output).to include("Published cypress-on-rails 1.21.0 to RubyGems.")
+        expect(output).to include("WARNING: e2e_on_rails 1.21.0 was NOT published")
+      end
+    end
+
+    it "names the build phase, not publish, when the live-release alias build fails" do
+      with_alias_gem_release_root do |release_root|
+        stub_release_flow(release_root, dry_run: false)
+        # A broken alias gemspec fails at `gem build`, which runs in live releases
+        # too: the warning must not claim the push step was reached.
+        allow(self).to receive(:sh_in_dir_for_release) do |_dir, command|
+          raise "Command failed with status (1): [gem build]" if command.start_with?("gem build")
+        end
+
+        result = nil
+        expect do
+          capture_stdout do
+            result = perform_release(gem_version: "1.21.0", dry_run: false)
+          end
+        end.to output(/WARNING: Failed to build the e2e_on_rails alias gem 1\.21\.0/).to_stderr
+
+        expect(result[:alias_gem_status]).to eq(:failed)
+      end
+    end
+
+    it "does not publish the alias gem for a release before 1.21.0" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: false, version: "1.20.2")
+        allow(self).to receive(:sh_in_dir_for_release) { |_dir, command| events << command }
+
+        result = nil
+        output = capture_stdout do
+          result = perform_release(gem_version: "1.20.2", dry_run: false)
+          print_release_summary(result)
+        end
+
+        # A 1.20.x hotfix must not bring e2e_on_rails into existence as a side
+        # effect: its first publish is a deliberate, human-checked step during
+        # the 1.21.0 release (ADR-0001), so nothing is built or pushed here.
+        expect(result[:alias_gem_status]).to eq(:below_first_version)
+        expect(events.grep(/gem build/)).to be_empty
+        expect(events.grep(/gem push/)).to be_empty
+        expect(events).to include("gem release")
+        expect(output).to include("e2e_on_rails was not published: the alias gem starts at 1.21.0.")
+      end
+    end
+
+    it "publishes the alias gem for a prerelease of the first alias version" do
+      with_alias_gem_release_root do |release_root|
+        events = []
+        stub_release_flow(release_root, dry_run: false, version: "1.21.0.rc.0")
+        allow(self).to receive(:sh_in_dir_for_release) { |_dir, command| events << command }
+
+        result = nil
+        capture_stdout { result = perform_release(gem_version: "1.21.0.rc.0", dry_run: false) }
+
+        # The gate compares release segments, so a 1.21.0 prerelease is not
+        # "before 1.21.0": the alias ships with the rc rather than debuting
+        # untested on the final release.
+        expect(result[:alias_gem_status]).to eq(:published)
+        expect(events).to include("gem build e2e_on_rails.gemspec")
+        expect(events).to include("gem push e2e_on_rails-1.21.0.rc.0.gem")
+      end
+    end
+
+    it "reports the version gate in a dry run before 1.21.0" do
+      with_alias_gem_release_root do |release_root|
+        stub_release_flow(release_root, dry_run: true, version: "1.20.2")
+        allow(self).to receive(:sh_in_dir_for_release)
+
+        result = nil
+        output = capture_stdout do
+          result = perform_release(gem_version: "1.20.2", dry_run: true)
+          print_release_summary(result)
+        end
+
+        expect(result[:alias_gem_status]).to eq(:below_first_version)
+        expect(output).to include("  - cypress-on-rails 1.20.2")
+        expect(output).to include("  - e2e_on_rails: not published, the alias gem starts at 1.21.0")
+      end
+    end
+
+    it "warns instead of silently skipping when the alias gemspec is missing" do
+      Dir.mktmpdir do |release_root|
+        stub_release_flow(release_root, dry_run: false)
+        allow(self).to receive(:sh_in_dir_for_release)
+
+        result = nil
+        output = nil
+        expect do
+          output = capture_stdout do
+            result = perform_release(gem_version: "1.21.0", dry_run: false)
+            print_release_summary(result)
+          end
+        end.to output(%r{WARNING: Skipping e2e_on_rails: alias_gem/e2e_on_rails\.gemspec not found}).to_stderr
+
+        expect(result[:alias_gem_status]).to eq(:skipped)
+        expect(output).to include(
+          "WARNING: e2e_on_rails 1.21.0 was NOT published (alias_gem/e2e_on_rails.gemspec not found)."
+        )
+      end
     end
   end
 

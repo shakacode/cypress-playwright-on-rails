@@ -21,6 +21,11 @@ RSpec.describe "update_changelog rake helpers" do
     run_git!("init", chdir: repo_dir)
     run_git!("config", "user.email", "test@example.com", chdir: repo_dir)
     run_git!("config", "user.name", "Test User", chdir: repo_dir)
+    # `git commit` below can trigger git's background auto-maintenance, which
+    # creates and deletes .git/objects/maintenance.lock while Dir.mktmpdir is
+    # removing the tree -- ENOENT mid-walk, then ENOTEMPTY from rmdir.
+    run_git!("config", "maintenance.auto", "false", chdir: repo_dir)
+    run_git!("config", "gc.auto", "0", chdir: repo_dir)
     File.write(File.join(repo_dir, "README.md"), "test\n")
     run_git!("add", "README.md", chdir: repo_dir)
     run_git!("commit", "-m", "Initial commit", chdir: repo_dir)

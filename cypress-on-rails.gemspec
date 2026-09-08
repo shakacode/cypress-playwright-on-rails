@@ -11,7 +11,9 @@ Gem::Specification.new do |s|
   s.summary     = "Integrates Cypress and Playwright with Rails or Rack applications"
   s.description = "Integrates Cypress and Playwright with Rails or Rack applications"
   s.post_install_message = 'The CypressDev constant is being deprecated and will be completely removed and replaced with CypressOnRails.'
-  s.files         = `git ls-files`.split("\n")
+  # alias_gem/ is the separate e2e_on_rails wrapper gem (ADR-0001); it must not
+  # be packaged into this gem.
+  s.files         = `git ls-files`.split("\n").reject { |file| file.start_with?("alias_gem/") }
   s.test_files    = `git ls-files -- {spec}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").map { |f| File.basename(f) }
   s.require_paths = ["lib"]

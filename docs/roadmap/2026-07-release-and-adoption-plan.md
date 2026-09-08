@@ -17,8 +17,23 @@ Owner: @justin808
   [#222](https://github.com/shakacode/cypress-playwright-on-rails/issues/222) (A1+A2 agent docs),
   [#223](https://github.com/shakacode/cypress-playwright-on-rails/issues/223) (A3 doctor),
   [#224](https://github.com/shakacode/cypress-playwright-on-rails/issues/224) (M3 outreach, gated).
-- Remaining for v1.21.0: merge PR #225, then a maintainer runs
-  `rake release[1.21.0]` (RELEASING.md) and publishes the GitHub Release.
+- Remaining for v1.21.0 *(as recorded 2026-07-04; superseded by the next entry
+  — the current 1.21.0 plan is section 7)*: merge PR #225, then a maintainer
+  runs `rake release[1.21.0]` (RELEASING.md) and publishes the GitHub Release.
+- 2026-07-11: the release above shipped as **v1.20.1** (patch number chosen by
+  the maintainer; contents unchanged: #205, #207, #210, #219). Every task gated
+  on "after v1.21.0 ships" (#226, #228, #224, #197, #209) was treated as
+  gate-satisfied from this date. *(Superseded by the 2026-09-03 entry, which
+  renumbered 1.21.0: only #226 is in flight on that basis. Section 7 re-gates
+  #228, #224, #197 and #209 to the renumbered 1.21.0, so the repo rename and
+  the outreach comment must not start until that release ships.)* PR #243 later
+  landed #185 delivery 1.
+- 2026-09-03: release triage. PR #191 closed as superseded (release task already
+  reworked on master), #155 closed per its auto-close disposition, #241 root
+  cause recorded (missing `DOCS_DISPATCH_APP_ID`/`DOCS_DISPATCH_APP_KEY`
+  secrets), PR #249 adds the missing #243 changelog entry, and wave 1 of the
+  next release started as one coordinated batch: #185 remaining deliverables,
+  #13 security default, #226 alias gem. Release plan in section 7.
 
 ## Decisions (2026-07-04, @justin808)
 
@@ -150,7 +165,12 @@ doesn't cover the reporter's case. Do not close silently.
 
 ## 3. Release plan
 
-### v1.21.0 — "current & compatible" (target: within 2 weeks)
+### v1.21.0 — "current & compatible" (superseded 2026-09-03)
+
+Superseded for the 1.21.0 line by section 7, which is the authoritative plan;
+this block is kept as the July 2026 plan of record. Its contents shipped as
+**v1.20.1** on 2026-07-11, so the 1.21.0 in section 7 is a different,
+renumbered release — release it from section 7, never from the tasks below.
 
 Goal: flush 9 months of unreleased fixes, restore release hygiene, signal
 active maintenance to anyone comparing us with cypress-rails.
@@ -165,31 +185,38 @@ Tasks (each independently implementable; IDs referenced below):
   rejected maintainer push; obsolete Rails 4.2 Gemfile commit dropped).
 - **R3 — CHANGELOG pass.** ✅ DONE 2026-07-04 (PR #225): #201/#203 entry moved
   under `## [1.20.0]`; Unreleased now lists #205, #207, #210, #219.
-- **R4 — Release.** ⏳ REMAINING (human step): follow `RELEASING.md`
-  (`rake release[1.21.0]`, gem-release based); requires RubyGems + git push
-  credentials. Then `gh release create v1.21.0` from the CHANGELOG section.
+- **R4 — Release.** ✅ DONE 2026-07-11 — shipped as **v1.20.1**, not 1.21.0
+  (patch number chosen by the maintainer; contents unchanged). The renumbered
+  1.21.0 release runs from section 7's maintainer steps, not from here.
 - **R5 — Backfill GitHub Releases.** ✅ DONE 2026-07-04 for v1.16.0–v1.20.0;
-  repo now shows v1.20.0 as Latest (was v1.15.0 · 2023). v1.21.0's release
-  is created as part of R4.
-- **R6 — Fix the release task** (PR #191's goal) only if R4 actually hits the
-  duplicate-task conflict; otherwise close #191 and note the finding.
+  repo now shows v1.20.0 as Latest (was v1.15.0 · 2023). v1.20.1's release
+  was created as part of R4.
+- **R6 — Fix the release task** (PR #191's goal). ✅ RESOLVED 2026-09-03: R4
+  did not hit the duplicate-task conflict and #191 was closed as superseded
+  (the release task was already reworked on master).
 
-### v1.22.0 — "the cypress-rails magnet" (target: +4–6 weeks)
+### v1.22.0 — "the cypress-rails magnet" (superseded 2026-09-03)
+
+Superseded for scope by section 7, which is authoritative for what ships when:
+H1–H3 and M1/M2/M4 were pulled forward into the 1.21.0 waves. Read the tasks
+below as the specs they always were, not as a v1.22 work list — each one now
+records where it actually landed.
 
 Theme: harden the server/transactional path, then actively convert
 cypress-rails users.
 
-- **H1 (issue #185) — server & state-reset hardening.** `priority: high`.
-  Scope from the issue: spawn-failure error handling, SIGTERM→SIGKILL
-  escalation with timeout, port-detection retry, process-group cleanup, and
-  tests for `lib/cypress_on_rails/server.rb` +
+- **H1 (issue #185) — server & state-reset hardening.** *(→ 1.21.0 wave 1.)*
+  `priority: high`. Scope from the issue: spawn-failure error handling,
+  SIGTERM→SIGKILL escalation with timeout, port-detection retry,
+  process-group cleanup, and tests for `lib/cypress_on_rails/server.rb` +
   `lib/cypress_on_rails/state_reset_middleware.rb`. Acceptance: new specs
   covering each failure mode; multi-threaded Puma smoke test in one example
   app (this is the exact failure mode that killed cypress-rails — see
   testdouble/cypress-rails#164).
-- **H2 (issue #186) — PR #180 review follow-ups.** Small; do with H1.
-- **H3 (issue #13) — security hardening.** ⚠️ Two verified facts constrain the
-  design (2026-07-05 review): (1) the gem's own default is **unsafe** —
+- **H2 (issue #186) — PR #180 review follow-ups.** *(→ 1.21.0 wave 2.)* Small.
+- **H3 (issue #13) — security hardening.** *(→ 1.21.0 wave 1.)* ⚠️ Two
+  verified facts constrain the design (2026-07-05 review): (1) the gem's own
+  default is **unsafe** —
   `Configuration#reset` sets `use_middleware = true` unconditionally; the
   `!Rails.env.production?` guard exists only in the *generated* initializer
   template, so apps configured by hand get the middleware in every
@@ -200,7 +227,8 @@ cypress-rails users.
   it. H3 must first evaluate hardening/documenting `before_request` (or
   building `middleware_token` as thin sugar over it) rather than shipping a
   second, overlapping auth mechanism. Full spec in issue #13.
-- **M1 — `docs/MIGRATE_FROM_CYPRESS_RAILS.md`.** The centerpiece. Structure:
+- **M1 — `docs/MIGRATE_FROM_CYPRESS_RAILS.md`.** *(→ 1.21.0 wave 2, #220.)*
+  The centerpiece. Structure:
   1. Why (dormant since 2024, Rails 7.2+ broken, no Playwright — with links);
   2. Concept map table (their env vars/hooks/reset endpoint → ours; most map 1:1 since v1.19.0);
   3. Step-by-step swap (Gemfile, generator, initializer);
@@ -208,15 +236,18 @@ cypress-rails users.
   5. Honest trade-offs (middleware security model + mitigation from H3).
   Acceptance: a real cypress-rails example app converted by following only the
   guide, committed under `specs_e2e/` as a CI job if practical.
-- **M2 — README repositioning.** Add "Migrating from cypress-rails" link near
-  the top; add a short comparison table; move the ShakaCode consulting block
+- **M2 — README repositioning.** *(→ 1.21.0 wave 3, optional; issue #221.)*
+  Add "Migrating from cypress-rails" link near the top; add a short
+  comparison table; move the ShakaCode consulting block
   below the fold (match current react_on_rails/shakapacker style); add badges
   (gem version, downloads, CI).
-- **M3 — Outreach (human, not agent):** ShakaCode blog post
+- **M3 — Outreach (human, not agent):** *(→ post-release, not in the gem;
+  issue #224.)* ShakaCode blog post
   ("cypress-rails is stuck on Rails 7.1 — here's the maintained path, with
   Playwright"), a respectful comment on testdouble/cypress-rails#164
   pointing to M1, Reddit/r/rails + Rails Discord, changelog.com pitch.
-- **M4 — Test-env docs (issue #157, PRs #173/#210).** Document the two
+- **M4 — Test-env docs (issue #157, PRs #173/#210).** *(→ 1.21.0 wave 2.)*
+  Document the two
   supported modes (dev-env with `ENV['CYPRESS']` vs test-env with code
   reloading enabled) in README + `docs/`; then close #157 and resolve #173.
 
@@ -270,7 +301,9 @@ spec headlessly, and get a deterministic pass/fail without clicking around.
   renames to `shakacode/e2e-on-rails` + README hero rebrand → v1.22 campaign
   runs under the new brand with `gem 'cypress-on-rails'` still the install →
   **2.0 = the gem flip** (`e2e_on_rails` canonical, `cypress-on-rails` shim,
-  module `E2eOnRails`), scheduled right after v1.22. See
+  module `E2eOnRails`), scheduled right after v1.22. Scope note (2026-09-03):
+  M1/M2/M4 moved into 1.21.0, so the doc work ships *before* the rename; what
+  runs under the new brand is the M3 outreach (#224), not the docs. See
   `docs/roadmap/2026-07-e2e-on-rails-naming-decision.md`, ADR-0002, and
   `CONTEXT.md`.
 
@@ -284,7 +317,10 @@ Decisions section at the top of this document). Still genuinely open:
 1. Final sign-off on the M3 outreach comment text before posting (draft in
    issue #224; gated on v1.21.0 + #185 + #220 shipping).
 
-## 6. Suggested agent execution order
+## 6. Suggested agent execution order (superseded 2026-09-03)
+
+Superseded for the 1.21.0 line by section 7 below, which is the authoritative
+order; this block is kept as the July 2026 plan of record.
 
 ```text
 R4(human release)                        # only v1.21.0 step left
@@ -299,3 +335,73 @@ Every task above states its issue/PR, files, and acceptance criteria; tasks
 labeled `agent-ready` on GitHub carry the same contract. When in doubt:
 small PRs, `bundle exec rubocop` clean, CHANGELOG entry per user-visible
 change, files end with newline.
+
+---
+
+## 7. Release plan: 1.21.0 (added 2026-09-03)
+
+Theme: the "cypress-rails magnet" line from section 3, renumbered because
+v1.20.1 consumed the v1.21.0 slot. Ship it as **1.21.0** (minor: new
+`middleware_token`, `server_shutdown_timeout`, and the alias gem; the
+`use_middleware` default change is documented as a behaviour change).
+
+### Scope, in merge order
+
+Every PR in every wave passes the repository review gate from
+`.agents/agent-workflow.yml` (green Ruby workflow on the PR, local
+`bundle exec rake` evidence, all review threads resolved). The column below
+lists what is required in addition.
+
+| Wave | Targets | Additional gate before merge |
+|---|---|---|
+| 1 (running) | #185 remaining, #13, #226 | QA evidence per PR; maintainer risk decision for security/runtime/release-surface PRs |
+| 2 | #220 migration guide, #186 follow-ups, #157 environments doc, #175 VCR docs, #244 streaming guide (also exercises #241) | #185 merged first for #186/#220; docs secrets configured so `trigger-docs-site` can succeed |
+| 3 (optional for 1.21.0) | #114 state-management doc, #221 README split | standard gate only |
+
+Post-release, not in the gem: #228 repo rename (in-place, maintainer click),
+the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
+
+### Maintainer steps, in order
+
+1. Add repository secrets `DOCS_DISPATCH_APP_ID` and `DOCS_DISPATCH_APP_KEY`
+   (GitHub App installed on `shakacode/e2eonrails-com` with Contents: write)
+   so docs merges publish. Verify with the next `docs/**` merge (#241).
+2. Post `autonomous-merge-risk-decision:v1` comments on the wave-1 PRs that
+   the eligibility gate flags for human review (the coordinator supplies the
+   exact envelope per PR head). Neither that envelope nor the gate is defined
+   in this repo; both live in the private coordination backend named in
+   `.agents/agent-workflow.yml`.
+3. Decide wave 3 before stamping: either take #114/#221 into 1.21.0 or
+   defer them to the next release. After every wave included in 1.21.0 has
+   merged — waves 1 and 2, plus wave 3 when it is included:
+   `/update-changelog release` PR, then merge it. Nothing user-visible may
+   merge between that PR and the release, or its entry lands under the new
+   `Unreleased` section instead of `## [1.21.0]`.
+4. Immediately before releasing, re-verify that `e2e_on_rails` is still
+   unclaimed on RubyGems, as ADR-0001 requires for the first publish. Check
+   ownership, not the search index: `gem owner e2e_on_rails` must report that
+   the gem does not exist. A name whose versions were all yanked is absent
+   from `gem search -r -e` output yet still belongs to its original owners.
+   If the name has been taken, stop and decide the fallback name before
+   running the release.
+5. From clean `master`: `bundle exec rake "release[,true]"` (dry run shows
+   both gems once #226 lands), then `bundle exec rake release`.
+6. First publish of `e2e_on_rails`: the release task pushes it after the main
+   gem; if that first push needs RubyGems ownership setup, run
+   `gem push alias_gem/pkg/e2e_on_rails-1.21.0.gem` manually once, then
+   `bundle exec rake "sync_github_release[1.21.0]"`. The release task only
+   syncs the GitHub Release after publishing returns cleanly, so a failure
+   recovered by hand skips that step; do not rerun `rake release` once the
+   tag exists.
+7. Then #228: rename the repo in place and open the URL-sweep PR.
+
+### Definition of done for 1.21.0
+
+- CHANGELOG `## [1.21.0]` lists #243, #185 follow-ups, #13, #226, and every
+  user-visible doc from each included wave with `[PR N]` credit links.
+- `rake release` dry run green; tag `v1.21.0` on RubyGems with both gems.
+- GitHub Release notes synced from the changelog section.
+- README security section and migration guide published at e2eonrails.com —
+  only if wave 3 is included, since S2 stands the site up once #221 lands. The
+  #220 migration guide markdown ships in wave 2 either way.
+
