@@ -26,6 +26,19 @@ RSpec.describe CypressOnRails::StateResetMiddleware do
         end
       end
 
+      context 'with middleware_token set to false' do
+        before do
+          CypressOnRails.configure { |config| config.middleware_token = false }
+        end
+
+        it 'resets the state instead of locking every request out' do
+          aggregate_failures do
+            expect(response).to eq([200, { 'Content-Type' => 'text/plain' }, ['State reset completed']])
+            expect(subject).to have_received(:reset_application_state)
+          end
+        end
+      end
+
       context 'with a middleware_token configured' do
         let(:token) { 'super-secret-token' }
         let(:forbidden) do

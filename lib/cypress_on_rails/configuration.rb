@@ -11,7 +11,10 @@ module CypressOnRails
     # Optional shared secret. When set, every middleware that executes
     # commands or resets state requires a matching X-Cypress-On-Rails-Token
     # header. Defaults to ENV['CYPRESS_ON_RAILS_TOKEN'].
-    attr_accessor :middleware_token
+    #
+    # Always reads back as nil (no token required) or as a non empty string,
+    # see #middleware_token=.
+    attr_reader :middleware_token
     attr_accessor :logger
     attr_accessor :vcr_options
     
@@ -58,6 +61,24 @@ module CypressOnRails
       return use_middleware unless use_middleware.nil?
 
       !rails_production?
+    end
+
+    # `nil`, `false` and a blank string all mean "no token required". `false`
+    # is worth calling out: it is the natural mistake for anyone copying the
+    # neighbouring `use_middleware = false` style, and storing it verbatim
+    # would turn the check on with the secret "false" and 403 every request.
+    # `true` is rejected outright, because it can only mean a secret the caller
+    # never chose. Everything else is stored as its string form.
+    def middleware_token=(value)
+      if value == true
+        raise ArgumentError,
+              'CypressOnRails middleware_token must be a secret string, got `true`. ' \
+              'Use a random value such as ENV["CYPRESS_ON_RAILS_TOKEN"], ' \
+              'or nil/false to disable the token check.'
+      end
+
+      token = (value == false ? nil : value).to_s
+      @middleware_token = token.empty? ? nil : token
     end
 
     def reset

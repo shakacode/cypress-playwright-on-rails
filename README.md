@@ -271,9 +271,20 @@ of exposing an endpoint of its own, so it is not affected by the token.
 
 ### Custom authentication
 
-`middleware_token` is a convenience wrapper over the same code path as
-[`before_request`](#authenticate-cypressonrails), which stays the general purpose hook
-for anything else: warden, an IP allowlist, request signing, metrics.
+[`before_request`](#authenticate-cypressonrails) is the general purpose hook for
+anything the token cannot express: warden, an IP allowlist, request signing, metrics.
+
+**`before_request` guards the command endpoint only.** It is invoked by
+`CypressOnRails::Middleware`, which serves `/__e2e__/command` and the deprecated
+`/__cypress__/command`. The state reset endpoints (`/__cypress__/reset_state`,
+`/cypress_rails_reset_state`) and the VCR `insert`/`eject` endpoints are served by
+separate middlewares that never call it. `middleware_token` is checked by all of them.
+
+So a `before_request` hook is not a substitute for `middleware_token` on a shared
+development or review server: an unauthenticated request can still reset your database
+or swap VCR cassettes even though the hook rejects commands. Set `middleware_token` as
+well, or leave `use_middleware` / `use_vcr_middleware` off, wherever the server is
+reachable by anything other than your own machine.
 
 ## Usage
 
@@ -712,9 +723,10 @@ If your function returns a `[status, header, body]` response, CypressOnRails wil
 ### Authenticate CypressOnRails
 
 For a plain shared secret, prefer the built-in
-[`middleware_token`](#security-model), which does the same thing with a
-constant-time comparison and is sent automatically by the generated helpers.
-Use `before_request` when you need something else:
+[`middleware_token`](#security-model): it uses a constant-time comparison, is sent
+automatically by the generated helpers, and — unlike `before_request`, which only runs
+for the command endpoint — it also guards the state reset and VCR insert/eject
+endpoints. Use `before_request` when you need something the token cannot express:
 
 ```ruby
   CypressOnRails.configure do |c|

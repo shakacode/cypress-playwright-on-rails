@@ -482,7 +482,9 @@ The middleware can execute arbitrary ruby code, so it must never be reachable fr
 production or an untrusted network. `use_middleware` now defaults to off in
 `Rails.env.production?`, and `c.middleware_token` adds a built-in shared secret
 (see the [security model](../README.md#security-model)). Use `before_request` when you
-need something the token cannot express:
+need something the token cannot express — but note that `before_request` only runs for
+the command endpoint, while `middleware_token` also guards the state reset and VCR
+insert/eject endpoints:
 
 ```ruby
 # config/initializers/cypress_on_rails.rb

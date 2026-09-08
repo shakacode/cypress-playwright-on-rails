@@ -61,6 +61,39 @@ RSpec.describe CypressOnRails::Configuration do
 
       expect(CypressOnRails.configuration.middleware_token).to eq('my-token')
     end
+
+    it 'treats false as not configured' do
+      CypressOnRails.configure { |config| config.middleware_token = false }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'treats a blank string as not configured' do
+      CypressOnRails.configure { |config| config.middleware_token = '' }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'treats a blank environment variable as not configured' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('CYPRESS_ON_RAILS_TOKEN', nil).and_return('')
+
+      CypressOnRails.configure { |config| config.reset }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'stores other values as strings' do
+      CypressOnRails.configure { |config| config.middleware_token = 12_345 }
+
+      expect(CypressOnRails.configuration.middleware_token).to eq('12345')
+    end
+
+    it 'rejects true instead of requiring the literal secret "true"' do
+      expect {
+        CypressOnRails.configure { |config| config.middleware_token = true }
+      }.to raise_error(ArgumentError, /must be a secret string/)
+    end
   end
 
   describe '#use_middleware?' do

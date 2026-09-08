@@ -187,6 +187,22 @@ RSpec.describe CypressOnRails::Middleware do
     end
   end
 
+  context 'with middleware_token set to false' do
+    before do
+      CypressOnRails.configure { |config| config.middleware_token = false }
+      allow(command_executor).to receive(:perform).and_return({ id: 1 })
+      allow(file).to receive(:exist?).and_return(true)
+      env['PATH_INFO'] = '/__e2e__/command'
+      env['rack.input'] = rack_input(name: 'seed')
+    end
+
+    it 'leaves the check disabled instead of expecting the string "false"' do
+      expect(response).to eq([201,
+                              { 'Content-Type' => 'application/json' },
+                              ['[{"id":1}]']])
+    end
+  end
+
   context 'without a middleware_token configured' do
     before do
       allow(command_executor).to receive(:perform).and_return({ id: 1 })
