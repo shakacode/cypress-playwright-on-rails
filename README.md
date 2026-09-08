@@ -116,6 +116,8 @@ group :test, :development do
 end
 ```
 
+Starting with 1.21.0 the gem is also published as `e2e_on_rails`, the future 2.0 name (see [ADR-0001](docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md)).
+
 Generate the boilerplate code using:
 
 ```shell
@@ -208,9 +210,96 @@ test:
   database: my_db_test
 ```
 
-### WARNING
-*WARNING!!:* cypress-on-rails can execute arbitrary ruby code
-Please use with extra caution if starting your local server on 0.0.0.0 or running the gem on a hosted server
+<a id="warning"></a>
+## Security model
+
+CypressOnRails mounts a rack middleware that runs the ruby files in your
+`app_commands` folder, and the generated `eval.rb` command runs whatever ruby the
+test runner sends it. Anything that can reach those endpoints can therefore execute
+arbitrary code, truncate your database, and read whatever the Rails process can read.
+Treat it like `web-console` or `better_errors`: a development tool that must never be
+reachable from production or from an untrusted network.
+
+The endpoints are `/__e2e__/command` (plus the deprecated `/__cypress__/command`), the
+VCR `insert`/`eject` endpoints, and the state reset endpoints
+(`/__cypress__/reset_state`, `/cypress_rails_reset_state`).
+
+**Defaults.** The library default for `use_middleware` is now "everywhere except
+`Rails.env.production?`". It is resolved lazily, when the middleware would be mounted,
+so it does not depend on load order: an app that configures the gem by hand still gets
+the right answer. The generated initializer keeps the explicit
+`c.use_middleware = !Rails.env.production?` line. An explicit value always wins, so
+setting `c.use_middleware = true` in production re-enables remote code execution — don't.
+
+**The default only reads `Rails.env`, so plain rack apps must opt out themselves.**
+Without Rails there is nothing for the default to inspect — `RACK_ENV=production` is
+**not** consulted, and the default resolves to enabled. The railtie is also the only
+thing that applies `use_middleware?`, so mounting `CypressOnRails::Middleware` yourself
+in `config.ru` bypasses the check even when it is set to `false`. Outside Rails, set
+`c.use_middleware` explicitly and mount conditionally, as the
+[rack example](#usage-with-other-rack-applications) does.
+
+**Still be careful outside production.** Binding your server to `0.0.0.0`, running the
+gem on a shared review app, or serving a permissive CORS policy makes these endpoints
+reachable by other machines on your network, or by any web page your browser visits.
+
+### Requiring a token
+
+Set a shared secret and every command, VCR and state reset request must carry it:
+
+```ruby
+CypressOnRails.configure do |c|
+  # defaults to ENV['CYPRESS_ON_RAILS_TOKEN'], and is disabled when that is not set
+  c.middleware_token = ENV['CYPRESS_ON_RAILS_TOKEN']
+end
+```
+
+Requests without a matching `X-Cypress-On-Rails-Token` header are answered with
+`403 {"message":"invalid or missing token"}`; the comparison is constant time. A blank
+value counts as unset and leaves the check disabled — worth knowing if your CI expands a
+missing secret to an empty string. The generated `on-rails.js` helpers send the header
+for you when the value is present:
+
+```shell
+# the same value for the rails server and for the test runner
+export CYPRESS_ON_RAILS_TOKEN=$(openssl rand -hex 16)
+```
+
+* Cypress: the generated helpers read `Cypress.env('CYPRESS_ON_RAILS_TOKEN')` and fall
+  back to `Cypress.env('ON_RAILS_TOKEN')`, so all three of these work:
+  * `cypress.env.json` containing `{ "CYPRESS_ON_RAILS_TOKEN": "..." }`
+  * the plain `export CYPRESS_ON_RAILS_TOKEN=...` shown above — Cypress strips the
+    `CYPRESS_` prefix from OS environment variables, so the helpers see it as
+    `ON_RAILS_TOKEN`, which is why that fallback exists
+  * `export CYPRESS_CYPRESS_ON_RAILS_TOKEN=...`, which strips down to
+    `CYPRESS_ON_RAILS_TOKEN`
+* Playwright reads `process.env.CYPRESS_ON_RAILS_TOKEN`. Playwright does no prefix
+  stripping, so that single spelling is all it needs.
+
+The generated helpers cover every gem endpoint, including `cy.appResetState()` /
+`appResetState()` for the state reset endpoint. If you call a gem endpoint yourself with
+a raw `cy.request`, `fetch` or `curl`, you have to send the `X-Cypress-On-Rails-Token`
+header yourself once a token is configured, or the request is rejected with a 403.
+
+The optional `use_cassette` VCR middleware wraps ordinary application requests instead
+of exposing an endpoint of its own, so it is not affected by the token.
+
+### Custom authentication
+
+[`before_request`](#authenticate-cypressonrails) is the general purpose hook for
+anything the token cannot express: warden, an IP allowlist, request signing, metrics.
+
+**`before_request` guards the command endpoint only.** It is invoked by
+`CypressOnRails::Middleware`, which serves `/__e2e__/command` and the deprecated
+`/__cypress__/command`. The state reset endpoints (`/__cypress__/reset_state`,
+`/cypress_rails_reset_state`) and the VCR `insert`/`eject` endpoints are served by
+separate middlewares that never call it. `middleware_token` is checked by all of them.
+
+So a `before_request` hook is not a substitute for `middleware_token` on a shared
+development or review server: an unauthenticated request can still reset your database
+or swap VCR cassettes even though the hook rejects commands. Set `middleware_token` as
+well, or leave `use_middleware` / `use_vcr_middleware` off, wherever the server is
+reachable by anything other than your own machine.
 
 ## Usage
 
@@ -636,8 +725,22 @@ CypressOnRails.configure do |c|
   c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
   c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
   c.transactional_server = true  # Enable automatic transaction rollback
+  c.server_shutdown_timeout = 10 # or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
 end
 ```
+
+### `server_shutdown_timeout`
+
+Seconds to wait after sending `TERM` to the test server before escalating to
+`KILL`. Defaults to `10`, and can also be set with the
+`CYPRESS_RAILS_SHUTDOWN_TIMEOUT` environment variable. It must be a finite
+number greater than zero; anything else raises an `ArgumentError` when you
+configure it, rather than producing an unbounded wait at shutdown.
+
+Raise it if your application needs longer to finish in-flight requests and
+release resources on shutdown. Lower it to fail faster in CI. After `KILL` the
+server is given a further fixed 5 second grace to be reaped, so a stop can
+never take longer than `server_shutdown_timeout + 5` seconds.
 
 ## `before_request` configuration
 
@@ -647,6 +750,12 @@ You should get familiar with [Rack middlewares](https://www.rubyguides.com/2018/
 If your function returns a `[status, header, body]` response, CypressOnRails will halt, and your command will not be executed. To execute the command, `before_request` should return `nil`.
 
 ### Authenticate CypressOnRails
+
+For a plain shared secret, prefer the built-in
+[`middleware_token`](#security-model): it uses a constant-time comparison, is sent
+automatically by the generated helpers, and — unlike `before_request`, which only runs
+for the command endpoint — it also guards the state reset and VCR insert/eject
+endpoints. Use `before_request` when you need something the token cannot express:
 
 ```ruby
   CypressOnRails.configure do |c|
@@ -691,8 +800,12 @@ require File.expand_path('my_app', File.dirname(__FILE__))
 require 'cypress_on_rails/middleware'
 CypressOnRails.configure do |c|
   c.cypress_folder = File.expand_path("#{__dir__}/test/cypress")
+  # There is no Rails.env out here, so the production-safe default cannot decide
+  # for you. The middleware runs arbitrary ruby: say when it is allowed.
+  c.use_middleware = ENV['RACK_ENV'] != 'production'
 end
-use CypressOnRails::Middleware
+# Mounting the middleware directly bypasses `use_middleware?`, so check it here.
+use CypressOnRails::Middleware if CypressOnRails.configuration.use_middleware?
 
 run MyApp
 ```

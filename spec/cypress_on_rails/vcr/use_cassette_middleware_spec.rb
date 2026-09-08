@@ -63,6 +63,22 @@ module CypressOnRails
           expect(vcr).to have_received(:use_cassette).with('/graphql/test')
         end
       end
+
+      context 'when a middleware_token is configured' do
+        before do
+          CypressOnRails.configure { |config| config.middleware_token = 'super-secret-token' }
+        end
+
+        # This middleware wraps every application request instead of exposing an
+        # endpoint of its own, so the token check would reject the browser
+        # traffic of the application under test.
+        it 'does not require the token for application requests' do
+          env['PATH_INFO'] = '/test/path'
+
+          expect(response).to eq([200, {}, ['app did /test/path']])
+          expect(vcr).to have_received(:use_cassette).with('/test/path')
+        end
+      end
     end
   end
 end

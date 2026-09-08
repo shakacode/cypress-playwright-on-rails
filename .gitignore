@@ -5,6 +5,7 @@ spec/examples.txt
 .idea
 spec/test.log
 pkg/*.gem
+*.gem
 vendor/bundle
 .vscode
 node_modules
