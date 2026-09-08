@@ -9,6 +9,13 @@ module CypressOnRails
     attr_accessor :use_middleware
     attr_accessor :use_vcr_middleware
     attr_accessor :use_vcr_use_cassette_middleware
+    # Optional shared secret. When set, every middleware that executes
+    # commands or resets state requires a matching X-Cypress-On-Rails-Token
+    # header. Defaults to ENV['CYPRESS_ON_RAILS_TOKEN'].
+    #
+    # Always reads back as nil (no token required) or as a non empty string,
+    # see #middleware_token=.
+    attr_reader :middleware_token
     attr_accessor :logger
     attr_accessor :vcr_options
 
@@ -70,17 +77,45 @@ module CypressOnRails
       reset
     end
 
-    alias :use_middleware? :use_middleware
     alias :use_vcr_middleware? :use_vcr_middleware
     alias :use_vcr_use_cassette_middleware? :use_vcr_use_cassette_middleware
+
+    # The middleware can execute arbitrary ruby code, so it must never be
+    # mounted in production. When `use_middleware` was never assigned we
+    # resolve the default lazily: enabled everywhere except Rails production.
+    # An explicit assignment (true or false) always wins.
+    def use_middleware?
+      return use_middleware unless use_middleware.nil?
+
+      !rails_production?
+    end
+
+    # `nil`, `false` and a blank string all mean "no token required". `false`
+    # is worth calling out: it is the natural mistake for anyone copying the
+    # neighbouring `use_middleware = false` style, and storing it verbatim
+    # would turn the check on with the secret "false" and 403 every request.
+    # `true` is rejected outright, because it can only mean a secret the caller
+    # never chose. Everything else is stored as its string form.
+    def middleware_token=(value)
+      if value == true
+        raise ArgumentError,
+              'CypressOnRails middleware_token must be a secret string, got `true`. ' \
+              'Use a random value such as ENV["CYPRESS_ON_RAILS_TOKEN"], ' \
+              'or nil/false to disable the token check.'
+      end
+
+      token = (value == false ? nil : value).to_s
+      @middleware_token = token.empty? ? nil : token
+    end
 
     def reset
       self.api_prefix = ''
       self.install_folder = 'spec/e2e'
-      self.use_middleware = true
+      self.use_middleware = nil # nil means "decide from the environment", see #use_middleware?
       self.use_vcr_middleware = false
       self.use_vcr_use_cassette_middleware = false
       self.before_request = -> (request) {}
+      self.middleware_token = ENV.fetch('CYPRESS_ON_RAILS_TOKEN', nil)
       self.logger = Logger.new(STDOUT)
       self.vcr_options = {}
       
@@ -109,6 +144,14 @@ module CypressOnRails
     end
 
     private
+
+    # Works whether or not Rails is loaded, and whether `Rails.env` is an
+    # ActiveSupport::StringInquirer, a plain String or not set up yet.
+    def rails_production?
+      return false unless defined?(Rails) && Rails.respond_to?(:env)
+
+      Rails.env.to_s == 'production'
+    end
 
     # Accepts a Numeric or a numeric String and returns it as a finite number
     # greater than zero, raising ArgumentError with the offending value

@@ -133,4 +133,79 @@ RSpec.describe CypressOnRails::StateResetMiddleware do
       expect { reset_state }.not_to raise_error
     end
   end
+
+  # Re-added on top of the reworked spec from #255: the token gate must cover the
+  # state reset endpoint, not just the command endpoint.
+  describe 'the middleware_token gate' do
+    let(:forbidden) do
+      [403, { 'Content-Type' => 'application/json' }, ['{"message":"invalid or missing token"}']]
+    end
+    let(:completed) do
+      [200, { 'Content-Type' => 'text/plain' }, ['State reset completed']]
+    end
+
+    before do
+      # the reset itself is covered above, here only whether it is reached matters
+      allow(middleware).to receive(:reset_application_state)
+    end
+
+    def call(path, headers = {})
+      middleware.call({ 'PATH_INFO' => path }.merge(headers))
+    end
+
+    ['/cypress_rails_reset_state', '/__cypress__/reset_state'].each do |path|
+      describe path do
+        context 'with a middleware_token configured' do
+          let(:token) { 'super-secret-token' }
+
+          before do
+            CypressOnRails.configure { |config| config.middleware_token = token }
+          end
+
+          it 'rejects a request without the token header' do
+            aggregate_failures do
+              expect(call(path)).to eq(forbidden)
+              expect(middleware).to_not have_received(:reset_application_state)
+            end
+          end
+
+          it 'rejects a request with the wrong token' do
+            aggregate_failures do
+              expect(call(path, 'HTTP_X_CYPRESS_ON_RAILS_TOKEN' => 'not-the-token')).to eq(forbidden)
+              expect(middleware).to_not have_received(:reset_application_state)
+            end
+          end
+
+          it 'resets the state when the token matches' do
+            aggregate_failures do
+              expect(call(path, 'HTTP_X_CYPRESS_ON_RAILS_TOKEN' => token)).to eq(completed)
+              expect(middleware).to have_received(:reset_application_state)
+            end
+          end
+        end
+
+        context 'with middleware_token set to false' do
+          before do
+            CypressOnRails.configure { |config| config.middleware_token = false }
+          end
+
+          it 'resets the state instead of locking every request out' do
+            aggregate_failures do
+              expect(call(path)).to eq(completed)
+              expect(middleware).to have_received(:reset_application_state)
+            end
+          end
+        end
+      end
+    end
+
+    it 'passes unrelated requests through even when a middleware_token is configured' do
+      CypressOnRails.configure { |config| config.middleware_token = 'super-secret-token' }
+
+      aggregate_failures do
+        expect(call('/posts')).to eq([200, {}, ['downstream']])
+        expect(middleware).to_not have_received(:reset_application_state)
+      end
+    end
+  end
 end

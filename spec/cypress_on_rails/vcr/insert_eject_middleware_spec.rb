@@ -151,6 +151,69 @@ module CypressOnRails
         end
       end
 
+      describe 'with a middleware_token configured' do
+        let(:token) { 'super-secret-token' }
+        let(:forbidden) do
+          [403, { 'Content-Type' => 'application/json' }, ['{"message":"invalid or missing token"}']]
+        end
+
+        before do
+          CypressOnRails.configure { |config| config.middleware_token = token }
+          env['rack.input'] = rack_input(['cas1'])
+        end
+
+        %w[/__e2e__/vcr/insert /__e2e__/vcr/eject].each do |path|
+          context path do
+            before do
+              env['PATH_INFO'] = path
+            end
+
+            it 'rejects a request without the token header' do
+              aggregate_failures do
+                expect(response).to eq(forbidden)
+                expect(vcr).to_not have_received(:insert_cassette)
+                expect(vcr).to_not have_received(:eject_cassette)
+              end
+            end
+
+            it 'rejects a request with the wrong token' do
+              env['HTTP_X_CYPRESS_ON_RAILS_TOKEN'] = 'not-the-token'
+
+              aggregate_failures do
+                expect(response).to eq(forbidden)
+                expect(vcr).to_not have_received(:insert_cassette)
+                expect(vcr).to_not have_received(:eject_cassette)
+              end
+            end
+
+            it 'handles the request when the token matches' do
+              env['HTTP_X_CYPRESS_ON_RAILS_TOKEN'] = token
+
+              expect(response).to eq([201,
+                                      { 'Content-Type' => 'application/json' },
+                                      ['{"message":"OK"}']])
+            end
+          end
+        end
+
+        it 'still passes other paths through to the application' do
+          env['PATH_INFO'] = '/test'
+
+          expect(response).to eq([200, {}, ['app did /test']])
+        end
+      end
+
+      describe 'without a middleware_token configured' do
+        it 'handles the request without any token header' do
+          env['PATH_INFO'] = '/__e2e__/vcr/insert'
+          env['rack.input'] = rack_input(['cas1'])
+
+          expect(response).to eq([201,
+                                  { 'Content-Type' => 'application/json' },
+                                  ['{"message":"OK"}']])
+        end
+      end
+
       describe '"Other paths"' do
         it 'calls vcr turn off the first time' do
           env['PATH_INFO'] = '/test'

@@ -1,11 +1,18 @@
+require 'cypress_on_rails/token_authentication'
+
 module CypressOnRails
   class StateResetMiddleware
+    include TokenAuthentication
+
     def initialize(app)
       @app = app
     end
     
     def call(env)
       if env['PATH_INFO'] == '/__cypress__/reset_state' || env['PATH_INFO'] == '/cypress_rails_reset_state'
+        rejection = invalid_middleware_token_response(env)
+        return rejection unless rejection.nil?
+
         reset_application_state
         [200, { 'Content-Type' => 'text/plain' }, ['State reset completed']]
       else

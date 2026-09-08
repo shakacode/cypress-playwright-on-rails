@@ -148,4 +148,113 @@ RSpec.describe CypressOnRails::Configuration do
       end
     end
   end
+
+  describe '#middleware_token' do
+    it 'is not set when the environment variable is missing' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('CYPRESS_ON_RAILS_TOKEN', nil).and_return(nil)
+
+      CypressOnRails.configure { |config| config.reset }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'defaults to the CYPRESS_ON_RAILS_TOKEN environment variable' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('CYPRESS_ON_RAILS_TOKEN', nil).and_return('token-from-env')
+
+      CypressOnRails.configure { |config| config.reset }
+
+      expect(CypressOnRails.configuration.middleware_token).to eq('token-from-env')
+    end
+
+    it 'can be configured' do
+      CypressOnRails.configure { |config| config.middleware_token = 'my-token' }
+
+      expect(CypressOnRails.configuration.middleware_token).to eq('my-token')
+    end
+
+    it 'treats false as not configured' do
+      CypressOnRails.configure { |config| config.middleware_token = false }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'treats a blank string as not configured' do
+      CypressOnRails.configure { |config| config.middleware_token = '' }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'treats a blank environment variable as not configured' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('CYPRESS_ON_RAILS_TOKEN', nil).and_return('')
+
+      CypressOnRails.configure { |config| config.reset }
+
+      expect(CypressOnRails.configuration.middleware_token).to be_nil
+    end
+
+    it 'stores other values as strings' do
+      CypressOnRails.configure { |config| config.middleware_token = 12_345 }
+
+      expect(CypressOnRails.configuration.middleware_token).to eq('12345')
+    end
+
+    it 'rejects true instead of requiring the literal secret "true"' do
+      expect {
+        CypressOnRails.configure { |config| config.middleware_token = true }
+      }.to raise_error(ArgumentError, /must be a secret string/)
+    end
+  end
+
+  describe '#use_middleware?' do
+    let(:configuration) { CypressOnRails.configuration }
+
+    context 'when left at the default' do
+      it 'is not assigned, so the environment decides' do
+        expect(configuration.use_middleware).to be_nil
+      end
+
+      it 'is enabled when Rails is not loaded' do
+        hide_const('Rails')
+
+        expect(configuration.use_middleware?).to eq(true)
+      end
+
+      it 'is enabled when Rails is loaded but has no environment yet' do
+        stub_const('Rails', Module.new)
+
+        expect(configuration.use_middleware?).to eq(true)
+      end
+
+      it 'is enabled outside of production' do
+        stub_const('Rails', double('Rails', env: 'development'))
+
+        expect(configuration.use_middleware?).to eq(true)
+      end
+
+      it 'is disabled in production' do
+        stub_const('Rails', double('Rails', env: 'production'))
+
+        expect(configuration.use_middleware?).to eq(false)
+      end
+    end
+
+    context 'when explicitly assigned' do
+      it 'stays enabled in production' do
+        stub_const('Rails', double('Rails', env: 'production'))
+        CypressOnRails.configure { |config| config.use_middleware = true }
+
+        expect(configuration.use_middleware?).to eq(true)
+      end
+
+      it 'stays disabled outside of production' do
+        stub_const('Rails', double('Rails', env: 'development'))
+        CypressOnRails.configure { |config| config.use_middleware = false }
+
+        expect(configuration.use_middleware?).to eq(false)
+      end
+    end
+  end
 end

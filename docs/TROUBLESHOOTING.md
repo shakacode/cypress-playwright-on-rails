@@ -331,9 +331,10 @@ beforeEach(() => {
   cy.app('load_seed');  // Optional
 });
 
-// Or use state reset endpoint
+// Or use the state reset endpoint. Use the helper rather than a raw
+// cy.request, so the token header is sent when one is configured.
 beforeEach(() => {
-  cy.request('POST', '/cypress_rails_reset_state');
+  cy.appResetState();
 });
 ```
 
