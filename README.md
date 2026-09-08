@@ -226,11 +226,18 @@ VCR `insert`/`eject` endpoints, and the state reset endpoints
 
 **Defaults.** The library default for `use_middleware` is now "everywhere except
 `Rails.env.production?`". It is resolved lazily, when the middleware would be mounted,
-so an app that configures the gem by hand — or on a rack app with no Rails at all —
-still gets the safe answer without depending on load order. The
-generated initializer keeps the explicit `c.use_middleware = !Rails.env.production?`
-line. An explicit value always wins, so setting `c.use_middleware = true` in
-production re-enables remote code execution — don't.
+so it does not depend on load order: an app that configures the gem by hand still gets
+the right answer. The generated initializer keeps the explicit
+`c.use_middleware = !Rails.env.production?` line. An explicit value always wins, so
+setting `c.use_middleware = true` in production re-enables remote code execution — don't.
+
+**The default only reads `Rails.env`, so plain rack apps must opt out themselves.**
+Without Rails there is nothing for the default to inspect — `RACK_ENV=production` is
+**not** consulted, and the default resolves to enabled. The railtie is also the only
+thing that applies `use_middleware?`, so mounting `CypressOnRails::Middleware` yourself
+in `config.ru` bypasses the check even when it is set to `false`. Outside Rails, set
+`c.use_middleware` explicitly and mount conditionally, as the
+[rack example](#usage-with-other-rack-applications) does.
 
 **Still be careful outside production.** Binding your server to `0.0.0.0`, running the
 gem on a shared review app, or serving a permissive CORS policy makes these endpoints
@@ -793,8 +800,12 @@ require File.expand_path('my_app', File.dirname(__FILE__))
 require 'cypress_on_rails/middleware'
 CypressOnRails.configure do |c|
   c.cypress_folder = File.expand_path("#{__dir__}/test/cypress")
+  # There is no Rails.env out here, so the production-safe default cannot decide
+  # for you. The middleware runs arbitrary ruby: say when it is allowed.
+  c.use_middleware = ENV['RACK_ENV'] != 'production'
 end
-use CypressOnRails::Middleware
+# Mounting the middleware directly bypasses `use_middleware?`, so check it here.
+use CypressOnRails::Middleware if CypressOnRails.configuration.use_middleware?
 
 run MyApp
 ```
