@@ -348,14 +348,17 @@ the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
    exact envelope per PR head).
 3. Decide wave 3 before stamping: either take #114/#221 into 1.21.0 or
    defer them to the next release. After every wave included in 1.21.0 has
-   merged (wave 2, plus wave 3 when it is included):
+   merged — waves 1 and 2, plus wave 3 when it is included:
    `/update-changelog release` PR, then merge it. Nothing user-visible may
    merge between that PR and the release, or its entry lands under the new
    `Unreleased` section instead of `## [1.21.0]`.
 4. Immediately before releasing, re-verify that `e2e_on_rails` is still
-   unclaimed on RubyGems (`gem search -r -e e2e_on_rails` prints nothing), as
-   ADR-0001 requires for the first publish. If the name has been taken, stop
-   and decide the fallback name before running the release.
+   unclaimed on RubyGems, as ADR-0001 requires for the first publish. Check
+   ownership, not the search index: `gem owner e2e_on_rails` must report that
+   the gem does not exist. A name whose versions were all yanked is absent
+   from `gem search -r -e` output yet still belongs to its original owners.
+   If the name has been taken, stop and decide the fallback name before
+   running the release.
 5. From clean `master`: `bundle exec rake "release[,true]"` (dry run shows
    both gems once #226 lands), then `bundle exec rake release`.
 6. First publish of `e2e_on_rails`: the release task pushes it after the main
