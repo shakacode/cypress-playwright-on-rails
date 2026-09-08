@@ -4,6 +4,12 @@
 [![cypress-on-rails](https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/2b6cjr/master&style=plastic&logo=cypress)](https://dashboard.cypress.io/projects/2b6cjr/runs)
 [![Gem Version](https://badge.fury.io/rb/cypress-on-rails.svg)](https://badge.fury.io/rb/cypress-on-rails)
 
+> **E2E on Rails documentation:** https://e2eonrails.com
+>
+> E2E on Rails is the public brand for this project. The 1.x gem is still
+> installed as `cypress-on-rails`; the staged `e2e_on_rails` gem flip comes
+> later.
+
 ----
 
 This project is sponsored by the software consulting firm [ShakaCode](https://www.shakacode.com), creator of the [React on Rails Gem](https://github.com/shakacode/react_on_rails). 
@@ -89,6 +95,7 @@ Has examples of setting up state with:
 ## Documentation
 
 ### 📚 Essential Guides
+* **[E2E on Rails Docs](https://e2eonrails.com)** - Canonical docs and landing page
 * **[Best Practices Guide](docs/BEST_PRACTICES.md)** - Recommended patterns and practices
 * **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Solutions to common issues
 * **[Playwright Guide](docs/PLAYWRIGHT_GUIDE.md)** - Complete Playwright documentation
