@@ -24,6 +24,15 @@ parent_version_match = File.read(parent_version_file).match(/VERSION\s*=\s*["'](
 raise "Unable to read CypressOnRails::VERSION from #{parent_version_file}" unless parent_version_match
 
 parent_version = parent_version_match[1]
+
+# Mirror the parent gem's Ruby floor rather than restating it. The alias pins
+# cypress-on-rails to an exact version, so installing on a Ruby the parent
+# rejects would resolve to a dependency that can never be satisfied.
+parent_gemspec_file = File.expand_path("../cypress-on-rails.gemspec", alias_gem_root)
+parent_ruby_match = File.read(parent_gemspec_file).match(/required_ruby_version\s*=\s*["']([^"']+)["']/)
+raise "Unable to read required_ruby_version from #{parent_gemspec_file}" unless parent_ruby_match
+
+parent_required_ruby = parent_ruby_match[1]
 repo_uri = "https://github.com/shakacode/cypress-playwright-on-rails"
 adr_uri = "#{repo_uri}/blob/master/docs/adr/0001-reserve-e2e_on_rails-rename-at-2.0.md"
 
@@ -44,6 +53,7 @@ Gem::Specification.new do |spec|
   # This directory's own files only; never glob the parent repository.
   spec.files = Dir["lib/**/*.rb"].sort + ["README.md"]
   spec.require_paths = ["lib"]
+  spec.required_ruby_version = parent_required_ruby
 
   spec.metadata = {
     "bug_tracker_uri"   => "#{repo_uri}/issues",

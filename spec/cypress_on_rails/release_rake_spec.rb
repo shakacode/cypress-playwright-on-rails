@@ -161,6 +161,20 @@ RSpec.describe "release rake helpers" do
       expect(spec.version.to_s).to eq(current_gem_version(gem_root))
       expect(dependency.requirement.to_s).to eq("= #{current_gem_version(gem_root)}")
     end
+
+    it "mirrors the parent gem's required_ruby_version" do
+      spec = Dir.chdir(File.join(gem_root, "alias_gem")) do
+        Gem::Specification.load("e2e_on_rails.gemspec")
+      end
+      parent_spec = Dir.chdir(gem_root) do
+        Gem::Specification.load("cypress-on-rails.gemspec")
+      end
+
+      # The alias pins cypress-on-rails exactly, so a looser Ruby floor here
+      # would let the alias install on a Ruby its own dependency rejects.
+      expect(parent_spec.required_ruby_version.to_s).not_to be_empty
+      expect(spec.required_ruby_version.to_s).to eq(parent_spec.required_ruby_version.to_s)
+    end
   end
 
   describe "alias gem publishing" do
