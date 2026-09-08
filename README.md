@@ -256,10 +256,16 @@ for you when the value is present:
 export CYPRESS_ON_RAILS_TOKEN=$(openssl rand -hex 16)
 ```
 
-* Cypress reads `Cypress.env('CYPRESS_ON_RAILS_TOKEN')`, so set it in `cypress.env.json`,
-  or export it as `CYPRESS_CYPRESS_ON_RAILS_TOKEN` (Cypress strips the `CYPRESS_` prefix
-  from OS environment variables, and the helpers accept both spellings).
-* Playwright reads `process.env.CYPRESS_ON_RAILS_TOKEN`.
+* Cypress: the generated helpers read `Cypress.env('CYPRESS_ON_RAILS_TOKEN')` and fall
+  back to `Cypress.env('ON_RAILS_TOKEN')`, so all three of these work:
+  * `cypress.env.json` containing `{ "CYPRESS_ON_RAILS_TOKEN": "..." }`
+  * the plain `export CYPRESS_ON_RAILS_TOKEN=...` shown above — Cypress strips the
+    `CYPRESS_` prefix from OS environment variables, so the helpers see it as
+    `ON_RAILS_TOKEN`, which is why that fallback exists
+  * `export CYPRESS_CYPRESS_ON_RAILS_TOKEN=...`, which strips down to
+    `CYPRESS_ON_RAILS_TOKEN`
+* Playwright reads `process.env.CYPRESS_ON_RAILS_TOKEN`. Playwright does no prefix
+  stripping, so that single spelling is all it needs.
 
 The generated helpers cover every gem endpoint, including `cy.appResetState()` /
 `appResetState()` for the state reset endpoint. If you call a gem endpoint yourself with
