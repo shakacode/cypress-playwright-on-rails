@@ -345,7 +345,9 @@ the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
    so docs merges publish. Verify with the next `docs/**` merge (#241).
 2. Post `autonomous-merge-risk-decision:v1` comments on the wave-1 PRs that
    the eligibility gate flags for human review (the coordinator supplies the
-   exact envelope per PR head).
+   exact envelope per PR head). Neither that envelope nor the gate is defined
+   in this repo; both live in the private coordination backend named in
+   `.agents/agent-workflow.yml`.
 3. Decide wave 3 before stamping: either take #114/#221 into 1.21.0 or
    defer them to the next release. After every wave included in 1.21.0 has
    merged — waves 1 and 2, plus wave 3 when it is included:
