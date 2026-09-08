@@ -43,12 +43,13 @@ root raises a descriptive error instead of packaging the wrong files.
 
 ### One-time: first publish of `e2e_on_rails`
 
-`e2e_on_rails` has never been published, and its first publish happens as part of
-the 1.21.0 release — the same release the README points at. Nothing is pushed
-ahead of that: `rake release` skips the alias entirely for versions below 1.21.0,
-so a 1.20.x hotfix cut from `master` publishes `cypress-on-rails` on its own.
-Prereleases of the first version do publish the alias — 1.21.0.rc.0 counts as
-1.21.0 for this check — so it can be exercised before the final release.
+`e2e_on_rails` has never been published, and its first publish happens with the
+1.21.0 release the README points at — the first 1.21.0 prerelease if one is cut,
+otherwise 1.21.0 itself. Nothing is pushed ahead of that: `rake release` skips
+the alias entirely for versions below 1.21.0, so a 1.20.x hotfix cut from
+`master` publishes `cypress-on-rails` on its own. Prereleases of the first
+version do publish the alias — 1.21.0.rc.0 counts as 1.21.0 for this check — so
+it can be exercised before the final release.
 
 The push itself is not blocked technically; a first `gem push` creates the gem
 and makes the pusher its owner. It needs a human in the loop for three reasons:
@@ -62,19 +63,29 @@ and makes the pusher its owner. It needs a human in the loop for three reasons:
   must already be live on RubyGems when the alias is pushed. The alias is never
   pushed before the main gem.
 
-Steps, during the 1.21.0 release:
+Steps, during the release that first publishes the alias:
 
-1. Before releasing, re-verify the name is still available:
+1. Before releasing, check what is on RubyGems under the name:
 
    ```bash
-   gem search --remote --exact e2e_on_rails   # no output means the name is free
+   gem search --remote --exact e2e_on_rails
    ```
 
    RubyGems has no "unclaimed" state: a name that returns no result is simply
    unregistered, and the first successful push registers it. Use the search
    rather than `gem owner`, which manages maintainers of a gem that already
-   exists and needs credentials. If the search returns a gem, someone else has
-   registered the name: stop and revisit ADR-0001 before releasing.
+   exists and needs credentials. Read the result three ways:
+
+   - **No output.** The name is free and this is the first publish. Continue
+     with the steps below — this is the moment ADR-0001 asks a human to
+     supervise.
+   - **A version we published.** Most likely an earlier 1.21.0 prerelease
+     already pushed the alias, since prereleases publish it too. Confirm with
+     `gem owner e2e_on_rails`: if it lists the release maintainers, this is an
+     ordinary subsequent release. Skip the rest of this section and release as
+     normal.
+   - **A version someone else published.** Stop and revisit ADR-0001 before
+     releasing.
 
 2. Run `bundle exec rake release` as usual. It publishes `cypress-on-rails 1.21.0`
    first, then builds and pushes `e2e_on_rails 1.21.0`. With MFA you are prompted
