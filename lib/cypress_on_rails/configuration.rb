@@ -136,9 +136,20 @@ module CypressOnRails
                  end
                end
       return nil if number.nil?
-      return nil if number.respond_to?(:finite?) && !number.finite?
+      return nil unless finite_as_float?(number)
 
       number
+    end
+
+    # An arbitrary-precision Integer answers #finite? with true at any
+    # magnitude, but the deadline arithmetic is float: 10**10000 becomes
+    # Infinity as soon as it meets the monotonic clock, which puts the
+    # shutdown deadline out of reach and stops the TERM-then-KILL escalation
+    # from ever firing. Validate the value the deadline will actually use.
+    def finite_as_float?(number)
+      number.to_f.finite?
+    rescue RangeError, NoMethodError
+      false
     end
   end
 

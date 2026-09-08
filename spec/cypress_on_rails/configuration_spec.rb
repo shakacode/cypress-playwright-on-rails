@@ -120,6 +120,13 @@ RSpec.describe CypressOnRails::Configuration do
         .to raise_error(ArgumentError, /got "1e10000"/)
     end
 
+    # Integer#finite? is true at any magnitude, but the deadline is computed in
+    # floats, so a big enough Integer still yields an unreachable deadline.
+    it 'rejects an integer too large to survive the float deadline arithmetic' do
+      expect { configuration.server_shutdown_timeout = 10**10_000 }
+        .to raise_error(ArgumentError, /server_shutdown_timeout must be a finite number of seconds greater than 0/)
+    end
+
     it 'only ever stores a finite timeout' do
       configuration.server_shutdown_timeout = '2.5'
 
