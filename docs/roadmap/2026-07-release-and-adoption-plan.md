@@ -363,7 +363,11 @@ the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
    both gems once #226 lands), then `bundle exec rake release`.
 6. First publish of `e2e_on_rails`: the release task pushes it after the main
    gem; if that first push needs RubyGems ownership setup, run
-   `gem push alias_gem/pkg/e2e_on_rails-1.21.0.gem` manually once.
+   `gem push alias_gem/pkg/e2e_on_rails-1.21.0.gem` manually once, then
+   `bundle exec rake "sync_github_release[1.21.0]"`. The release task only
+   syncs the GitHub Release after publishing returns cleanly, so a failure
+   recovered by hand skips that step; do not rerun `rake release` once the
+   tag exists.
 7. Then #228: rename the repo in place and open the URL-sweep PR.
 
 ### Definition of done for 1.21.0
