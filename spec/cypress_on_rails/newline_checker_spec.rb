@@ -43,6 +43,28 @@ RSpec.describe NewlineChecker do
       )
     end
 
+    # bin/install-hooks and .agents/bin/* are bare-named executables: they match
+    # no extension and no known basename, so a name-only rule left this gem's
+    # own scripts unchecked by the very task that enforces trailing newlines.
+    it 'includes extensionless scripts identified by their shebang' do
+      write_file('bin/install-hooks', "#!/usr/bin/env ruby\nputs 1\n")
+      write_file('.agents/bin/validate', "#!/usr/bin/env bash\nexit 0\n")
+      write_file('script/deploy', "#!/bin/sh\necho hi\n")
+
+      expect(described_class.text_files).to include(
+        'bin/install-hooks',
+        '.agents/bin/validate',
+        'script/deploy'
+      )
+    end
+
+    it 'excludes extensionless files that are not scripts' do
+      write_file('LICENSE', "MIT\n")
+      write_file('bin/notes', "just prose\n")
+
+      expect(described_class.text_files).not_to include('LICENSE', 'bin/notes')
+    end
+
     it 'excludes binary files even when their names match text globs' do
       write_file('config.yml', "\x00\x01binary")
 
@@ -92,6 +114,37 @@ RSpec.describe NewlineChecker do
       write_file('a.rb', '')
 
       expect(described_class.missing_final_newline?('a.rb')).to be(false)
+    end
+  end
+
+  # Guards against the regression that prompted this rule: the checker must see
+  # the repository's own bare-named scripts, including ones this gem ships.
+  describe 'coverage of this repository' do
+    it 'covers the repository\'s extensionless scripts' do
+      Dir.chdir(File.expand_path('../..', __dir__)) do
+        covered = described_class.text_files
+
+        expect(covered).to include(
+          'bin/install-hooks',
+          '.agents/bin/validate',
+          '.agents/bin/lint'
+        )
+      end
+    end
+  end
+
+  describe '.text_file?' do
+    it 'accepts known extensions and basenames without opening the file' do
+      expect(described_class.text_file?('lib/example.rb')).to be(true)
+      expect(described_class.text_file?('Gemfile')).to be(true)
+    end
+
+    # File.extname('.gitignore') is "", but the hook's `case $base in *.*)` test
+    # treats it as having an extension. Using "basename contains a dot" keeps
+    # Ruby and bash in agreement.
+    it 'treats dotfiles as extensioned, matching the shell test' do
+      expect(described_class.extensionless?('.gitignore')).to be(false)
+      expect(described_class.extensionless?('bin/install-hooks')).to be(true)
     end
   end
 

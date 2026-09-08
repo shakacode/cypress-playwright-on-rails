@@ -52,11 +52,45 @@ module NewlineChecker
   ].join('|').freeze
   TEXT_FILE_MATCHER = Regexp.new(TEXT_FILE_PATTERN)
 
+  # Bare-named executables (bin/install-hooks, .agents/bin/validate, ...) match
+  # neither list, so a name-based rule alone leaves this gem's own scripts
+  # unchecked. They are detected by their shebang instead, which also covers
+  # scripts added later without touching any hardcoded list.
+  #
+  # The shebang test is gated on "basename contains no dot" so that only a
+  # handful of files are ever opened; everything with an extension is decided by
+  # the pure-string match above and the pruned walk stays fast.
+  SHEBANG_PREFIX = '#!'
+
   module_function
 
   # Interpolated into the generated pre-commit hook by bin/install-hooks.
   def staged_file_pattern
     TEXT_FILE_PATTERN
+  end
+
+  # Deliberately uses "no dot anywhere in the basename" rather than
+  # File.extname, so that it agrees exactly with the generated hook's
+  # `case "$base" in *.*)` test. File.extname('.gitignore') is "" while the
+  # shell pattern treats it as having an extension; that mismatch would let the
+  # two mechanisms disagree.
+  def extensionless?(path)
+    !File.basename(path).include?('.')
+  end
+
+  def shebang?(path)
+    File.open(path, 'rb') { |file| file.read(2) == SHEBANG_PREFIX }
+  rescue StandardError
+    false
+  end
+
+  # In scope when the path matches a known basename/extension, or when it is an
+  # extensionless script. Mirrored by is_text_candidate() in the generated hook.
+  def text_file?(path, relative = path)
+    return true if TEXT_FILE_MATCHER.match?(relative)
+    return false unless extensionless?(relative)
+
+    File.file?(path) && shebang?(path)
   end
 
   # Space-separated excluded prefixes for the generated pre-commit hook.
@@ -104,7 +138,7 @@ module NewlineChecker
         next
       end
 
-      next unless TEXT_FILE_MATCHER.match?(relative)
+      next unless text_file?(path, relative)
       next unless File.file?(path) && File.size(path) < MAX_FILE_SIZE && !binary_file?(path)
 
       files << relative

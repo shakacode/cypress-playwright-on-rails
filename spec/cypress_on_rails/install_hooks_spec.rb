@@ -122,6 +122,29 @@ RSpec.describe 'bin/install-hooks' do
     expect(stdout + stderr).to include('Gemfile')
   end
 
+  # The hook must see the same bare-named scripts NewlineChecker sees, otherwise
+  # `rake check_newlines` would reject a file the hook waved through.
+  it 'rejects a staged extensionless script missing a final newline' do
+    install_hook!
+    write_repo_file('.agents/bin/validate', "#!/usr/bin/env bash\nexit 0")
+    git_add('.agents/bin/validate')
+
+    stdout, stderr, status = run_hook
+
+    expect(status.success?).to be(false)
+    expect(stdout + stderr).to include('.agents/bin/validate')
+  end
+
+  it 'allows a staged extensionless file that is not a script' do
+    install_hook!
+    write_repo_file('LICENSE', 'MIT')
+    git_add('LICENSE')
+
+    stdout, stderr, status = run_hook
+
+    expect_success(status, stdout + stderr)
+  end
+
   # NewlineChecker::EXCLUDED_DIRS skips these trees, so `rake fix_newlines`
   # cannot repair them. The hook must not reject what the fix command ignores.
   it 'ignores staged paths excluded from the newline rake tasks' do
