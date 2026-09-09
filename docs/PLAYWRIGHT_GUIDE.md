@@ -42,6 +42,8 @@ npm install --save-dev @playwright/test
 npx playwright install
 ```
 
+For streamed UI and auxiliary services, see [Streamed and Multi-process Applications](./STREAMING_AND_MULTI_PROCESS_APPS.md) for runtime ownership, data isolation, and browser assertions.
+
 ## Basic Setup
 
 ### Directory Structure

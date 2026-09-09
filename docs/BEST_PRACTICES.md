@@ -2,6 +2,8 @@
 
 This guide provides recommended patterns and practices for using cypress-playwright-on-rails effectively.
 
+Keep Rails and auxiliary services alive for the focused suite/job, while resetting browser and data state per test. See [Streamed and Multi-process Applications](./STREAMING_AND_MULTI_PROCESS_APPS.md) for the Playwright recipe.
+
 ## Table of Contents
 - [Project Structure](#project-structure)
 - [Test Organization](#test-organization)
@@ -481,7 +483,7 @@ workflows:
 The middleware can execute arbitrary ruby code, so it must never be reachable from
 production or an untrusted network. `use_middleware` now defaults to off in
 `Rails.env.production?`, and `c.middleware_token` adds a built-in shared secret
-(see the [security model](../README.md#security-model)). Use `before_request` when you
+(see the [security model](https://github.com/shakacode/cypress-playwright-on-rails/blob/master/README.md#security-model)). Use `before_request` when you
 need something the token cannot express — but note that `before_request` only runs for
 the command endpoint, while `middleware_token` also guards the state reset and VCR
 insert/eject endpoints:

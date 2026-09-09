@@ -74,6 +74,10 @@ Cypress.Commands.add('mockGraphQL', () => {
 });
 ```
 
+## Late chunk errors or cascading browser crashes
+
+If errors spill into the next example, check whether teardown kills the origin while streamed requests are still active. Keep Rails and auxiliary services suite-scoped, collect page/console/request failures, and wait for application completion. See [Streamed and Multi-process Applications](./STREAMING_AND_MULTI_PROCESS_APPS.md) for diagnostics and ordered cleanup.
+
 ## Playwright Support
 
 ### Loading Fixtures in Playwright (#169)
