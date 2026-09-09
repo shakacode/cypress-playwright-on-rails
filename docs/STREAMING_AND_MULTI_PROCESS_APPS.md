@@ -90,7 +90,8 @@ require 'shellwords'
 require 'socket'
 require 'timeout'
 
-# Fail rather than accepting an unrelated service's readiness response.
+# Best-effort availability check. Reserve these ports for this job so readiness
+# cannot target an unrelated service.
 [5017, 5018].each { |port| TCPServer.new('127.0.0.1', port).close }
 FileUtils.mkdir_p('log/e2e')
 children = []
@@ -141,6 +142,7 @@ begin
   _, result = Process.wait2(tests)
   exit(result.exitstatus || 1)
 ensure
+  cleanup_failures = []
   children.reverse_each do |pid|
     signal_group.call('TERM', pid)
     begin
@@ -154,8 +156,11 @@ ensure
       Timeout.timeout(5) { Process.waitpid(pid) }
     rescue Errno::ECHILD
       nil
+    rescue Timeout::Error
+      cleanup_failures << "Timed out waiting for owned process group #{pid} after KILL"
     end
   end
+  raise cleanup_failures.join('; ') unless cleanup_failures.empty?
 end
 ```
 
