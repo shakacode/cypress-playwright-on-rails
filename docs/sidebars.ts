@@ -21,6 +21,7 @@ const sidebars: SidebarsConfig = {
         'authentication',
         'factory_bot_associations',
         'BEST_PRACTICES',
+        'STREAMING_AND_MULTI_PROCESS_APPS',
         'TROUBLESHOOTING',
         'VCR_GUIDE',
         'DX_IMPROVEMENTS',

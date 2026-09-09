@@ -42,3 +42,4 @@ app commands, scenarios, and test data setup.
 - Use [FactoryBot](./factory-bot.md) for test records.
 - Use [Scenarios](./scenarios.md) for named browser-test states.
 - Review [Best Practices](./BEST_PRACTICES.md) before adding a large suite.
+- Testing a renderer or streaming transport? Follow [Streamed and Multi-process Applications](./STREAMING_AND_MULTI_PROCESS_APPS.md).

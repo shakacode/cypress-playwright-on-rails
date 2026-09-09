@@ -31,3 +31,6 @@ place.
 
 Read the full [Playwright Guide](./PLAYWRIGHT_GUIDE.md) for configuration,
 commands, and examples.
+
+For Rails plus a renderer or other auxiliary service, use the lifecycle recipe in
+[Streamed and Multi-process Applications](./STREAMING_AND_MULTI_PROCESS_APPS.md).
