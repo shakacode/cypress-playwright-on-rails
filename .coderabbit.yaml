@@ -1,5 +1,6 @@
 reviews:
   profile: chill
+  high_level_summary: false
   review_status: false
   review_progress: false
   commit_status: false
