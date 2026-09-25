@@ -28,8 +28,8 @@ sandbox; stop if the tooling cannot enforce it.
 ## Review and Merge
 
 - Before merge, require the Ruby workflow to pass on the current PR head, record local `bundle exec rake` evidence, resolve every review thread, and confirm GitHub reports the PR mergeable and clean. Run `.agents/bin/validate` for the full local CI gate as well.
-- Meaningful changes still need a fresh local adversarial review under the Shaka skill; `review.required: none` means this repo has no named hosted-review gate.
-- The merge preference is `ask`. Follow live GitHub merge-queue state: merge directly when the queue is disabled and enqueue the reviewed head when it is enabled. The predecessor's approval exemption remains for docs, workflow text, helper scripts, and focused release-process edits with tests; other changes remain maintainer-gated.
+- Meaningful changes still need a fresh local adversarial review under the Shaka skill. `review.required: none` means this repo has no configured hosted CI review report; it does not make local review or thread resolution optional.
+- The merge preference is `ask`: require an explicit maintainer instruction to merge the current PR. Once authorized, follow live GitHub merge-queue state: merge directly when the queue is disabled and enqueue the reviewed head when it is enabled. The predecessor's approval exemption remains for docs, workflow text, helper scripts, and focused release-process edits with tests; other changes remain maintainer-gated.
 - Hosted CI runs for every pull request. There is no manual CI trigger or change detector. For Ruby CI failures, reproduce with `bundle exec rake` and the matching `specs_e2e/<app>/test.sh` job when needed.
-- Keep `CHANGELOG.md` limited to user-visible changes. Follow the version-stamping and PR-link format in [CLAUDE.md](CLAUDE.md#changelog). Prefix follow-up issue titles with `Follow-up:`.
+- Keep `CHANGELOG.md` limited to user-visible changes. Version-stamp with `bundle exec rake update_changelog[release|rc|beta|VERSION]`; format links as `[PR N](https://github.com/shakacode/cypress-playwright-on-rails/pull/N) by [username](https://github.com/username)`. Prefix follow-up issue titles with `Follow-up:`.
 - This repository has no benchmark labels or merge ledger. Retire the predecessor's claim and heartbeat coordination metadata; do not restore those mechanisms as part of Shaka.

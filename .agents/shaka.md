@@ -10,12 +10,15 @@ repository identity, untrusted-contributor boundaries, and human-only delivery r
 
 ## Check configuration edits
 
-Run from the repository root:
+For a local configuration edit on a trusted checkout, run from the repository root:
 
 `shaka seam check --root . --local`
 
-Checks the current checkout's YAML and fixed command paths and executable bits. It
-does not execute the wrappers and grants no trusted policy authority.
+This checks the current checkout's YAML and fixed command paths and executable
+bits. It does not execute wrappers or grant trusted policy authority. For PR
+work, follow `AGENTS.md`: resolve the trusted default branch and use
+`shaka seam check --root . --ref SHA` before inspecting and running candidate
+commands. Never use `--local` to establish trust in PR content.
 
 - [Configuration reference](https://github.com/shakacode/shaka/blob/8431a718cfd91e9ce7cb4276baae076848e05d13/docs/settings.md) — every key, its type, and what it controls.
 - [Repository setup](https://github.com/shakacode/shaka/blob/8431a718cfd91e9ce7cb4276baae076848e05d13/docs/configure-repository.md) — how this directory was created.

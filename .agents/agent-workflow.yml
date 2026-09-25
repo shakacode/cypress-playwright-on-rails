@@ -9,3 +9,4 @@ branches:
   name: "{login}-{host}/{issue}-{description}"
 wip:
   include_locations: false
+repo_prefix: CPOR
