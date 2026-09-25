@@ -7,9 +7,9 @@ is absent means that capability is n/a in this repository.
 
 | Script | Purpose | This repo runs |
 | --- | --- | --- |
-| `setup` | Install dependencies | n/a |
+| `setup` | Install dependencies | `bundle install` |
 | `validate` | Pre-push gate | `bundle exec rake ci` (specs + lint + newlines; no filter arguments) |
-| `test` | Run tests | `bundle exec rake` (the default core spec suite; no filter arguments) |
+| `test` | Run tests | `bundle exec rake` (default core spec suite), or `bundle exec rspec <paths>` for focused tests |
 | `lint` | Lint / format | `bundle exec rake lint check_newlines` (RuboCop + trailing newlines) |
 | `build` | Build / type-check | n/a |
 | `docs` | Docs checks | n/a |
@@ -17,9 +17,8 @@ is absent means that capability is n/a in this repository.
 
 Non-command policy lives in [`../agent-workflow.yml`](../agent-workflow.yml).
 
-For an ad-hoc targeted RSpec run, invoke `bundle exec rspec` directly. The
-portable workflow wrappers deliberately run the repository's Rake tasks so
-their result matches the supported CI contract.
+For focused examples, pass spec paths to `.agents/bin/test`; it runs them with
+RSpec. Without paths, it runs the default Rake core suite.
 
 `validate` runs `rake ci` rather than the default `rake` task because CI
 enforces linting and trailing newlines as well as the specs (see
