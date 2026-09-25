@@ -4,20 +4,23 @@ cd "$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 # The default Rake task is the repository's supported core suite. When focused
 # paths are supplied, run those RSpec examples directly.
 if [ "$#" -gt 0 ]; then
-  ruby -rpathname -e '
-    root = Pathname.pwd.realpath
-    spec_root = (root / "spec").realpath
-    separator = File::SEPARATOR
-    abort "spec/ must resolve inside the repository" unless spec_root.to_s.start_with?("#{root}#{separator}")
+  ruby -e '
+    begin
+      root = File.realpath(".")
+      spec_root = File.realpath("spec")
+      separator = File::SEPARATOR
+      abort "spec/ must resolve inside the repository" unless spec_root.start_with?("#{root}#{separator}")
 
-    ARGV.each do |name|
-      path = Pathname.new(name)
-      abort "focused paths must be relative paths below spec/" if path.absolute? || path.each_filename.any? { |part| %w[. ..].include?(part) }
-      resolved = (root / path).realpath
-      inside_spec = resolved.to_s.start_with?("#{spec_root}#{separator}")
-      abort "focused paths must resolve inside spec/" unless inside_spec
-      allowed = resolved.directory? || (resolved.file? && resolved.basename.to_s.end_with?("_spec.rb"))
-      abort "focused paths must be spec files or directories" unless allowed
+      ARGV.each do |name|
+        match = /\A(spec\/.+_spec\.rb)(?::[1-9]\d*)?\z/.match(name)
+        abort "focused arguments must be spec paths below spec/ (optionally with :line)" unless match
+        resolved = File.realpath(match[1])
+        inside_spec = resolved.start_with?("#{spec_root}#{separator}")
+        abort "focused paths must resolve inside spec/" unless inside_spec
+        abort "focused paths must resolve to spec files" unless File.file?(resolved)
+      end
+    rescue SystemCallError
+      abort "focused spec paths must name existing files"
     end
   ' -- "$@"
   exec bundle exec rspec "$@"

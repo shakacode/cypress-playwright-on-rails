@@ -4,6 +4,10 @@
 | --- | --- |
 | Package / skill SemVer | `0.1.0-pre.1` |
 
+The configured `repo_prefix: CPOR` labels Shaka task titles. The `shaka` helper
+comes from the installed Shaka skill; repository setup, test, and validation
+commands stay under `.agents/bin/`.
+
 This records the Shaka package / skill SemVer. The typed contract is in
 `agent-workflow.yml`; its `version` identifies the schema. `../AGENTS.md` owns
 repository identity, untrusted-contributor boundaries, and human-only delivery rules.
