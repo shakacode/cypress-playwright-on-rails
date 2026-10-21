@@ -102,14 +102,14 @@ module CypressOnRails
           end
         end
 
-        it 'returns a 400 error when JSON parsing fails' do
+        it 'returns a 400 error when JSON parsing fails', :aggregate_failures do
           env['rack.input'] = StringIO.new('invalid json')
 
-          expect(response).to eq([
-                                   400,
-                                   { 'Content-Type' => 'application/json' },
-                                   ['{"message":"unexpected token at \'invalid json\'"}']
-                                 ])
+          expect(response[0]).to eq(400)
+          expect(response[1]).to eq('Content-Type' => 'application/json')
+          expect(JSON.parse(response[2].join)).to include(
+            'message' => a_string_matching(/unexpected (token|character)/)
+          )
         end
       end
 

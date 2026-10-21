@@ -1,6 +1,6 @@
 require 'rspec/core/rake_task'
 RSpec::Core::RakeTask.new(:spec) do |t|
-  t.pattern = 'spec/cypress_on_rails/*_spec.rb'
+  t.pattern = 'spec/**/*_spec.rb'
 end
 
 # Local convenience task: the union of what CI runs, in one command.
