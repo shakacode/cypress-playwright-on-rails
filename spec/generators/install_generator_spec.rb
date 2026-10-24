@@ -80,6 +80,44 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
     end
   end
 
+  describe 'with playwright framework in TypeScript' do
+    let(:args) { [] }
+    let(:options) { { framework: 'playwright', typescript: true } }
+    let(:e2e) { File.join(destination_root, 'e2e') }
+
+    before do
+      run_generator(args, options)
+    end
+
+    it 'creates a TypeScript config, helpers and example' do
+      aggregate_failures do
+        expect(File).to exist(File.join(e2e, 'playwright.config.ts'))
+        expect(File).to exist(File.join(e2e, 'playwright', 'support', 'on-rails.ts'))
+        expect(File).to exist(File.join(e2e, 'playwright', 'e2e', 'rails_examples', 'using_scenarios.spec.ts'))
+      end
+    end
+
+    it 'creates no JavaScript counterparts' do
+      aggregate_failures do
+        expect(File).not_to exist(File.join(e2e, 'playwright.config.js'))
+        expect(File).not_to exist(File.join(e2e, 'playwright', 'support', 'index.js'))
+        expect(File).not_to exist(File.join(e2e, 'playwright', 'support', 'on-rails.js'))
+        expect(File).not_to exist(File.join(e2e, 'playwright', 'e2e', 'rails_examples', 'using_scenarios.spec.js'))
+      end
+    end
+
+    it 'points the config at the managed server URL' do
+      expect(File.read(File.join(e2e, 'playwright.config.ts'))).to include('process.env.BASE_URL')
+    end
+
+    it 'still creates the Ruby side' do
+      aggregate_failures do
+        expect(File).to exist(File.join(e2e, 'e2e_helper.rb'))
+        expect(File).to be_directory(File.join(e2e, 'app_commands'))
+      end
+    end
+  end
+
   describe 'with playwright framework' do
     let(:args) { [] }
     let(:options) { { framework: 'playwright' } }

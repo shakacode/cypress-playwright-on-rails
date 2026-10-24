@@ -56,4 +56,32 @@ RSpec.describe 'generated JS token helpers' do
       expect(source).to include("'X-Cypress-On-Rails-Token'")
     end
   end
+
+  describe 'lib/generators/cypress_on_rails/templates/spec/playwright/typescript/on-rails.ts' do
+    let(:source) do
+      helper_source('lib/generators/cypress_on_rails/templates/spec/playwright/typescript/on-rails.ts')
+    end
+
+    it 'reads the token from the environment' do
+      expect(source).to include('process.env.CYPRESS_ON_RAILS_TOKEN')
+    end
+
+    it 'sends the token as the X-Cypress-On-Rails-Token header' do
+      expect(source).to include("'X-Cypress-On-Rails-Token'")
+    end
+
+    it 'targets the server the rake tasks start' do
+      expect(source).to include('process.env.BASE_URL')
+    end
+
+    it 'lets a command outlive the default request timeout' do
+      expect(source).to include('timeout: requestOptions.timeout')
+    end
+
+    it 'exports the same helpers as the JavaScript version' do
+      %w[appCommands app appScenario appEval appFactories appResetState appVcrInsertCassette appVcrEjectCassette].each do |name|
+        expect(source).to match(/export (async function|const) #{name}\b/)
+      end
+    end
+  end
 end

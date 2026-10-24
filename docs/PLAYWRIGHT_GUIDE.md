@@ -30,6 +30,18 @@ bin/rails g cypress_on_rails:install --framework playwright
 bin/rails g cypress_on_rails:install --framework playwright --install_folder=spec/e2e
 ```
 
+`--typescript` writes `playwright.config.ts`, `playwright/support/on-rails.ts` (typed helpers,
+imported by the specs directly) and a `.ts` example instead of the JavaScript files. The typed
+`app()` takes a third argument, `{ timeout }` in milliseconds (`0` = none), for a command that
+outlasts Playwright's 30 s request timeout, such as one that waits on a background job:
+
+```ts
+import { app } from '../support/on-rails'
+
+const user = await app<{ id: number }>('create_user', { email: 'buyer@example.test' })
+await app('wait_for_jobs', {}, { timeout: 120_000 })
+```
+
 ### 3. Install Playwright
 ```bash
 # Using yarn
