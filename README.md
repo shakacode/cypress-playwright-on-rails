@@ -239,6 +239,17 @@ in `config.ru` bypasses the check even when it is set to `false`. Outside Rails,
 `c.use_middleware` explicitly and mount conditionally, as the
 [rack example](#usage-with-other-rack-applications) does.
 
+**Parallel workers sharing one database.** The state reset endpoints truncate every
+table. When several test workers (Playwright `workers`, parallel CI shards) run against one
+server and one database, a reset from one worker deletes the rows of the tests running
+beside it. Leave them unmounted and clean up per test instead:
+
+```ruby
+CypressOnRails.configure do |c|
+  c.use_state_reset_middleware = false
+end
+```
+
 **Still be careful outside production.** Binding your server to `0.0.0.0`, running the
 gem on a shared review app, or serving a permissive CORS policy makes these endpoints
 reachable by other machines on your network, or by any web page your browser visits.

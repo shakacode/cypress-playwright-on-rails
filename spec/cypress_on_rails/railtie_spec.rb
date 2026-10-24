@@ -53,4 +53,16 @@ RSpec.describe CypressOnRails::Railtie do
 
     expect(middleware).to have_received(:use).with(CypressOnRails::Middleware)
   end
+
+  it 'leaves the state reset endpoints out when use_state_reset_middleware is off' do
+    allow(Rails).to receive(:env).and_return('development')
+    CypressOnRails.configure { |config| config.use_state_reset_middleware = false }
+
+    run_initializers
+
+    aggregate_failures do
+      expect(middleware).to have_received(:use).with(CypressOnRails::Middleware)
+      expect(middleware).to_not have_received(:use).with(CypressOnRails::StateResetMiddleware)
+    end
+  end
 end
