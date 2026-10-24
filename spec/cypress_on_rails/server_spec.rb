@@ -982,4 +982,25 @@ RSpec.describe CypressOnRails::Server do
       Process.wait2(pid).last
     end
   end
+
+  describe 'test runner environment' do
+    before { allow($stdout).to receive(:write) }
+
+    it 'passes the managed server URL to Playwright in BASE_URL' do
+      server = described_class.new(framework: :playwright, host: '127.0.0.1', port: 4321)
+      allow(server).to receive(:system).and_return(true)
+
+      expect(server.send(:run_command, %w[npx playwright test], 'Running playwright tests')).to be(true)
+      expect(server).to have_received(:system)
+        .with({ 'BASE_URL' => 'http://127.0.0.1:4321' }, 'npx', 'playwright', 'test')
+    end
+
+    it 'leaves the Cypress environment alone, Cypress gets the URL through --config' do
+      server = described_class.new(framework: :cypress, host: '127.0.0.1', port: 4321)
+      allow(server).to receive(:system).and_return(true)
+
+      server.send(:run_command, %w[npx cypress run], 'Running cypress tests')
+      expect(server).to have_received(:system).with({}, 'npx', 'cypress', 'run')
+    end
+  end
 end

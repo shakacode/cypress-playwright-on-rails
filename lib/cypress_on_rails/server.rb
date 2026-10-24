@@ -705,9 +705,11 @@ module CypressOnRails
       end
     end
 
+    # Cypress receives the URL through --config; Playwright has no such flag,
+    # so its config reads it from BASE_URL (see docs/PLAYWRIGHT_GUIDE.md).
     def run_command(command_args, description)
       puts "#{description}: #{command_args.join(' ')}"
-      system(*command_args)
+      system(framework == :playwright ? { 'BASE_URL' => base_url } : {}, *command_args)
     end
 
     def command_exists?(command)
