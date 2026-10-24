@@ -1,4 +1,5 @@
 require 'cypress_on_rails/token_authentication'
+require 'cypress_on_rails/transactional_server'
 
 module CypressOnRails
   class StateResetMiddleware
@@ -25,8 +26,11 @@ module CypressOnRails
     def reset_application_state
       config = CypressOnRails.configuration
 
-      # Default state reset actions
-      if defined?(DatabaseCleaner)
+      # Default state reset actions. A transactional server rolls back to the
+      # state it booted with instead of deleting every row.
+      if TransactionalServer.active?
+        TransactionalServer.reset!
+      elsif defined?(DatabaseCleaner)
         DatabaseCleaner.clean_with(:truncation)
       elsif defined?(ActiveRecord::Base)
         connection = ActiveRecord::Base.connection

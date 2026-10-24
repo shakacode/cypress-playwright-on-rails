@@ -4,6 +4,7 @@ require 'fileutils'
 require 'net/http'
 require 'thread'
 require 'cypress_on_rails/configuration'
+require 'cypress_on_rails/transactional_server'
 
 module CypressOnRails
   class ServerError < StandardError
@@ -152,20 +153,11 @@ module CypressOnRails
 
           puts "Rails server started on #{base_url}"
 
-          if @transactional && defined?(ActiveRecord::Base)
-            ActiveRecord::Base.connection.begin_transaction(joinable: false)
-            run_hook(config.after_transaction_start)
-          end
-
           yield
         end
       ensure
         run_hook(config.before_server_stop)
 
-        if @transactional && defined?(ActiveRecord::Base)
-          ActiveRecord::Base.connection.rollback_transaction if ActiveRecord::Base.connection.transaction_open?
-        end
-        
         # @server_pid rather than the first pid: a bind-race retry respawns.
         stop_result = stop_server(@server_pid)
         ENV.delete('CYPRESS')
@@ -191,7 +183,7 @@ module CypressOnRails
       @server_stopped = false
       start_server_output_capture
       begin
-        @server_pid = spawn(*server_args, out: @server_stdout_writer, err: @server_stderr_writer, pgroup: true)
+        @server_pid = spawn(server_env, *server_args, out: @server_stdout_writer, err: @server_stderr_writer, pgroup: true)
         @server_pgid = @server_pid
       rescue SystemCallError, ArgumentError => error
         close_server_output_writers
@@ -202,6 +194,12 @@ module CypressOnRails
         close_server_output_writers
       end
       @server_pid
+    end
+
+    # transactional_server is opened inside the server, the process whose
+    # connections serve the requests; see CypressOnRails::TransactionalServer.
+    def server_env
+      { TransactionalServer::ENV_KEY => (@transactional ? '1' : nil) }
     end
 
     # Confirming a free port cannot close the race entirely: the probe socket

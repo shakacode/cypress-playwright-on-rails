@@ -1003,4 +1003,47 @@ RSpec.describe CypressOnRails::Server do
       expect(server).to have_received(:system).with({}, 'npx', 'cypress', 'run')
     end
   end
+
+  describe 'transactional_server' do
+    before { allow($stdout).to receive(:write) }
+
+    # Starts the server through the real lifecycle with a stand-in child and
+    # returns the environment it was spawned with.
+    def spawned_env(server)
+      env = nil
+      allow(server).to receive(:spawn) do |child_env, *_command, **options|
+        env = child_env
+        Process.spawn(RbConfig.ruby, '-e', 'STDERR.write("Listening\\n"); sleep 10', **options)
+      end
+      allow(server).to receive(:server_responding?).and_return(true)
+      allow(server).to receive(:run_command)
+      server.open
+      env
+    end
+
+    it 'asks the spawned server to hold the transaction' do
+      server = described_class.new(host: '127.0.0.1', port: 4321, transactional: true)
+
+      expect(spawned_env(server)).to eq(CypressOnRails::TransactionalServer::ENV_KEY => '1')
+    end
+
+    it 'clears the request when transactional_server is off, even if the shell exported it' do
+      ENV[CypressOnRails::TransactionalServer::ENV_KEY] = '1'
+      server = described_class.new(host: '127.0.0.1', port: 4321, transactional: false)
+
+      expect(spawned_env(server)).to eq(CypressOnRails::TransactionalServer::ENV_KEY => nil)
+    ensure
+      ENV.delete(CypressOnRails::TransactionalServer::ENV_KEY)
+    end
+
+    # A transaction in the rake process isolates nothing the server writes and,
+    # on SQLite, locks the server out of the database.
+    it 'opens no transaction in the rake process' do
+      # A plain double raises on any message, such as #connection.
+      stub_const('ActiveRecord::Base', double('ActiveRecord::Base'))
+      server = described_class.new(host: '127.0.0.1', port: 4321, transactional: true)
+
+      expect { spawned_env(server) }.not_to raise_error
+    end
+  end
 end

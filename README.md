@@ -706,7 +706,8 @@ CypressOnRails.configure do |c|
     puts "Server is ready for testing!"
   }
   
-  # Run code after database transaction begins (transactional mode only)
+  # Run code in the server after its transaction begins and after every
+  # state reset (transactional mode only)
   c.after_transaction_start = -> {
     # Load seed data that should be rolled back after tests
   }
@@ -728,6 +729,32 @@ CypressOnRails.configure do |c|
   c.server_shutdown_timeout = 10 # or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
 end
 ```
+
+### `transactional_server`
+
+On by default. The rake tasks ask the Rails server they start to open a
+transaction at boot, on one connection that all its threads share (what Rails
+system tests do for Capybara's server), and never commit it:
+
+- `/cypress_rails_reset_state` (and `/__cypress__/reset_state`) rolls back to
+  the state the server booted with and opens a new transaction, instead of
+  deleting every row. `after_transaction_start` runs again, then
+  `after_state_reset`.
+- Whatever the server wrote is gone when it stops, even if it is killed.
+- Only writes made through the server are rolled back. The rake process, the
+  test runner, and job workers in other processes have their own connections:
+  they cannot see the server's uncommitted rows, and what they write is
+  committed. On SQLite they cannot write at all while the server holds its
+  transaction, so seed from `after_transaction_start` or app commands rather
+  than from `after_server_start`.
+- It needs Rails 7.2 or later, and a server running in a single process (no
+  Puma workers). Older Rails versions print a warning and commit as before.
+- Databases are covered when their connection pool exists at boot (the
+  primary always does). A truncating clean such as DatabaseCleaner's
+  `:truncation` commits implicitly on MySQL and ends the isolation there.
+
+Set `c.transactional_server = false` to commit every write and clean up with
+app commands instead.
 
 ### `server_shutdown_timeout`
 

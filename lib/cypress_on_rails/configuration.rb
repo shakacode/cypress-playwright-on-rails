@@ -20,7 +20,8 @@ module CypressOnRails
     attr_accessor :vcr_options
 
     # Hooks are user-supplied callables. `before_request` runs inside the
-    # middleware; the rest run around the rake-task server lifecycle.
+    # middleware; `after_transaction_start` and `after_state_reset` run in the
+    # app server; the rest run in the rake task around the server lifecycle.
     HOOKS = %i[
       before_request
       before_server_start

@@ -23,4 +23,4 @@ an issue, PR, or doc, this file wins; update it deliberately, not incidentally.
 | scenario | An app command under `app_commands/scenarios/` that seeds a named state, invoked via `cy.appScenario(...)`. |
 | middleware | `CypressOnRails::Middleware`, mounted outside production only, serving the `__e2e__` (legacy `__cypress__`) API prefix. Executes arbitrary Ruby by design — see README security model and issue #13. |
 | managed server | The Rails server started/stopped by the `cypress:*` / `playwright:*` rake tasks (since v1.19.0), with lifecycle hooks (`before_server_start`, …, `before_server_stop`). |
-| transactional server | `transactional_server` mode wrapping the run in a rolled-back DB transaction, reset via `/cypress_rails_reset_state` (cypress-rails-compatible endpoint). |
+| transactional server | `transactional_server` mode: the managed server holds a DB transaction on a connection shared by its threads and never commits it; `/cypress_rails_reset_state` (cypress-rails-compatible endpoint) rolls it back and opens a new one. |

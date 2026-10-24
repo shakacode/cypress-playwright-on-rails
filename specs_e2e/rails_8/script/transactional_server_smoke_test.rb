@@ -10,11 +10,10 @@
 #   * GET /cypress_rails_reset_state between two "specs" really clears state,
 #     so the second spec starts clean;
 #   * the whole run is bounded by a hard timeout, so a hang fails instead of
-#     blocking CI forever.
-#
-# It also pins the most surprising property of transactional_server with an
-# out-of-process server: the transaction belongs to *this* process, so rolling
-# it back does not undo anything the server wrote. See the final check.
+#     blocking CI forever;
+#   * the transaction lives in the server process: a reset rolls back to the
+#     state the server booted with (a row committed before the run survives it,
+#     unlike a truncation), and nothing the server wrote outlives the run.
 #
 # Run with: RAILS_MAX_THREADS=3 bin/rails runner script/transactional_server_smoke_test.rb
 
@@ -29,7 +28,6 @@ TIME_BUDGET = Integer(ENV.fetch('SMOKE_TEST_TIMEOUT', '180'))
 SHUTDOWN_TIMEOUT = 10
 
 failures = []
-transaction_opened = false
 
 def report(failures, description, ok, detail = nil)
   if ok
@@ -68,12 +66,17 @@ end
 CypressOnRails.configure do |config|
   config.transactional_server = true
   config.server_shutdown_timeout = SHUTDOWN_TIMEOUT
-  config.after_transaction_start = -> { transaction_opened = true }
 end
 
 server = CypressOnRails::Server.new(host: '127.0.0.1')
 spec_one_titles = %w[smoke-spec-one-a smoke-spec-one-b smoke-spec-one-c]
 spec_two_title = 'smoke-spec-two-a'
+seed_title = 'smoke-seed-committed-before-the-run'
+
+# Committed before the server boots, so it is part of the state every reset
+# returns to.
+Post.delete_all
+Post.create!(title: seed_title, body: 'committed before the server started')
 
 puts "-- transactional server smoke test (RAILS_MAX_THREADS=#{EXPECTED_THREADS}, " \
      "budget #{TIME_BUDGET}s, driver pid #{Process.pid})"
@@ -90,9 +93,7 @@ begin
       # so the port this run ends up on is not necessarily the first one.
       base_url = server.send(:base_url)
 
-      report(failures, 'the transactional_server transaction was opened', transaction_opened)
-
-      # Known-clean starting point, through the same endpoint under test.
+      # Known starting point, through the same endpoint under test.
       reset_state(base_url)
 
       stats_response = http_get(base_url, '/server_diagnostics/puma_stats')
@@ -129,6 +130,8 @@ begin
       index = http_get(base_url, '/posts').body
       report(failures, 'spec two does not see spec one rows',
              spec_one_titles.none? { |title| index.include?(title) })
+      report(failures, 'the reset rolled back to the booted state instead of truncating',
+             index.include?(seed_title))
 
       created = create_post(base_url, spec_two_title)
       report(failures, 'spec two can write', created.code == '302', created.code)
@@ -148,14 +151,11 @@ puts '-- after shutdown'
 # signals the group (negative pgid) and is false when no group was recorded.
 report(failures, 'server process group is gone', !server.send(:process_group_exists?))
 
-# transactional_server rolls back a transaction held by *this* process. The
-# server has its own process and its own connections, so its committed writes
-# survive. This is deliberately asserted so that a future change to
-# transactional semantics has to update it consciously.
+# The server held its transaction on its own connection; when it exited, the
+# database discarded it. Only the row committed before the run is left.
 ActiveRecord::Base.connection.reconnect!
 surviving = Post.pluck(:title)
-report(failures, 'server-side writes survive the driver rollback (transactional_server does not isolate them)',
-       surviving.include?(spec_two_title), surviving.inspect)
+report(failures, 'nothing the server wrote outlives the run', surviving == [seed_title], surviving.inspect)
 Post.delete_all
 
 if failures.empty?
