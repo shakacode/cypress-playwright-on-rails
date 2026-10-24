@@ -24,6 +24,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - **State reset with reloading disabled**: `/cypress_rails_reset_state` no longer returns 500 on Rails 7.0+ with reloading disabled (the default test environment) or on Rails 6.1 with `cache_classes = true`; the autoloader clear now runs only when the application reloads code. [PR 255](https://github.com/shakacode/cypress-playwright-on-rails/pull/255) by [justin808](https://github.com/justin808).
+- **`transactional_server` rolls back what the server writes**: The transaction was opened in the rake process, not in the Rails server it spawns, so the server's writes were committed and survived the run. The server now holds it on a connection shared by its threads (Rails 7.2+), the state reset endpoints roll it back and open a new one instead of truncating, and `after_transaction_start` runs in the server. Since the mode is on by default, server writes no longer persist after a run, and on SQLite other processes cannot write while the server runs. Rails before 7.2 prints a warning and commits as before. [PR 275](https://github.com/shakacode/cypress-playwright-on-rails/pull/275) by [alextakitani](https://github.com/alextakitani).
 
 ## [1.20.1] - 2026-07-10
 
