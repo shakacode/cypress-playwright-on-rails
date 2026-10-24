@@ -982,4 +982,38 @@ RSpec.describe CypressOnRails::Server do
       Process.wait2(pid).last
     end
   end
+
+  describe 'Playwright command' do
+    let(:server) { described_class.new(framework: :playwright, host: '127.0.0.1', port: 4321) }
+
+    it 'runs the configured command, split like a shell would' do
+      CypressOnRails.configuration.playwright_command =
+        'mise exec node@22 -- npx playwright test --config "e2e/my tests/playwright.config.ts"'
+
+      expect(server.send(:run_command_args)).to eq(
+        ['mise', 'exec', 'node@22', '--', 'npx', 'playwright', 'test', '--config', 'e2e/my tests/playwright.config.ts']
+      )
+    end
+
+    it 'opens the configured command with --ui' do
+      CypressOnRails.configuration.playwright_command = 'npx playwright test --config e2e/playwright.config.ts'
+
+      expect(server.send(:open_command)).to eq(
+        %w[npx playwright test --config e2e/playwright.config.ts --ui]
+      )
+    end
+
+    it 'falls back to npx when no command is configured and yarn is missing' do
+      allow(server).to receive(:command_exists?) { |command| command == 'npx' }
+
+      expect(server.send(:run_command_args)).to eq(%w[npx playwright test])
+    end
+
+    it 'treats a blank configured command as not configured' do
+      CypressOnRails.configuration.playwright_command = '  '
+      allow(server).to receive(:command_exists?).and_return(false)
+
+      expect(server.send(:run_command_args)).to eq(%w[playwright test])
+    end
+  end
 end

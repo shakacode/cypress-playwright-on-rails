@@ -64,6 +64,15 @@ e2e/
 ```
 
 ### Playwright Configuration
+
+`rake playwright:run` and `rake playwright:open` launch `playwright test` through yarn or npx;
+when the config lives elsewhere or Playwright needs a different Node, set the whole command (`playwright:open` appends `--ui`):
+
+```ruby
+# config/initializers/cypress_on_rails.rb (or CYPRESS_RAILS_PLAYWRIGHT_COMMAND in the environment)
+c.playwright_command = 'npx playwright test --config e2e/playwright.config.ts'
+```
+
 ```js
 // playwright.config.js
 module.exports = {

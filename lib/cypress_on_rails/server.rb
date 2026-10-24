@@ -3,6 +3,7 @@ require 'timeout'
 require 'fileutils'
 require 'net/http'
 require 'thread'
+require 'shellwords'
 require 'cypress_on_rails/configuration'
 
 module CypressOnRails
@@ -674,13 +675,7 @@ module CypressOnRails
           ['cypress', 'open', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
-        if command_exists?('yarn')
-          ['yarn', 'playwright', 'test', '--ui']
-        elsif command_exists?('npx')
-          ['npx', 'playwright', 'test', '--ui']
-        else
-          ['playwright', 'test', '--ui']
-        end
+        playwright_command + ['--ui']
       end
     end
 
@@ -695,14 +690,17 @@ module CypressOnRails
           ['cypress', 'run', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
-        if command_exists?('yarn')
-          ['yarn', 'playwright', 'test']
-        elsif command_exists?('npx')
-          ['npx', 'playwright', 'test']
-        else
-          ['playwright', 'test']
-        end
+        playwright_command
       end
+    end
+
+    # The configured command when there is one, else the local runner.
+    def playwright_command
+      configured = CypressOnRails.configuration.playwright_command.to_s
+      return Shellwords.split(configured) unless configured.strip.empty?
+
+      launcher = %w[yarn npx].find { |command| command_exists?(command) }
+      [launcher, 'playwright', 'test'].compact
     end
 
     def run_command(command_args, description)
