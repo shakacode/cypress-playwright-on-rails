@@ -118,6 +118,22 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
     end
   end
 
+  describe 'with typescript but the default cypress framework' do
+    let(:args) { [] }
+    let(:options) { { typescript: true } }
+
+    before do
+      run_generator(args, options)
+    end
+
+    it 'ignores --typescript and writes no TypeScript files' do
+      aggregate_failures do
+        expect(File).to exist(File.join(destination_root, 'e2e', 'cypress.config.js'))
+        expect(Dir.glob(File.join(destination_root, 'e2e', '**', '*.ts'))).to be_empty
+      end
+    end
+  end
+
   describe 'with playwright framework' do
     let(:args) { [] }
     let(:options) { { framework: 'playwright' } }

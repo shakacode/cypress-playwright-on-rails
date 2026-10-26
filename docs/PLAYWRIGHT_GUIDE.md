@@ -31,9 +31,12 @@ bin/rails g cypress_on_rails:install --framework playwright --install_folder=spe
 ```
 
 `--typescript` writes `playwright.config.ts`, `playwright/support/on-rails.ts` (typed helpers,
-imported by the specs directly) and a `.ts` example instead of the JavaScript files. The typed
-`app()` takes a third argument, `{ timeout }` in milliseconds (`0` = none), for a command that
-outlasts Playwright's 30 s request timeout, such as one that waits on a background job:
+imported by the specs directly) and a `.ts` example instead of the JavaScript files. No
+`tsconfig.json` is generated: Playwright transpiles the files without one. Add `@types/node` as a
+dev dependency so the `process.env` lookups resolve, and a `tsconfig.json` if you also want your
+editor to type-check. The typed `app()` takes a third argument, `{ timeout }` in milliseconds
+(`0` = none), for a command that outlasts Playwright's 30 s request timeout, such as one that
+waits on a background job:
 
 ```ts
 import { app } from '../support/on-rails'
