@@ -193,7 +193,7 @@ E2E app commands execute Ruby inside the **serving Rails process**; without a
 wrapping transaction, completed writes are committed for other connections.
 They do not magically share transactions with renderer processes or job workers.
 
-For this recipe, leave `transactional_server` disabled. Adapt the generated
+For this recipe, leave `transactional_server` off (its default). Adapt the generated
 `e2e/app_commands/clean.rb` to explicitly truncate/delete all relevant test data
 (using DatabaseCleaner if installed), clear caches, and reset external state.
 The generated fallback only deletes `Post` records; it is not general cleanup.

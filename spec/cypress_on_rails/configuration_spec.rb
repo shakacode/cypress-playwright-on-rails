@@ -10,6 +10,7 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.logger).to_not be_nil
     expect(CypressOnRails.configuration.before_request).to_not be_nil
     expect(CypressOnRails.configuration.vcr_options).to eq({})
+    expect(CypressOnRails.configuration.transactional_server).to eq(false)
     expect(CypressOnRails.configuration.server_readiness_path).to eq('/')
     expect(CypressOnRails.configuration.server_readiness_timeout).to eq(5)
     expect(CypressOnRails.configuration.server_shutdown_timeout).to eq(10)

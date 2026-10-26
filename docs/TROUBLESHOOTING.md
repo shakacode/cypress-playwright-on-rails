@@ -191,11 +191,11 @@ end
 
 ### Using Rails Transactional Fixtures (#114)
 
-Instead of database_cleaner, let the managed server roll back. With the rake
-tasks (`cypress:run`, `playwright:run`, ...), `transactional_server` is on by
-default (Rails 7.2+): the server holds a transaction that is never committed,
-and resetting state between tests rolls it back to the state the server booted
-with:
+Instead of database_cleaner, opt in and let the managed server roll back. With
+the rake tasks (`cypress:run`, `playwright:run`, ...), set
+`c.transactional_server = true` (Rails 7.2+): the server holds a transaction
+that is never committed, and resetting state between tests rolls it back to the
+state the server booted with:
 
 ```js
 // Cypress

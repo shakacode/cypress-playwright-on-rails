@@ -732,9 +732,10 @@ end
 
 ### `transactional_server`
 
-On by default. The rake tasks ask the Rails server they start to open a
-transaction at boot, on one connection that all its threads share (what Rails
-system tests do for Capybara's server), and never commit it:
+Off by default. Set `c.transactional_server = true` and the rake tasks ask the
+Rails server they start to open a transaction at boot, on one connection that
+all its threads share (what Rails system tests do for Capybara's server), and
+never commit it:
 
 - `/cypress_rails_reset_state` (and `/__cypress__/reset_state`) rolls back to
   the state the server booted with and opens a new transaction, instead of
@@ -757,8 +758,8 @@ system tests do for Capybara's server), and never commit it:
   DatabaseCleaner's `:truncation` commits implicitly on MySQL and ends the
   isolation there.
 
-Set `c.transactional_server = false` to commit every write and clean up with
-app commands instead.
+When it is off, the server commits every write as it happens, and the state
+reset endpoints truncate the database tables as before.
 
 ### `server_shutdown_timeout`
 
