@@ -1009,11 +1009,33 @@ RSpec.describe CypressOnRails::Server do
       expect(server.send(:run_command_args)).to eq(%w[npx playwright test])
     end
 
+    it 'falls back to yarn when no command is configured and yarn is present' do
+      allow(server).to receive(:command_exists?) { |command| command == 'yarn' }
+
+      expect(server.send(:run_command_args)).to eq(%w[yarn playwright test])
+    end
+
+    it 'opens the fallback command with --ui when neither yarn nor npx is present' do
+      allow(server).to receive(:command_exists?).and_return(false)
+
+      expect(server.send(:open_command)).to eq(%w[playwright test --ui])
+    end
+
     it 'treats a blank configured command as not configured' do
       CypressOnRails.configuration.playwright_command = '  '
       allow(server).to receive(:command_exists?).and_return(false)
 
       expect(server.send(:run_command_args)).to eq(%w[playwright test])
+    end
+
+    it 'names the setting when the configured command has an unbalanced quote' do
+      CypressOnRails.configuration.playwright_command = 'npx playwright test "e2e/playwright.config.ts'
+
+      expect { server.send(:run_command_args) }.to raise_error(ArgumentError) { |error|
+        expect(error.message).to include('playwright_command')
+        expect(error.message).to include('CYPRESS_RAILS_PLAYWRIGHT_COMMAND')
+        expect(error.message).to include('Unmatched')
+      }
     end
   end
 end

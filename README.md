@@ -726,6 +726,7 @@ CypressOnRails.configure do |c|
   c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
   c.transactional_server = true  # Enable automatic transaction rollback
   c.server_shutdown_timeout = 10 # or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
+  # c.playwright_command = 'npx playwright test --config e2e/playwright.config.ts' # or use ENV['CYPRESS_RAILS_PLAYWRIGHT_COMMAND']
 end
 ```
 
