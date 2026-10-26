@@ -16,7 +16,10 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://127.0.0.1:5017',
     trace: 'on-first-retry',
   },
+  // Same browser set as the JavaScript config.
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
 })
