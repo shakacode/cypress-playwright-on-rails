@@ -348,7 +348,7 @@ v1.20.1 consumed the v1.21.0 slot. Ship it as **1.21.0** (minor: new
 ### Scope, in merge order
 
 Every PR in every wave passes the repository review gate from
-`.agents/agent-workflow.yml` (green Ruby workflow on the PR, local
+`.agents/shaka/config.yml` (green Ruby workflow on the PR, local
 `bundle exec rake` evidence, all review threads resolved). The column below
 lists what is required in addition.
 
@@ -370,7 +370,7 @@ the #224 outreach comment, and the PR #193 RuboCop rebase (then #197, #209).
    the eligibility gate flags for human review (the coordinator supplies the
    exact envelope per PR head). Neither that envelope nor the gate is defined
    in this repo; both live in the private coordination backend named in
-   `.agents/agent-workflow.yml`.
+   `.agents/shaka/config.yml`.
 3. Decide wave 3 before stamping: either take #114/#221 into 1.21.0 or
    defer them to the next release. After every wave included in 1.21.0 has
    merged — waves 1 and 2, plus wave 3 when it is included:
