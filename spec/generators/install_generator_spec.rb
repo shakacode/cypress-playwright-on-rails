@@ -100,6 +100,7 @@ RSpec.describe CypressOnRails::InstallGenerator, type: :generator do
     it 'creates playwright config at install_folder root' do
       config_path = File.join(destination_root, 'e2e', 'playwright.config.js')
       expect(File).to exist(config_path)
+      expect(File.read(config_path)).to include('process.env.BASE_URL')
     end
 
     it 'creates e2e_helper.rb at install_folder root' do
