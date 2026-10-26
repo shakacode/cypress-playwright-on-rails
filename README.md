@@ -250,6 +250,9 @@ CypressOnRails.configure do |c|
 end
 ```
 
+The generated `appResetState()` (Playwright) and `cy.appResetState()` (Cypress) helpers then
+get a 404, so remove those calls.
+
 **Still be careful outside production.** Binding your server to `0.0.0.0`, running the
 gem on a shared review app, or serving a permissive CORS policy makes these endpoints
 reachable by other machines on your network, or by any web page your browser visits.

@@ -1,4 +1,5 @@
 require 'cypress_on_rails/railtie'
+require 'cypress_on_rails/state_reset_middleware'
 
 module Rails
   def self.env
