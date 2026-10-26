@@ -750,8 +750,12 @@ system tests do for Capybara's server), and never commit it:
 - It needs Rails 7.2 or later, and a server running in a single process (no
   Puma workers). Older Rails versions print a warning and commit as before.
 - Databases are covered when their connection pool exists at boot (the
-  primary always does). A truncating clean such as DatabaseCleaner's
-  `:truncation` commits implicitly on MySQL and ends the isolation there.
+  primary always does). Eager loading is what usually establishes the rest,
+  and `eager_load` is often true only on CI, so isolation can differ between
+  local and CI. Establish those connections at boot, for example by eager
+  loading the abstract classes, to cover them. A truncating clean such as
+  DatabaseCleaner's `:truncation` commits implicitly on MySQL and ends the
+  isolation there.
 
 Set `c.transactional_server = false` to commit every write and clean up with
 app commands instead.

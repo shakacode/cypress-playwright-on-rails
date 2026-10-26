@@ -43,7 +43,9 @@ module CypressOnRails
         @pools.each do |pool|
           connection = pool.lease_connection
           connection.lock.synchronize do
-            connection.rollback_transaction if connection.transaction_open?
+            # Another thread may have opened a savepoint on top of the boot
+            # transaction; roll the whole stack back rather than nest inside it.
+            connection.rollback_transaction while connection.transaction_open?
             connection.begin_transaction(joinable: false, _lazy: false)
           end
         end
@@ -52,6 +54,7 @@ module CypressOnRails
 
       private
 
+      # pin_connection! is :nodoc: Rails API, added in 7.2.
       def supported?
         defined?(ActiveRecord::Base) &&
           ActiveRecord::ConnectionAdapters::ConnectionPool.method_defined?(:pin_connection!)
@@ -71,9 +74,9 @@ module CypressOnRails
       end
 
       def warn_forked
-        warn "[cypress_on_rails] transactional_server: server process #{Process.pid} was forked from the one " \
-             'holding the transaction (Puma workers?), so its writes are committed. ' \
-             'Run the test server in single mode.'
+        warn "[cypress_on_rails] transactional_server: server process #{Process.pid} was forked from the server " \
+             "holding the transaction (Puma workers, or a plugin such as solid_queue's supervisor), " \
+             'so its writes are committed. Run the test server in single mode.'
       end
 
       def run_after_transaction_start

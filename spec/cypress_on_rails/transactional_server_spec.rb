@@ -4,28 +4,29 @@ require 'cypress_on_rails/transactional_server'
 # specs_e2e/rails_8/script/transactional_server_smoke_test.rb. These examples
 # pin the protocol with Active Record stand-ins.
 module TransactionalServerFakes
-  # Stands in for an adapter: records the transaction calls it receives.
+  # Stands in for an adapter: records the transaction calls it receives and
+  # tracks how many transactions (nested savepoints included) are open.
   class Connection
-    attr_reader :calls, :lock
+    attr_reader :calls, :lock, :depth
 
     def initialize
       @calls = []
       @lock = Monitor.new
-      @open = false
+      @depth = 0
     end
 
     def transaction_open?
-      @open
+      @depth.positive?
     end
 
     def begin_transaction(**options)
       @calls << [:begin, options]
-      @open = true
+      @depth += 1
     end
 
     def rollback_transaction
       @calls << [:rollback]
-      @open = false
+      @depth -= 1
     end
   end
 
@@ -116,6 +117,27 @@ RSpec.describe CypressOnRails::TransactionalServer do
       end
     end
 
+    it 'rolls back a savepoint left open by another thread before opening the new transaction' do
+      described_class.boot
+      connection = pools.first.connection
+      connection.begin_transaction(requires_new: true)
+
+      described_class.reset!
+
+      aggregate_failures do
+        expect(connection.calls).to eq(
+          [
+            [:begin, { joinable: false, _lazy: false }],
+            [:begin, { requires_new: true }],
+            [:rollback],
+            [:rollback],
+            [:begin, { joinable: false, _lazy: false }]
+          ]
+        )
+        expect(connection.depth).to eq(1)
+      end
+    end
+
     it 'is not active in a forked child, and says so' do
       described_class.boot
       allow(Process).to receive(:pid).and_return(Process.pid + 1)
@@ -131,6 +153,7 @@ RSpec.describe CypressOnRails::TransactionalServer do
       aggregate_failures do
         expect(described_class).not_to be_active
         expect(pools.map(&:pinned_with)).to eq([nil, nil])
+        expect(hook_calls).to be_empty
       end
     end
   end
