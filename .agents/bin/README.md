@@ -1,6 +1,7 @@
 # Agent Workflow Scripts
 
-Standard entry points that portable agent-workflow skills call. A script that
+Shaka setup, test, and validation commands live in `.agents/shaka/bin/`.
+The standalone lint helper remains at `.agents/bin/lint`. A script that
 is absent means that capability is n/a in this repository.
 
 | Script | Purpose | This repo runs |
@@ -13,11 +14,11 @@ is absent means that capability is n/a in this repository.
 | `docs` | Docs checks | n/a |
 | `ci-detect` | CI change detector | n/a |
 
-Typed workflow settings live in [`../agent-workflow.yml`](../agent-workflow.yml).
+Typed workflow settings live in [`../shaka/config.yml`](../shaka/config.yml).
 Repository trust, review, and merge rules live in [`../../AGENTS.md`](../../AGENTS.md).
 
 For focused examples, pass relative `*_spec.rb` paths below `spec/` to
-`.agents/bin/test`. RSpec's `:line` filter is supported. The wrapper rejects
+`.agents/shaka/bin/test`. RSpec's `:line` filter is supported. The wrapper rejects
 paths that resolve outside `spec/`. Without paths, it runs every spec under
 `spec/`, including the nested VCR and generator specs.
 
