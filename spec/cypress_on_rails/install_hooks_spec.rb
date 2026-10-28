@@ -126,13 +126,13 @@ RSpec.describe 'bin/install-hooks' do
   # `rake check_newlines` would reject a file the hook waved through.
   it 'rejects a staged extensionless script missing a final newline' do
     install_hook!
-    write_repo_file('.agents/bin/validate', "#!/usr/bin/env bash\nexit 0")
-    git_add('.agents/bin/validate')
+    write_repo_file('.agents/shaka/bin/validate', "#!/usr/bin/env bash\nexit 0")
+    git_add('.agents/shaka/bin/validate')
 
     stdout, stderr, status = run_hook
 
     expect(status.success?).to be(false)
-    expect(stdout + stderr).to include('.agents/bin/validate')
+    expect(stdout + stderr).to include('.agents/shaka/bin/validate')
   end
 
   it 'allows a staged extensionless file that is not a script' do
