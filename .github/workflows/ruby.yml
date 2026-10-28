@@ -7,6 +7,8 @@ on:
     branches: [master, main]
 
 jobs:
+  # These Ruby versions have prebuilt binaries for Ubuntu 22.04. Pin the
+  # runner so ubuntu-latest image upgrades do not break Ruby installation.
   # Pinned to the gem's minimum supported Ruby (see required_ruby_version in
   # cypress-on-rails.gemspec) so CI actually exercises that boundary.
   #
@@ -16,7 +18,7 @@ jobs:
   #   - Ruby 3.4 moved bigdecimal (and base64, drb, mutex_m, ...) out of the
   #     default gems, so Rails 6.1 fails to boot with a bigdecimal LoadError.
   rails_6_1:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
@@ -33,7 +35,7 @@ jobs:
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
   rails_7_2:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
@@ -52,7 +54,7 @@ jobs:
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
   rails_8:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
