@@ -43,17 +43,17 @@ RSpec.describe NewlineChecker do
       )
     end
 
-    # bin/install-hooks and .agents/bin/* are bare-named executables: they match
+    # bin/install-hooks and .agents/shaka/bin/* are bare-named executables: they match
     # no extension and no known basename, so a name-only rule left this gem's
     # own scripts unchecked by the very task that enforces trailing newlines.
     it 'includes extensionless scripts identified by their shebang' do
       write_file('bin/install-hooks', "#!/usr/bin/env ruby\nputs 1\n")
-      write_file('.agents/bin/validate', "#!/usr/bin/env bash\nexit 0\n")
+      write_file('.agents/shaka/bin/validate', "#!/usr/bin/env bash\nexit 0\n")
       write_file('script/deploy', "#!/bin/sh\necho hi\n")
 
       expect(described_class.text_files).to include(
         'bin/install-hooks',
-        '.agents/bin/validate',
+        '.agents/shaka/bin/validate',
         'script/deploy'
       )
     end
@@ -126,7 +126,7 @@ RSpec.describe NewlineChecker do
 
         expect(covered).to include(
           'bin/install-hooks',
-          '.agents/bin/validate',
+          '.agents/shaka/bin/validate',
           '.agents/bin/lint'
         )
       end

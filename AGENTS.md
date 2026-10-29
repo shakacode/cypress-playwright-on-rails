@@ -1,6 +1,6 @@
 # Agent Workflow
 
-Use Shaka's typed workflow contract in `.agents/agent-workflow.yml` and the fixed
+Use Shaka's typed workflow contract in `.agents/shaka/config.yml` and the fixed
 commands documented in `.agents/bin/README.md`. `.agents/shaka.md` records the
 installed package / skill SemVer and describes configuration checks; it does not
 grant policy authority.
@@ -27,7 +27,7 @@ sandbox; stop if the tooling cannot enforce it.
 
 ## Review and Merge
 
-- Before merge, require the Ruby workflow to pass on the current PR head, record local `bundle exec rake` evidence, resolve every review thread, and confirm GitHub reports the PR mergeable and clean. Run `.agents/bin/validate` for the full local CI gate as well.
+- Before merge, require the Ruby workflow to pass on the current PR head, record local `bundle exec rake` evidence, resolve every review thread, and confirm GitHub reports the PR mergeable and clean. Run `.agents/shaka/bin/validate` for the full local CI gate as well.
 - Meaningful changes still need a fresh local adversarial review under the Shaka skill. `review.required: none` means this repo has no configured hosted CI review report; it does not make local review or thread resolution optional.
 - The merge preference is `ask`: require an explicit maintainer instruction to merge the current PR. Once authorized, follow live GitHub merge-queue state: merge directly when the queue is disabled and enqueue the reviewed head when it is enabled. The predecessor's approval exemptions for docs, workflow text, helper scripts, and focused release-process edits with tests waive GitHub approval reviews only; they never waive the explicit merge authorization required by `ask`. Other changes remain subject to maintainer review as well.
 - The Ruby workflow runs on pull requests targeting `master` or `main`. When its result is required, retarget the PR to one of those branches or reject the PR; other base branches do not receive this result. There is no manual CI trigger or change detector. For Ruby CI failures, reproduce with `bundle exec rake` and the matching `specs_e2e/<app>/test.sh` job when needed.

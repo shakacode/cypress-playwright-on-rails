@@ -5,17 +5,19 @@ require 'open3'
 require 'tmpdir'
 
 # rubocop:disable-next RSpec/DescribeClass
-RSpec.describe '.agents/bin/test' do
+RSpec.describe '.agents/shaka/bin/test' do
   let(:source_root) { File.expand_path('../..', __dir__) }
-  let(:source_script) { File.join(source_root, '.agents/bin/test') }
+  let(:source_script) { File.join(source_root, '.agents/shaka/bin/test') }
 
   def with_repo
     Dir.mktmpdir do |root|
-      script = File.join(root, '.agents/bin/test')
+      script = File.join(root, '.agents/shaka/bin/test')
       spec_dir = File.join(root, 'spec')
       stub_dir = File.join(root, 'stub')
       args_file = File.join(root, 'bundle-args')
       FileUtils.mkdir_p([File.dirname(script), spec_dir, stub_dir])
+      raise 'git init failed' unless system('git', 'init', '-q', chdir: root)
+
       FileUtils.cp(source_script, script)
       FileUtils.chmod(0o755, script)
       File.write(File.join(spec_dir, 'one_spec.rb'), "RSpec.describe('one') {}\n")
@@ -35,7 +37,7 @@ RSpec.describe '.agents/bin/test' do
   end
 
   def run_test_script(root, env, *arguments)
-    Open3.capture3(env, 'bash', File.join(root, '.agents/bin/test'), *arguments, chdir: root)
+    Open3.capture3(env, 'bash', File.join(root, '.agents/shaka/bin/test'), *arguments, chdir: root)
   end
 
   def bundle_arguments(path)
