@@ -239,6 +239,26 @@ in `config.ru` bypasses the check even when it is set to `false`. Outside Rails,
 `c.use_middleware` explicitly and mount conditionally, as the
 [rack example](#usage-with-other-rack-applications) does.
 
+**Parallel workers sharing one database.** The state reset endpoints truncate every
+table. When several test workers (Playwright `workers`, parallel CI shards) run against one
+server and one database, a reset from one worker deletes the rows of the tests running
+beside it. Leave them unmounted and use cleanup scoped to each test's records instead:
+
+```ruby
+CypressOnRails.configure do |c|
+  c.use_state_reset_middleware = false
+end
+```
+
+The generated `appResetState()` (Playwright) and `cy.appResetState()` (Cypress) helpers then
+get a 404, so remove those calls.
+
+This setting does not isolate concurrent tests. The command middleware stays enabled,
+so `app('clean')` / `cy.app('clean')` still runs the generated `clean.rb`, which uses
+DatabaseCleaner's truncation strategy. Replace that cleanup with deletion scoped to the
+test or worker's own records, or give each worker a separate database. Keeping the
+generated truncating cleanup on a shared database can still delete other workers' data.
+
 **Still be careful outside production.** Binding your server to `0.0.0.0`, running the
 gem on a shared review app, or serving a permissive CORS policy makes these endpoints
 reachable by other machines on your network, or by any web page your browser visits.

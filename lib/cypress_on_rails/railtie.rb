@@ -11,10 +11,12 @@ module CypressOnRails
       if CypressOnRails.configuration.use_middleware?
         require 'cypress_on_rails/middleware'
         app.middleware.use Middleware
-        
-        # Add state reset middleware for compatibility with cypress-rails
-        require 'cypress_on_rails/state_reset_middleware'
-        app.middleware.use StateResetMiddleware
+
+        if CypressOnRails.configuration.use_state_reset_middleware?
+          # Add state reset middleware for compatibility with cypress-rails
+          require 'cypress_on_rails/state_reset_middleware'
+          app.middleware.use StateResetMiddleware
+        end
       end
       if CypressOnRails.configuration.use_vcr_middleware?
         require 'cypress_on_rails/vcr/insert_eject_middleware'
