@@ -89,6 +89,10 @@ module TransactionalServerFakes
       @pool_managers.values.filter_map { |manager| manager.get_pool_config(role, :default) }
     end
 
+    def retrieve_connection_pool(connection_name, shard:)
+      @pool_managers[connection_name]&.get_pool_config(:writing, shard || :default)
+    end
+
     private
 
     def connection_name_to_pool_manager
@@ -110,6 +114,17 @@ RSpec.describe CypressOnRails::TransactionalServer do
   end
   let(:hook_calls) { [] }
   let(:fork_hooks) { [] }
+  let(:subscribers) { {} }
+
+  # What Active Record publishes when it establishes a pool after boot.
+  def establish(connection_name, writing:, reading: nil)
+    configs = { writing: { default: writing } }
+    configs[:reading] = { default: reading } if reading
+    pool_managers[connection_name] = TransactionalServerFakes::PoolManager.new(configs)
+    subscribers.fetch('!connection.active_record').call(
+      '!connection.active_record', nil, nil, nil, { connection_name: connection_name, shard: :default }
+    )
+  end
 
   before do
     described_class.instance_variable_set(:@pools, nil)
@@ -120,6 +135,9 @@ RSpec.describe CypressOnRails::TransactionalServer do
     stub_const('ActiveRecord::ConnectionAdapters::ConnectionPool', TransactionalServerFakes::Pool)
     hooks = fork_hooks
     stub_const('ActiveSupport::ForkTracker', Module.new { define_singleton_method(:after_fork) { |&hook| hooks << hook } })
+    subs = subscribers
+    stub_const('ActiveSupport::Notifications',
+               Module.new { define_singleton_method(:subscribe) { |name, &block| subs[name] = block } })
     calls = hook_calls
     CypressOnRails.configuration.after_transaction_start = -> { calls << :after_transaction_start }
   end
@@ -165,6 +183,26 @@ RSpec.describe CypressOnRails::TransactionalServer do
       end
     end
 
+    # Also what Rails' transactional fixtures do: a lazily loaded abstract
+    # class with connects_to establishes its pools after boot.
+    it 'shares and pins pools established after boot, and rolls them back on reset' do
+      described_class.boot
+      late_writer = TransactionalServerFakes::Pool.new
+      late_reader = TransactionalServerFakes::Pool.new
+      establish('AnimalsReplicaRecord', writing: late_writer, reading: late_reader)
+      establish('AnimalsReplicaRecord', writing: late_writer, reading: late_reader)
+      described_class.reset!
+
+      aggregate_failures do
+        expect(pool_managers['AnimalsReplicaRecord'].get_pool_config(:reading, :default)).to be(late_writer)
+        expect(late_writer.pinned_with).to be(true)
+        expect(late_reader.pinned_with).to be_nil
+        expect(late_writer.connection.calls).to eq(
+          [[:begin, { joinable: false, _lazy: false }], [:rollback], [:begin, { joinable: false, _lazy: false }]]
+        )
+      end
+    end
+
     it 'rolls back and opens a fresh transaction on reset, then runs the hook again' do
       described_class.boot
       described_class.reset!
@@ -207,11 +245,27 @@ RSpec.describe CypressOnRails::TransactionalServer do
       allow(Process).to receive(:kill)
       allow(Process).to receive(:exit!)
 
-      expect { fork_hooks.each(&:call) }.to output(/was forked from the server .* the server is stopping/).to_stderr
+      expect { fork_hooks.each(&:call) }.to output(/was forked from the transactional server .* the server is stopping/).to_stderr
       aggregate_failures do
         expect(Process).to have_received(:kill).with('TERM', server_pid).ordered
         expect(Process).to have_received(:exit!).with(1).ordered
       end
+    end
+
+    it 'still exits the forked child when the server cannot be signalled' do
+      described_class.boot
+      allow(Process).to receive(:kill).and_raise(Errno::ESRCH)
+      allow(Process).to receive(:exit!)
+
+      expect { fork_hooks.each(&:call) }.to output.to_stderr.and raise_error(Errno::ESRCH)
+      expect(Process).to have_received(:exit!).with(1)
+    end
+
+    it 'does nothing, and says nothing about Rails versions, without Active Record' do
+      hide_const('ActiveRecord')
+
+      expect { described_class.boot }.not_to output.to_stderr
+      expect(described_class).not_to be_active
     end
 
     it 'warns and leaves the database alone before Rails 7.2' do

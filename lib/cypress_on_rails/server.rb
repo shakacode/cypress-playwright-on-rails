@@ -131,7 +131,8 @@ module CypressOnRails
 
     def start_server(&block)
       config = CypressOnRails.configuration
-      
+      TransactionalServer.warn_unused_hook(@transactional)
+
       run_hook(config.before_server_start)
       
       ENV['CYPRESS'] = '1'

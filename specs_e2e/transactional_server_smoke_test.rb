@@ -85,11 +85,11 @@ CypressOnRails.configure do |config|
   config.server_shutdown_timeout = SHUTDOWN_TIMEOUT
 end
 
-# Read by the spawned server: turns on the initializer-defined hooks, and eager
-# loading (config/environments/test.rb), which establishes ApplicationRecord's
-# reading pool at boot.
+# Read by the spawned server: turns on the initializer-defined hooks. The
+# wrapper runs this with eager loading on and off (CI, see
+# config/environments/test.rb): off, ApplicationRecord's pools (connects_to)
+# are only established after the transaction has begun.
 ENV['TRANSACTIONAL_SERVER_SMOKE'] = '1'
-ENV['CI'] ||= 'true'
 ENV.delete('WEB_CONCURRENCY')
 
 server = CypressOnRails::Server.new(host: '127.0.0.1')
@@ -103,7 +103,8 @@ Post.delete_all
 Post.create!(title: seed_title, body: 'committed before the server started')
 
 puts "-- transactional server smoke test (#{ActiveRecord::Base.connection.adapter_name}, " \
-     "Rails #{Rails.version}, RAILS_MAX_THREADS=#{EXPECTED_THREADS}, budget #{TIME_BUDGET}s, " \
+     "Rails #{Rails.version}, eager load #{ENV['CI'].to_s.empty? ? 'off' : 'on'}, " \
+     "RAILS_MAX_THREADS=#{EXPECTED_THREADS}, budget #{TIME_BUDGET}s, " \
      "driver pid #{Process.pid})"
 
 begin

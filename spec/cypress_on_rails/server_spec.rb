@@ -1036,6 +1036,24 @@ RSpec.describe CypressOnRails::Server do
       ENV.delete(CypressOnRails::TransactionalServer::ENV_KEY)
     end
 
+    context 'with an after_transaction_start hook' do
+      before { CypressOnRails.configuration.after_transaction_start = -> {} }
+      after { CypressOnRails.configuration.after_transaction_start = nil }
+
+      it 'warns that the hook will not run when transactional_server is off' do
+        server = described_class.new(host: '127.0.0.1', port: 4321, transactional: false)
+
+        expect { spawned_env(server) }.to output(/after_transaction_start is configured but transactional_server is off/)
+          .to_stderr
+      end
+
+      it 'stays quiet when transactional_server is on' do
+        server = described_class.new(host: '127.0.0.1', port: 4321, transactional: true)
+
+        expect { spawned_env(server) }.not_to output(/after_transaction_start/).to_stderr
+      end
+    end
+
     # A transaction in the rake process isolates nothing the server writes and,
     # on SQLite, locks the server out of the database.
     it 'opens no transaction in the rake process' do

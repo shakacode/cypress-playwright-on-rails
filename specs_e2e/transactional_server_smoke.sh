@@ -33,5 +33,9 @@ for database in $databases; do
   # blocking CI.
   E2E_DATABASE=$database bundle exec ./bin/rails db:drop || true
   E2E_DATABASE=$database bundle exec ./bin/rails db:create db:migrate
-  E2E_DATABASE=$database RAILS_MAX_THREADS=3 bundle exec ./bin/rails runner ../transactional_server_smoke_test.rb
+  # The sample apps eager load only when CI is set; run both ways, so pools
+  # established after boot are covered as well as those established at boot.
+  for ci in "" "true"; do
+    CI=$ci E2E_DATABASE=$database RAILS_MAX_THREADS=3 bundle exec ./bin/rails runner ../transactional_server_smoke_test.rb
+  done
 done
