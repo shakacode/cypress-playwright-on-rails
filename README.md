@@ -748,9 +748,17 @@ never commit it:
   committed. On SQLite they cannot write at all while the server holds its
   transaction, so seed from `after_transaction_start` or app commands rather
   than from `after_server_start`.
-- It needs Rails 7.2 or later, and a server running in a single process (no
-  Puma workers). Older Rails versions print a warning and commit as before.
-- Databases are covered when their connection pool exists at boot (the
+- Reading roles (`connects_to database: { writing: :primary, reading:
+  :primary_replica }`) use the writing connection, as in Rails transactional
+  fixtures, so `connected_to(role: :reading)` sees the uncommitted rows.
+- It needs Rails 7.2 or later. Older Rails versions print a warning and commit
+  as before.
+- The server must run in a single process. If it forks (Puma workers through
+  `workers` or `WEB_CONCURRENCY`, or a plugin such as solid_queue's
+  supervisor), the forked process cannot share the transaction, so it stops the
+  server before serving a request and the rake task fails with
+  `CypressOnRails::ServerError`.
+- Databases are covered when their connection pools exist at boot (the
   primary always does). Eager loading is what usually establishes the rest,
   and `eager_load` is often true only on CI, so isolation can differ between
   local and CI. Establish those connections at boot, for example by eager

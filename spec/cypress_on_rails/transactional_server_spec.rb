@@ -1,8 +1,8 @@
 require 'cypress_on_rails/transactional_server'
 
 # The end-to-end proof, against a real spawned Puma server and database, is
-# specs_e2e/rails_8/script/transactional_server_smoke_test.rb. These examples
-# pin the protocol with Active Record stand-ins.
+# specs_e2e/transactional_server_smoke_test.rb (Rails 7.2 and 8, SQLite and
+# PostgreSQL). These examples pin the protocol with Active Record stand-ins.
 module TransactionalServerFakes
   # Stands in for an adapter: records the transaction calls it receives and
   # tracks how many transactions (nested savepoints included) are open.
@@ -48,23 +48,74 @@ module TransactionalServerFakes
     end
   end
 
-  # ActiveRecord::Base.connection_handler, serving the given writing pools.
-  ConnectionHandler = Struct.new(:pools) do
+  # The pool manager behind one connection name: pool configs by role and
+  # shard. A pool config stands in for its pool.
+  class PoolManager
+    def initialize(configs)
+      @configs = configs
+    end
+
+    def shard_names
+      @configs.values.flat_map(&:keys).uniq
+    end
+
+    def role_names
+      @configs.keys
+    end
+
+    def get_pool_config(role, shard)
+      @configs.dig(role, shard)
+    end
+
+    def set_pool_config(role, shard, pool_config)
+      (@configs[role] ||= {})[shard] = pool_config
+    end
+  end
+
+  # ActiveRecord::Base.connection_handler: one pool manager per connection
+  # name, the writing pools listed by #connection_pool_list.
+  class ConnectionHandler
+    attr_reader :pool_managers
+
+    def initialize(pool_managers)
+      @pool_managers = pool_managers
+    end
+
+    def connection_pool_names
+      @pool_managers.keys
+    end
+
     def connection_pool_list(role)
-      role == :writing ? pools : []
+      @pool_managers.values.filter_map { |manager| manager.get_pool_config(role, :default) }
+    end
+
+    private
+
+    def connection_name_to_pool_manager
+      @pool_managers
     end
   end
 end
 
 RSpec.describe CypressOnRails::TransactionalServer do
   let(:pools) { [TransactionalServerFakes::Pool.new, TransactionalServerFakes::Pool.new] }
+  let(:replica_pool) { TransactionalServerFakes::Pool.new }
+  let(:pool_managers) do
+    {
+      'ActiveRecord::Base' => TransactionalServerFakes::PoolManager.new(
+        writing: { default: pools.first }, reading: { default: replica_pool }
+      ),
+      'AnimalsRecord' => TransactionalServerFakes::PoolManager.new(writing: { default: pools.last })
+    }
+  end
   let(:hook_calls) { [] }
   let(:fork_hooks) { [] }
 
   before do
     described_class.instance_variable_set(:@pools, nil)
     described_class.instance_variable_set(:@pid, nil)
-    handler = TransactionalServerFakes::ConnectionHandler.new(pools)
+    handler = TransactionalServerFakes::ConnectionHandler.new(pool_managers)
+    stub_const('ActiveRecord', Module.new { define_singleton_method(:writing_role) { :writing } })
     stub_const('ActiveRecord::Base', Module.new { define_singleton_method(:connection_handler) { handler } })
     stub_const('ActiveRecord::ConnectionAdapters::ConnectionPool', TransactionalServerFakes::Pool)
     hooks = fork_hooks
@@ -103,6 +154,17 @@ RSpec.describe CypressOnRails::TransactionalServer do
       end
     end
 
+    # Rails' transactional fixtures do the same (setup_shared_connection_pool).
+    it 'points reading roles at the writing pool, so replicas see the uncommitted rows' do
+      described_class.boot
+
+      aggregate_failures do
+        expect(pool_managers['ActiveRecord::Base'].get_pool_config(:reading, :default)).to be(pools.first)
+        expect(pool_managers['AnimalsRecord'].role_names).to eq([:writing])
+        expect(replica_pool.pinned_with).to be_nil
+      end
+    end
+
     it 'rolls back and opens a fresh transaction on reset, then runs the hook again' do
       described_class.boot
       described_class.reset!
@@ -138,12 +200,18 @@ RSpec.describe CypressOnRails::TransactionalServer do
       end
     end
 
-    it 'is not active in a forked child, and says so' do
+    # The end-to-end proof with real Puma workers is in the smoke test.
+    it 'stops the server from a forked child before it serves anything' do
       described_class.boot
-      allow(Process).to receive(:pid).and_return(Process.pid + 1)
+      server_pid = Process.pid
+      allow(Process).to receive(:kill)
+      allow(Process).to receive(:exit!)
 
-      expect { fork_hooks.each(&:call) }.to output(/was forked .* its writes are committed/).to_stderr
-      expect(described_class).not_to be_active
+      expect { fork_hooks.each(&:call) }.to output(/was forked from the server .* the server is stopping/).to_stderr
+      aggregate_failures do
+        expect(Process).to have_received(:kill).with('TERM', server_pid).ordered
+        expect(Process).to have_received(:exit!).with(1).ordered
+      end
     end
 
     it 'warns and leaves the database alone before Rails 7.2' do
@@ -153,6 +221,7 @@ RSpec.describe CypressOnRails::TransactionalServer do
       aggregate_failures do
         expect(described_class).not_to be_active
         expect(pools.map(&:pinned_with)).to eq([nil, nil])
+        expect(pool_managers['ActiveRecord::Base'].get_pool_config(:reading, :default)).to be(replica_pool)
         expect(hook_calls).to be_empty
       end
     end
