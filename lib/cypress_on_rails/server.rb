@@ -675,7 +675,7 @@ module CypressOnRails
           ['cypress', 'open', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
-        playwright_command + ['--ui']
+        run_command_args + ['--ui']
       end
     end
 
@@ -700,15 +700,25 @@ module CypressOnRails
       return Shellwords.split(configured) unless configured.strip.empty?
 
       launcher = %w[yarn npx].find { |command| command_exists?(command) }
-      [launcher, 'playwright', 'test'].compact
+      [launcher, 'playwright', 'test'].compact + playwright_config_args
     rescue ArgumentError => e
       raise ArgumentError, "playwright_command (or CYPRESS_RAILS_PLAYWRIGHT_COMMAND) is invalid: #{e.message}"
     end
 
+    def playwright_config_args
+      config_names = %w[ts js mts mjs cts cjs].map { |extension| "playwright.config.#{extension}" }
+      return [] if config_names.any? { |name| File.file?(name) }
+      return [] unless config_names.any? { |name| File.file?(File.join(install_folder, name)) }
+
+      ['--config', install_folder]
+    end
+
+    # Cypress receives the URL through --config; Playwright reads BASE_URL.
     def run_command(command_args, description)
       puts "#{description}: #{command_args.join(' ')}"
       command, *arguments = command_args
-      system([command, command], *arguments)
+      environment = framework == :playwright ? { 'BASE_URL' => base_url } : {}
+      system(environment, [command, command], *arguments)
     end
 
     def command_exists?(command)

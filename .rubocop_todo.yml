@@ -256,7 +256,7 @@ Metrics/AbcSize:
 # Offense count: 2
 # Configuration parameters: CountComments, CountAsOne.
 Metrics/ClassLength:
-  Max: 551
+  Max: 555
 
 # Offense count: 17
 # Configuration parameters: AllowedMethods, AllowedPatterns.
