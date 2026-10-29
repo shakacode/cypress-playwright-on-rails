@@ -70,8 +70,12 @@ RSpec.describe 'generated JS token helpers' do
       expect(source).to include("'X-Cypress-On-Rails-Token'")
     end
 
-    it 'targets the server the rake tasks start' do
-      expect(source).to include('process.env.BASE_URL')
+    it 'targets the same server as the browser, the config\'s use.baseURL' do
+      aggregate_failures do
+        expect(source).to include("import config from '../../playwright.config'")
+        expect(source).to include('config.use?.baseURL')
+        expect(source).not_to include('process.env.BASE_URL')
+      end
     end
 
     it 'lets a command outlive the default request timeout' do

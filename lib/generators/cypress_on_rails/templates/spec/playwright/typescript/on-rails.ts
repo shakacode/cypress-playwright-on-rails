@@ -1,8 +1,10 @@
 import { request, expect, type APIRequestContext } from '@playwright/test'
+import config from '../../playwright.config'
 
-// The Rails server under test. `rake playwright:run` and `rake playwright:open`
-// export the URL of the server they start as BASE_URL.
-const baseURL = process.env.BASE_URL || 'http://127.0.0.1:5017'
+// The Rails server under test: the config's `use.baseURL`, so the helpers and
+// `page.goto()` always reach the same server. The generated config reads the
+// BASE_URL that `rake playwright:run` and `rake playwright:open` export.
+const baseURL = config.use?.baseURL
 
 // Sends the shared secret when one is configured, see the "Security model"
 // section of the cypress-on-rails README. Applied to every request made with
@@ -27,8 +29,10 @@ export interface AppCommand {
 }
 
 export interface RequestOptions {
-  // Milliseconds before the request fails; 0 waits forever. Playwright's
-  // default is 30 s, too short for a command that waits on a background job.
+  // Milliseconds before the request fails; 0 disables the request timeout.
+  // Playwright's default is 30 s, too short for a command that waits on a
+  // background job. The enclosing test timeout still applies: raise it with
+  // test.setTimeout() too.
   timeout?: number
 }
 

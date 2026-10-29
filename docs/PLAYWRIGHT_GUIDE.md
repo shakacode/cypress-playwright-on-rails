@@ -31,18 +31,27 @@ bin/rails g cypress_on_rails:install --framework playwright --install_folder=spe
 ```
 
 `--typescript` writes `playwright.config.ts`, `playwright/support/on-rails.ts` (typed helpers,
-imported by the specs directly) and a `.ts` example instead of the JavaScript files. No
+imported by the specs directly) and a `.ts` example instead of the JavaScript files. The helpers
+send their requests to the config's `use.baseURL`, the same server `page.goto()` reaches. No
 `tsconfig.json` is generated: Playwright transpiles the files without one. Add `@types/node` as a
 dev dependency so the `process.env` lookups resolve, and a `tsconfig.json` if you also want your
-editor to type-check. The typed `app()` takes a third argument, `{ timeout }` in milliseconds
-(`0` = none), for a command that outlasts Playwright's 30 s request timeout, such as one that
-waits on a background job:
+editor to type-check. The typed `app()` takes a third argument, `{ timeout }` in milliseconds,
+for a command that outlasts Playwright's 30 s request timeout, such as one that waits on a
+background job. The request runs inside the test, so raise the test's own timeout (30 s by
+default, `beforeEach` included) above it with `test.setTimeout()`. `{ timeout: 0 }` disables only
+the request timeout; the test timeout still applies.
 
 ```ts
+import { test, expect } from '@playwright/test'
 import { app } from '../support/on-rails'
 
-const user = await app<{ id: number }>('create_user', { email: 'buyer@example.test' })
-await app('wait_for_jobs', {}, { timeout: 120_000 })
+test('imports the catalogue', async () => {
+  test.setTimeout(180_000)
+
+  const user = await app<{ id: number }>('create_user', { email: 'buyer@example.test' })
+  await app('wait_for_jobs', {}, { timeout: 120_000 })
+  expect(user.id).toBeGreaterThan(0)
+})
 ```
 
 ### 3. Install Playwright
