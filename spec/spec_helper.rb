@@ -101,6 +101,8 @@ RSpec.configure do |config|
       config.logger = Logger.new('spec/test.log')
       # Keep the suite hermetic when the developer exports the token
       config.middleware_token = nil
+      # Keep the suite hermetic when the developer exports the Playwright command
+      config.playwright_command = nil
     end
   end
 end

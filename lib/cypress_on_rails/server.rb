@@ -3,6 +3,7 @@ require 'timeout'
 require 'fileutils'
 require 'net/http'
 require 'thread'
+require 'shellwords'
 require 'cypress_on_rails/configuration'
 
 module CypressOnRails
@@ -674,13 +675,7 @@ module CypressOnRails
           ['cypress', 'open', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
-        if command_exists?('yarn')
-          ['yarn', 'playwright', 'test', '--ui']
-        elsif command_exists?('npx')
-          ['npx', 'playwright', 'test', '--ui']
-        else
-          ['playwright', 'test', '--ui']
-        end
+        run_command_args + ['--ui']
       end
     end
 
@@ -695,19 +690,35 @@ module CypressOnRails
           ['cypress', 'run', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
-        if command_exists?('yarn')
-          ['yarn', 'playwright', 'test']
-        elsif command_exists?('npx')
-          ['npx', 'playwright', 'test']
-        else
-          ['playwright', 'test']
-        end
+        playwright_command
       end
     end
 
+    # The configured command when there is one, else the local runner.
+    def playwright_command
+      configured = CypressOnRails.configuration.playwright_command.to_s
+      return Shellwords.split(configured) unless configured.strip.empty?
+
+      launcher = %w[yarn npx].find { |command| command_exists?(command) }
+      [launcher, 'playwright', 'test'].compact + playwright_config_args
+    rescue ArgumentError => e
+      raise ArgumentError, "playwright_command (or CYPRESS_RAILS_PLAYWRIGHT_COMMAND) is invalid: #{e.message}"
+    end
+
+    def playwright_config_args
+      config_names = %w[ts js mts mjs cts cjs].map { |extension| "playwright.config.#{extension}" }
+      return [] if config_names.any? { |name| File.file?(name) }
+      return [] unless config_names.any? { |name| File.file?(File.join(install_folder, name)) }
+
+      ['--config', install_folder]
+    end
+
+    # Cypress receives the URL through --config; Playwright reads BASE_URL.
     def run_command(command_args, description)
       puts "#{description}: #{command_args.join(' ')}"
-      system(*command_args)
+      command, *arguments = command_args
+      environment = framework == :playwright ? { 'BASE_URL' => base_url } : {}
+      system(environment, [command, command], *arguments)
     end
 
     def command_exists?(command)

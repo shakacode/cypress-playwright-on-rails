@@ -4,6 +4,7 @@ require 'tempfile'
 require 'thread'
 require 'json'
 require 'stringio'
+require 'tmpdir'
 
 RSpec.describe CypressOnRails::Server do
   describe 'port bind race' do
@@ -980,6 +981,109 @@ RSpec.describe CypressOnRails::Server do
     def exited_process_status
       pid = Process.spawn(RbConfig.ruby, '-e', 'exit 7')
       Process.wait2(pid).last
+    end
+  end
+
+  describe 'Playwright command' do
+    let(:server) { described_class.new(framework: :playwright, host: '127.0.0.1', port: 4321) }
+
+    def with_playwright_wrapper
+      Dir.mktmpdir('playwright command ') do |directory|
+        wrapper = File.join(directory, 'run playwright')
+        recorded_args = File.join(directory, 'args.json')
+        File.write(wrapper, "#!#{RbConfig.ruby}\nrequire 'json'\nFile.write(#{recorded_args.dump}, JSON.generate(ARGV))\n")
+        File.chmod(0o700, wrapper)
+        CypressOnRails.configuration.playwright_command = %("#{wrapper}")
+        allow(server).to receive(:start_server).and_yield
+        yield recorded_args
+      end
+    end
+
+    it 'runs a quoted wrapper path containing spaces without extra arguments' do
+      with_playwright_wrapper do |recorded_args|
+        expect { server.run }.to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+        expect(JSON.parse(File.read(recorded_args))).to eq([])
+      end
+    end
+
+    it 'opens a quoted wrapper path containing spaces with the UI argument' do
+      with_playwright_wrapper do |recorded_args|
+        expect(server.open).to be(true)
+        expect(JSON.parse(File.read(recorded_args))).to eq(['--ui'])
+      end
+    end
+
+    it 'runs the configured command, split like a shell would' do
+      CypressOnRails.configuration.playwright_command =
+        'mise exec node@22 -- npx playwright test --config "e2e/my tests/playwright.config.ts"'
+
+      expect(server.send(:run_command_args)).to eq(
+        ['mise', 'exec', 'node@22', '--', 'npx', 'playwright', 'test', '--config', 'e2e/my tests/playwright.config.ts']
+      )
+    end
+
+    it 'opens the configured command with --ui' do
+      CypressOnRails.configuration.playwright_command = 'npx playwright test --config e2e/playwright.config.ts'
+
+      expect(server.send(:open_command)).to eq(
+        %w[npx playwright test --config e2e/playwright.config.ts --ui]
+      )
+    end
+
+    it 'falls back to npx when no command is configured and yarn is missing' do
+      allow(server).to receive(:command_exists?) { |command| command == 'npx' }
+
+      expect(server.send(:run_command_args)).to eq(%w[npx playwright test])
+    end
+
+    it 'falls back to yarn when no command is configured and yarn is present' do
+      allow(server).to receive(:command_exists?) { |command| command == 'yarn' }
+
+      expect(server.send(:run_command_args)).to eq(%w[yarn playwright test])
+    end
+
+    it 'opens the fallback command with --ui when neither yarn nor npx is present' do
+      allow(server).to receive(:command_exists?).and_return(false)
+
+      expect(server.send(:open_command)).to eq(%w[playwright test --ui])
+    end
+
+    it 'treats a blank configured command as not configured' do
+      CypressOnRails.configuration.playwright_command = '  '
+      allow(server).to receive(:command_exists?).and_return(false)
+
+      expect(server.send(:run_command_args)).to eq(%w[playwright test])
+    end
+
+    it 'names the setting when the configured command has an unbalanced quote' do
+      CypressOnRails.configuration.playwright_command = 'npx playwright test "e2e/playwright.config.ts'
+
+      expect { server.send(:run_command_args) }.to raise_error(ArgumentError) { |error|
+        expect(error.message).to include('playwright_command')
+        expect(error.message).to include('CYPRESS_RAILS_PLAYWRIGHT_COMMAND')
+        expect(error.message).to include('Unmatched')
+      }
+    end
+  end
+
+  describe 'test runner environment' do
+    before { allow($stdout).to receive(:write) }
+
+    it 'passes the managed server URL to Playwright in BASE_URL' do
+      server = described_class.new(framework: :playwright, host: '127.0.0.1', port: 4321)
+      allow(server).to receive(:system).and_return(true)
+
+      expect(server.send(:run_command, %w[npx playwright test], 'Running playwright tests')).to be(true)
+      expect(server).to have_received(:system)
+        .with({ 'BASE_URL' => 'http://127.0.0.1:4321' }, ['npx', 'npx'], 'playwright', 'test')
+    end
+
+    it 'leaves the Cypress environment alone, Cypress gets the URL through --config' do
+      server = described_class.new(framework: :cypress, host: '127.0.0.1', port: 4321)
+      allow(server).to receive(:system).and_return(true)
+
+      server.send(:run_command, %w[npx cypress run], 'Running cypress tests')
+      expect(server).to have_received(:system).with({}, ['npx', 'npx'], 'cypress', 'run')
     end
   end
 end

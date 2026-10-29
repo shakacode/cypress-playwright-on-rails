@@ -58,6 +58,11 @@ module CypressOnRails
     # the test server process group (default: 10)
     # Can be set via CYPRESS_RAILS_SHUTDOWN_TIMEOUT environment variable
     attr_reader :server_shutdown_timeout
+    # Command the playwright:run and playwright:open tasks launch, as one
+    # shell-style string, e.g. "npx playwright test --config e2e/playwright.config.ts".
+    # Nil runs `playwright test` through yarn or npx. playwright:open appends --ui.
+    # Can be set via CYPRESS_RAILS_PLAYWRIGHT_COMMAND environment variable
+    attr_accessor :playwright_command
 
     def server_shutdown_timeout=(value)
       @server_shutdown_timeout = positive_number!(:server_shutdown_timeout, value)
@@ -133,6 +138,7 @@ module CypressOnRails
       self.server_readiness_path = ENV.fetch('CYPRESS_RAILS_READINESS_PATH', '/')
       self.server_readiness_timeout = ENV.fetch('CYPRESS_RAILS_READINESS_TIMEOUT', '5').to_i
       self.server_shutdown_timeout = ENV.fetch('CYPRESS_RAILS_SHUTDOWN_TIMEOUT', DEFAULT_SERVER_SHUTDOWN_TIMEOUT)
+      self.playwright_command = ENV.fetch('CYPRESS_RAILS_PLAYWRIGHT_COMMAND', nil)
     end
 
     def tagged_logged

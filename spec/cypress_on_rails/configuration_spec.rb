@@ -2,6 +2,9 @@ require 'cypress_on_rails/configuration'
 
 RSpec.describe CypressOnRails::Configuration do
   it 'has defaults' do
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('CYPRESS_RAILS_PLAYWRIGHT_COMMAND', nil).and_return(nil)
+
     CypressOnRails.configure { |config| config.reset }
 
     expect(CypressOnRails.configuration.api_prefix).to eq('')
@@ -13,6 +16,22 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.server_readiness_path).to eq('/')
     expect(CypressOnRails.configuration.server_readiness_timeout).to eq(5)
     expect(CypressOnRails.configuration.server_shutdown_timeout).to eq(10)
+    expect(CypressOnRails.configuration.playwright_command).to be_nil
+  end
+
+  it 'reads the Playwright command from CYPRESS_RAILS_PLAYWRIGHT_COMMAND' do
+    original_command = ENV.fetch('CYPRESS_RAILS_PLAYWRIGHT_COMMAND', nil)
+    ENV['CYPRESS_RAILS_PLAYWRIGHT_COMMAND'] = 'npx playwright test --config e2e/playwright.config.ts'
+    CypressOnRails.configuration.reset
+
+    expect(CypressOnRails.configuration.playwright_command).to eq('npx playwright test --config e2e/playwright.config.ts')
+  ensure
+    if original_command
+      ENV['CYPRESS_RAILS_PLAYWRIGHT_COMMAND'] = original_command
+    else
+      ENV.delete('CYPRESS_RAILS_PLAYWRIGHT_COMMAND')
+    end
+    CypressOnRails.configuration.reset
   end
 
   it 'can be configured' do

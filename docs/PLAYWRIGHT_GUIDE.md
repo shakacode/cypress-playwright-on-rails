@@ -64,6 +64,31 @@ e2e/
 ```
 
 ### Playwright Configuration
+
+`rake playwright:run` and `rake playwright:open` launch `playwright test` through yarn or npx.
+When the config lives elsewhere or Playwright needs a different Node, set the whole command as a
+single string (`playwright:open` appends `--ui`). Because of that appended `--ui`, the command has
+to accept `playwright test` arguments; a package script needs its own pass-through, such as
+`npm run e2e --`:
+
+```ruby
+# config/initializers/cypress_on_rails.rb (or CYPRESS_RAILS_PLAYWRIGHT_COMMAND in the environment)
+c.playwright_command = 'npx playwright test --config e2e/playwright.config.ts'
+```
+
+A custom command keeps its supplied arguments; the tasks do not append a discovered `--config`.
+Both custom and default commands receive the managed server URL as `BASE_URL`.
+
+`rake playwright:run` and `rake playwright:open` start the Rails server on a free port (or
+`CYPRESS_RAILS_PORT`) and export its URL to Playwright as `BASE_URL`, so read it in the config.
+The exported `BASE_URL` replaces any `BASE_URL` already set in your shell, for the Playwright
+process only.
+
+When the Rails root has no Playwright config, these tasks select the config in
+`config.install_folder` (the generated `e2e/` directory by default). A Playwright config
+already in the Rails root keeps precedence. Configs in either location should read
+`process.env.BASE_URL` so browser navigation and the generated helpers use the managed port.
+
 ```js
 // playwright.config.js
 module.exports = {
