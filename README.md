@@ -706,13 +706,14 @@ CypressOnRails.configure do |c|
     puts "Server is ready for testing!"
   }
   
-  # Run code in the server after its transaction begins and after every
-  # state reset (transactional mode only)
+  # Only with transactional_server = true (off by default): runs in the
+  # server, so define it in config the server loads (this initializer), after
+  # its transaction begins and again after every state reset. Rails 7.2+.
   c.after_transaction_start = -> {
     # Load seed data that should be rolled back after tests
   }
   
-  # Run code after application state is reset
+  # Run code in the server after application state is reset
   c.after_state_reset = -> {
     Rails.cache.clear
   }
@@ -725,7 +726,7 @@ CypressOnRails.configure do |c|
   # Configure server settings
   c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
   c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
-  c.transactional_server = true  # Enable automatic transaction rollback
+  c.transactional_server = true  # Opt in to rolling back server writes (off by default)
   c.server_shutdown_timeout = 10 # or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
 end
 ```
@@ -748,23 +749,23 @@ never commit it:
   committed. On SQLite they cannot write at all while the server holds its
   transaction, so seed from `after_transaction_start` or app commands rather
   than from `after_server_start`.
-- Reading roles (`connects_to database: { writing: :primary, reading:
-  :primary_replica }`) use the writing connection, as in Rails transactional
-  fixtures, so `connected_to(role: :reading)` sees the uncommitted rows.
-- It needs Rails 7.2 or later. Older Rails versions print a warning and commit
-  as before.
+- Every database is covered, as in Rails transactional fixtures: pools
+  established at boot and those established later (an abstract class with
+  `connects_to` loaded lazily when eager loading is off). Reading roles
+  (`connects_to database: { writing: :primary, reading: :primary_replica }`)
+  use the writing connection, so `connected_to(role: :reading)` sees the
+  uncommitted rows.
+- It needs Rails 7.2 or later. Older Rails versions print a warning, commit as
+  before, and do not run `after_transaction_start`.
+- With it off, `after_transaction_start` does not run; the rake tasks warn if
+  it is configured.
 - The server must run in a single process. If it forks (Puma workers through
   `workers` or `WEB_CONCURRENCY`, or a plugin such as solid_queue's
   supervisor), the forked process cannot share the transaction, so it stops the
   server before serving a request and the rake task fails with
   `CypressOnRails::ServerError`.
-- Databases are covered when their connection pools exist at boot (the
-  primary always does). Eager loading is what usually establishes the rest,
-  and `eager_load` is often true only on CI, so isolation can differ between
-  local and CI. Establish those connections at boot, for example by eager
-  loading the abstract classes, to cover them. A truncating clean such as
-  DatabaseCleaner's `:truncation` commits implicitly on MySQL and ends the
-  isolation there.
+- A truncating clean such as DatabaseCleaner's `:truncation` commits
+  implicitly on MySQL and ends the isolation there.
 
 When it is off, the server commits every write as it happens, and the state
 reset endpoints truncate the database tables as before.
