@@ -52,7 +52,7 @@ module NewlineChecker
   ].join('|').freeze
   TEXT_FILE_MATCHER = Regexp.new(TEXT_FILE_PATTERN)
 
-  # Bare-named executables (bin/install-hooks, .agents/bin/validate, ...) match
+  # Bare-named executables (bin/install-hooks, .agents/shaka/bin/validate, ...) match
   # neither list, so a name-based rule alone leaves this gem's own scripts
   # unchecked. They are detected by their shebang instead, which also covers
   # scripts added later without touching any hardcoded list.
