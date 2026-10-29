@@ -4,6 +4,7 @@ require 'tempfile'
 require 'thread'
 require 'json'
 require 'stringio'
+require 'tmpdir'
 
 RSpec.describe CypressOnRails::Server do
   describe 'port bind race' do
@@ -985,6 +986,32 @@ RSpec.describe CypressOnRails::Server do
 
   describe 'Playwright command' do
     let(:server) { described_class.new(framework: :playwright, host: '127.0.0.1', port: 4321) }
+
+    def with_playwright_wrapper
+      Dir.mktmpdir('playwright command ') do |directory|
+        wrapper = File.join(directory, 'run playwright')
+        recorded_args = File.join(directory, 'args.json')
+        File.write(wrapper, "#!#{RbConfig.ruby}\nrequire 'json'\nFile.write(#{recorded_args.dump}, JSON.generate(ARGV))\n")
+        File.chmod(0o700, wrapper)
+        CypressOnRails.configuration.playwright_command = %("#{wrapper}")
+        allow(server).to receive(:start_server).and_yield
+        yield recorded_args
+      end
+    end
+
+    it 'runs a quoted wrapper path containing spaces without extra arguments' do
+      with_playwright_wrapper do |recorded_args|
+        expect { server.run }.to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+        expect(JSON.parse(File.read(recorded_args))).to eq([])
+      end
+    end
+
+    it 'opens a quoted wrapper path containing spaces with the UI argument' do
+      with_playwright_wrapper do |recorded_args|
+        expect(server.open).to be(true)
+        expect(JSON.parse(File.read(recorded_args))).to eq(['--ui'])
+      end
+    end
 
     it 'runs the configured command, split like a shell would' do
       CypressOnRails.configuration.playwright_command =

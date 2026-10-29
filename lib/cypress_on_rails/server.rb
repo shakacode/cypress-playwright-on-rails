@@ -707,7 +707,8 @@ module CypressOnRails
 
     def run_command(command_args, description)
       puts "#{description}: #{command_args.join(' ')}"
-      system(*command_args)
+      command, *arguments = command_args
+      system([command, command], *arguments)
     end
 
     def command_exists?(command)
