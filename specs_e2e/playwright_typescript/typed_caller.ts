@@ -24,6 +24,8 @@ export async function typedCaller(): Promise<void> {
   assertType<Equal<Awaited<ReturnType<typeof appScenario>>, unknown>>()
 
   await app('wait_for_jobs', {}, { timeout: 120_000 })
+  await appEval('sleep 1', { timeout: 5_000 })
+  await appScenario('basic', {}, { timeout: 5_000 })
   // @ts-expect-error The request options only take a numeric timeout.
   await app('wait_for_jobs', {}, { timeout: '2m' })
 

@@ -35,8 +35,8 @@ imported by the specs directly) and a `.ts` example instead of the JavaScript fi
 send their requests to the config's `use.baseURL`, the same server `page.goto()` reaches. No
 `tsconfig.json` is generated: Playwright transpiles the files without one. Add `@types/node` as a
 dev dependency so the `process.env` lookups resolve, and a `tsconfig.json` if you also want your
-editor to type-check. The typed `app()` takes a third argument, `{ timeout }` in milliseconds,
-for a command that outlasts Playwright's 30 s request timeout, such as one that waits on a
+editor to type-check. The typed command helpers (`app`, `appCommands`, `appScenario`, `appEval`,
+`appFactories`) take a last argument, `{ timeout }` in milliseconds, for a command that outlasts Playwright's 30 s request timeout, such as one that waits on a
 background job. The request runs inside the test, so raise the test's own timeout (30 s by
 default, `beforeEach` included) above it with `test.setTimeout()`. `{ timeout: 0 }` disables only
 the request timeout; the test timeout still applies.

@@ -79,7 +79,7 @@ RSpec.describe 'generated JS token helpers' do
     end
 
     it 'lets a command outlive the default request timeout' do
-      expect(source).to include('timeout: requestOptions.timeout')
+      expect(source).to include('{ timeout: requestOptions.timeout }')
     end
 
     it 'exports the same helpers as the JavaScript version' do

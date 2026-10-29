@@ -18,7 +18,7 @@ test.describe('generated TypeScript helpers', () => {
     const token = process.env.CYPRESS_ON_RAILS_TOKEN
     expect(token, 'run this spec with CYPRESS_ON_RAILS_TOKEN set').toBeTruthy()
 
-    const anonymous = await request.newContext({ baseURL })
+    const anonymous = await request.newContext(baseURL ? { baseURL } : {})
     const rejected = await anonymous.post('/__e2e__/command', { data: { name: 'eval', options: '1' } })
     expect(rejected.status()).toBe(403)
     await anonymous.dispose()

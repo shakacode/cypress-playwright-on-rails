@@ -16,7 +16,7 @@ let contextPromise: Promise<APIRequestContext> | undefined
 const context = (): Promise<APIRequestContext> => {
   if (!contextPromise) {
     contextPromise = request.newContext({
-      baseURL,
+      ...(baseURL ? { baseURL } : {}),
       extraHTTPHeaders: cypressOnRailsToken ? { 'X-Cypress-On-Rails-Token': cypressOnRailsToken } : {}
     })
   }
@@ -42,19 +42,24 @@ export async function appCommands<T = unknown>(
   data: AppCommand | AppCommand[],
   requestOptions: RequestOptions = {}
 ): Promise<T[]> {
-  const response = await (await context()).post('/__e2e__/command', { data, timeout: requestOptions.timeout })
+  const response = await (await context()).post('/__e2e__/command', {
+    data,
+    ...(requestOptions.timeout === undefined ? {} : { timeout: requestOptions.timeout })
+  })
   expect(response.ok(), `app command answered ${response.status()}: ${await response.text()}`).toBeTruthy()
   return response.json()
 }
 
 export async function app<T = unknown>(name: string, options: unknown = {}, requestOptions?: RequestOptions): Promise<T> {
   const [result] = await appCommands<T>({ name, options }, requestOptions)
-  return result
+  return result as T
 }
 
-export const appScenario = <T = unknown>(name: string, options: unknown = {}) => app<T>('scenarios/' + name, options)
-export const appEval = <T = unknown>(code: string) => app<T>('eval', code)
-export const appFactories = <T = unknown>(options: unknown) => app<T>('factory_bot', options)
+export const appScenario = <T = unknown>(name: string, options: unknown = {}, requestOptions?: RequestOptions) =>
+  app<T>('scenarios/' + name, options, requestOptions)
+export const appEval = <T = unknown>(code: string, requestOptions?: RequestOptions) => app<T>('eval', code, requestOptions)
+export const appFactories = <T = unknown>(options: unknown, requestOptions?: RequestOptions) =>
+  app<T>('factory_bot', options, requestOptions)
 
 // Resets the application state. Prefer this over a raw request so that the token
 // header is sent when one is configured. The endpoint is also mounted at
