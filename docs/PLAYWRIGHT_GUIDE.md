@@ -64,6 +64,17 @@ e2e/
 ```
 
 ### Playwright Configuration
+
+`rake playwright:run` and `rake playwright:open` start the Rails server on a free port (or
+`CYPRESS_RAILS_PORT`) and export its URL to Playwright as `BASE_URL`, so read it in the config.
+The exported `BASE_URL` replaces any `BASE_URL` already set in your shell, for the Playwright
+process only.
+
+When the Rails root has no Playwright config, these tasks select the config in
+`config.install_folder` (the generated `e2e/` directory by default). A Playwright config
+already in the Rails root keeps precedence. Configs in either location should read
+`process.env.BASE_URL` so browser navigation and the generated helpers use the managed port.
+
 ```js
 // playwright.config.js
 module.exports = {
