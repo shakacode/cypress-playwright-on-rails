@@ -17,8 +17,21 @@ development:
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
 test:
-  <<: *default
-  database: db/test.sqlite3
+  primary: &test_primary
+    <<: *default
+<% if ENV["E2E_DATABASE"] == "postgresql" %>
+    # Connection settings come from PGHOST, PGPORT, PGUSER and PGPASSWORD.
+    adapter: postgresql
+    database: cypress_on_rails_7_2_test
+<% else %>
+    database: db/test.sqlite3
+<% end %>
+  # The same database as primary. The transactional_server smoke test reads
+  # through it to check that reading roles see what the server has not
+  # committed.
+  primary_replica:
+    <<: *test_primary
+    replica: true
 
 
 # SQLite3 write its data on the local filesystem, as such it requires
