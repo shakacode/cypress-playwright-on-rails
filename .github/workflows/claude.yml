@@ -12,10 +12,13 @@ on:
 
 jobs:
   authorize_claude_actor:
+    # Review events from forks cannot receive the Claude credentials.
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+       github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' &&
+       github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
