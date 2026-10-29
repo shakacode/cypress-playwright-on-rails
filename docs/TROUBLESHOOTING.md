@@ -191,28 +191,21 @@ end
 
 ### Using Rails Transactional Fixtures (#114)
 
-Instead of database_cleaner, use Rails built-in transactional fixtures:
+Instead of database_cleaner, opt in and let the managed server roll back. With
+the rake tasks (`cypress:run`, `playwright:run`, ...), set
+`c.transactional_server = true` (Rails 7.2+): the server holds a transaction
+that is never committed, and resetting state between tests rolls it back to the
+state the server booted with:
 
-```ruby
-# spec/e2e/app_commands/clean.rb
-require 'active_record/test_fixtures'
-
-class TransactionalClean
-  include ActiveRecord::TestFixtures
-  
-  def perform
-    setup_fixtures
-    yield if block_given?
-  ensure
-    teardown_fixtures
-  end
-end
-
-# Use with new rake tasks:
-CypressOnRails.configure do |c|
-  c.transactional_server = true  # Enables automatic rollback
-end
+```js
+// Cypress
+beforeEach(() => cy.appResetState())
+// Playwright, with the generated helpers
+test.beforeEach(async () => { await appResetState() })
 ```
+
+See [`transactional_server`](../README.md#transactional_server) for what it
+covers and what it does not (other processes, SQLite, Puma workers).
 
 ## Authentication and Security
 

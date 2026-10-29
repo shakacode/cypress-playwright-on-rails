@@ -20,7 +20,8 @@ module CypressOnRails
     attr_accessor :vcr_options
 
     # Hooks are user-supplied callables. `before_request` runs inside the
-    # middleware; the rest run around the rake-task server lifecycle.
+    # middleware; `after_transaction_start` and `after_state_reset` run in the
+    # app server; the rest run in the rake task around the server lifecycle.
     HOOKS = %i[
       before_request
       before_server_start
@@ -129,7 +130,7 @@ module CypressOnRails
       # Server configuration
       self.server_host = ENV.fetch('CYPRESS_RAILS_HOST', 'localhost')
       self.server_port = ENV.fetch('CYPRESS_RAILS_PORT', nil)
-      self.transactional_server = true
+      self.transactional_server = false
       self.server_readiness_path = ENV.fetch('CYPRESS_RAILS_READINESS_PATH', '/')
       self.server_readiness_timeout = ENV.fetch('CYPRESS_RAILS_READINESS_TIMEOUT', '5').to_i
       self.server_shutdown_timeout = ENV.fetch('CYPRESS_RAILS_SHUTDOWN_TIMEOUT', DEFAULT_SERVER_SHUTDOWN_TIMEOUT)

@@ -7,6 +7,15 @@ module CypressOnRails
     rake_tasks do
       load 'tasks/cypress.rake'
     end
+
+    # The rake tasks ask the server they spawn for a transactional_server.
+    config.after_initialize do
+      if defined?(::Rails::Server)
+        require 'cypress_on_rails/transactional_server'
+        TransactionalServer.boot
+      end
+    end
+
     initializer :setup_cypress_middleware, after: :load_config_initializers do |app|
       if CypressOnRails.configuration.use_middleware?
         require 'cypress_on_rails/middleware'

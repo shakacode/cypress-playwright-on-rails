@@ -9,3 +9,9 @@ group :development, :test do
   gem 'cypress-on-rails', path: '../../'
   gem 'database_cleaner'
 end
+
+# The transactional_server smoke test also runs on PostgreSQL:
+# BUNDLE_WITH=postgresql, see ../transactional_server_smoke.sh.
+group :postgresql, optional: true do
+  gem 'pg'
+end

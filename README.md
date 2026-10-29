@@ -706,12 +706,14 @@ CypressOnRails.configure do |c|
     puts "Server is ready for testing!"
   }
   
-  # Run code after database transaction begins (transactional mode only)
+  # Only with transactional_server = true (off by default): runs in the
+  # server, so define it in config the server loads (this initializer), after
+  # its transaction begins and again after every state reset. Rails 7.2+.
   c.after_transaction_start = -> {
     # Load seed data that should be rolled back after tests
   }
   
-  # Run code after application state is reset
+  # Run code in the server after application state is reset
   c.after_state_reset = -> {
     Rails.cache.clear
   }
@@ -724,10 +726,49 @@ CypressOnRails.configure do |c|
   # Configure server settings
   c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
   c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
-  c.transactional_server = true  # Enable automatic transaction rollback
+  c.transactional_server = true  # Opt in to rolling back server writes (off by default)
   c.server_shutdown_timeout = 10 # or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
 end
 ```
+
+### `transactional_server`
+
+Off by default. Set `c.transactional_server = true` and the rake tasks ask the
+Rails server they start to open a transaction at boot, on one connection that
+all its threads share (what Rails system tests do for Capybara's server), and
+never commit it:
+
+- `/cypress_rails_reset_state` (and `/__cypress__/reset_state`) rolls back to
+  the state the server booted with and opens a new transaction, instead of
+  deleting every row. `after_transaction_start` runs again, then
+  `after_state_reset`.
+- Whatever the server wrote is gone when it stops, even if it is killed.
+- Only writes made through the server are rolled back. The rake process, the
+  test runner, and job workers in other processes have their own connections:
+  they cannot see the server's uncommitted rows, and what they write is
+  committed. On SQLite they cannot write at all while the server holds its
+  transaction, so seed from `after_transaction_start` or app commands rather
+  than from `after_server_start`.
+- Every database is covered, as in Rails transactional fixtures: pools
+  established at boot and those established later (an abstract class with
+  `connects_to` loaded lazily when eager loading is off). Reading roles
+  (`connects_to database: { writing: :primary, reading: :primary_replica }`)
+  use the writing connection, so `connected_to(role: :reading)` sees the
+  uncommitted rows.
+- It needs Rails 7.2 or later. Older Rails versions print a warning, commit as
+  before, and do not run `after_transaction_start`.
+- With it off, `after_transaction_start` does not run; the rake tasks warn if
+  it is configured.
+- The server must run in a single process. If it forks (Puma workers through
+  `workers` or `WEB_CONCURRENCY`, or a plugin such as solid_queue's
+  supervisor), the forked process cannot share the transaction, so it stops the
+  server before serving a request and the rake task fails with
+  `CypressOnRails::ServerError`.
+- A truncating clean such as DatabaseCleaner's `:truncation` commits
+  implicitly on MySQL and ends the isolation there.
+
+When it is off, the server commits every write as it happens, and the state
+reset endpoints truncate the database tables as before.
 
 ### `server_shutdown_timeout`
 

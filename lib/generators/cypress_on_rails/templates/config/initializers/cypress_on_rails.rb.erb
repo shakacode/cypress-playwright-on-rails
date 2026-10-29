@@ -20,12 +20,14 @@ if defined?(CypressOnRails)
     # Server configuration for rake tasks (cypress:open, cypress:run, playwright:open, playwright:run)
     # c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
     # c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
-    # c.transactional_server = true  # Enable automatic transaction rollback between tests
+    # c.transactional_server = true  # Off by default; opt in to roll back server writes (Rails 7.2+)
     # c.server_shutdown_timeout = 10 # Seconds to wait after TERM before KILL, or use ENV['CYPRESS_RAILS_SHUTDOWN_TIMEOUT']
 
     # Server lifecycle hooks for rake tasks
     # c.before_server_start = -> { DatabaseCleaner.clean_with(:truncation) }
     # c.after_server_start = -> { puts "Test server started on port #{CypressOnRails.configuration.server_port}" }
+    # With transactional_server on, this runs in the server at boot and again
+    # after every state reset.
     # c.after_transaction_start = -> { Rails.application.load_seed }
     # c.after_state_reset = -> { Rails.cache.clear }
     # c.before_server_stop = -> { puts "Stopping test server..." }

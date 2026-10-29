@@ -1,4 +1,5 @@
 require 'cypress_on_rails/railtie'
+require 'cypress_on_rails/transactional_server'
 
 module Rails
   def self.env
@@ -52,5 +53,29 @@ RSpec.describe CypressOnRails::Railtie do
     run_initializers
 
     expect(middleware).to have_received(:use).with(CypressOnRails::Middleware)
+  end
+
+  context 'with a Rails server process' do
+    def run_after_initialize
+      ActiveSupport.run_load_hooks(:after_initialize, nil)
+    end
+
+    it 'boots the transactional server' do
+      stub_const('Rails::Server', Class.new)
+      allow(CypressOnRails::TransactionalServer).to receive(:boot)
+
+      run_after_initialize
+
+      expect(CypressOnRails::TransactionalServer).to have_received(:boot)
+    end
+
+    it 'does nothing in any other process' do
+      hide_const('Rails::Server')
+      allow(CypressOnRails::TransactionalServer).to receive(:boot)
+
+      run_after_initialize
+
+      expect(CypressOnRails::TransactionalServer).not_to have_received(:boot)
+    end
   end
 end

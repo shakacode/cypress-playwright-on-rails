@@ -117,6 +117,35 @@ RSpec.describe CypressOnRails::StateResetMiddleware do
     end
   end
 
+  describe 'with a transactional server' do
+    let(:truncations) { [] }
+
+    before do
+      calls = truncations
+      stub_const('DatabaseCleaner', Module.new { define_singleton_method(:clean_with) { |strategy| calls << strategy } })
+    end
+
+    it 'rolls the transaction back instead of deleting rows' do
+      allow(CypressOnRails::TransactionalServer).to receive(:active?).and_return(true)
+      allow(CypressOnRails::TransactionalServer).to receive(:reset!)
+
+      reset_state
+
+      aggregate_failures do
+        expect(CypressOnRails::TransactionalServer).to have_received(:reset!)
+        expect(truncations).to be_empty
+      end
+    end
+
+    it 'truncates as before when the server holds no transaction' do
+      allow(CypressOnRails::TransactionalServer).to receive(:active?).and_return(false)
+
+      reset_state
+
+      expect(truncations).to eq([:truncation])
+    end
+  end
+
   describe 'the after_state_reset hook' do
     it 'runs the configured hook' do
       events = []
