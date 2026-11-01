@@ -13,6 +13,7 @@ RSpec.describe CypressOnRails::Configuration do
     expect(CypressOnRails.configuration.server_readiness_path).to eq('/')
     expect(CypressOnRails.configuration.server_readiness_timeout).to eq(5)
     expect(CypressOnRails.configuration.server_shutdown_timeout).to eq(10)
+    expect(CypressOnRails.configuration.use_state_reset_middleware?).to eq(true)
   end
 
   it 'can be configured' do
