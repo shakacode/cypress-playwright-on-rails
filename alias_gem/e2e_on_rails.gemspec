@@ -29,7 +29,10 @@ parent_version = parent_version_match[1]
 # cypress-on-rails to an exact version, so installing on a Ruby the parent
 # rejects would resolve to a dependency that can never be satisfied.
 parent_gemspec_file = File.expand_path("../cypress-on-rails.gemspec", alias_gem_root)
-parent_ruby_match = File.read(parent_gemspec_file).match(/required_ruby_version\s*=\s*["']([^"']+)["']/)
+# Installing from a git source, Bundler rewrites the parent gemspec in its
+# normalized form, `required_ruby_version = Gem::Requirement.new(">= 3.0.0".freeze)`.
+parent_ruby_match = File.read(parent_gemspec_file)
+                        .match(/required_ruby_version\s*=\s*(?:Gem::Requirement\.new\(\s*)?["']([^"']+)["']/)
 raise "Unable to read required_ruby_version from #{parent_gemspec_file}" unless parent_ruby_match
 
 parent_required_ruby = parent_ruby_match[1]
