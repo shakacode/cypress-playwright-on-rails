@@ -674,13 +674,7 @@ module CypressOnRails
           ['cypress', 'open', '--project', install_folder, '--config', "baseUrl=#{base_url}"]
         end
       when :playwright
-        if command_exists?('yarn')
-          ['yarn', 'playwright', 'test', '--ui']
-        elsif command_exists?('npx')
-          ['npx', 'playwright', 'test', '--ui']
-        else
-          ['playwright', 'test', '--ui']
-        end
+        run_command_args + ['--ui']
       end
     end
 
@@ -696,18 +690,28 @@ module CypressOnRails
         end
       when :playwright
         if command_exists?('yarn')
-          ['yarn', 'playwright', 'test']
+          ['yarn', 'playwright', 'test'] + playwright_config_args
         elsif command_exists?('npx')
-          ['npx', 'playwright', 'test']
+          ['npx', 'playwright', 'test'] + playwright_config_args
         else
-          ['playwright', 'test']
+          ['playwright', 'test'] + playwright_config_args
         end
       end
     end
 
+    def playwright_config_args
+      config_names = %w[ts js mts mjs cts cjs].map { |extension| "playwright.config.#{extension}" }
+      return [] if config_names.any? { |name| File.file?(name) }
+      return [] unless config_names.any? { |name| File.file?(File.join(install_folder, name)) }
+
+      ['--config', install_folder]
+    end
+
+    # Cypress receives the URL through --config; Playwright has no such URL flag,
+    # so its config reads it from BASE_URL (see docs/PLAYWRIGHT_GUIDE.md).
     def run_command(command_args, description)
       puts "#{description}: #{command_args.join(' ')}"
-      system(*command_args)
+      system(framework == :playwright ? { 'BASE_URL' => base_url } : {}, *command_args)
     end
 
     def command_exists?(command)

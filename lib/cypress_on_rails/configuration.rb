@@ -7,6 +7,11 @@ module CypressOnRails
     attr_accessor :api_prefix
     attr_accessor :install_folder
     attr_accessor :use_middleware
+    # Mounts the state reset endpoints (/__cypress__/reset_state,
+    # /cypress_rails_reset_state) next to the command middleware. The reset
+    # truncates every table, so turn it off when parallel test workers share
+    # one database: a reset from one worker wipes the rows of the others.
+    attr_accessor :use_state_reset_middleware
     attr_accessor :use_vcr_middleware
     attr_accessor :use_vcr_use_cassette_middleware
     # Optional shared secret. When set, every middleware that executes
@@ -78,6 +83,7 @@ module CypressOnRails
     end
 
     alias :use_vcr_middleware? :use_vcr_middleware
+    alias :use_state_reset_middleware? :use_state_reset_middleware
     alias :use_vcr_use_cassette_middleware? :use_vcr_use_cassette_middleware
 
     # The middleware can execute arbitrary ruby code, so it must never be
@@ -112,6 +118,7 @@ module CypressOnRails
       self.api_prefix = ''
       self.install_folder = 'spec/e2e'
       self.use_middleware = nil # nil means "decide from the environment", see #use_middleware?
+      self.use_state_reset_middleware = true
       self.use_vcr_middleware = false
       self.use_vcr_use_cassette_middleware = false
       self.before_request = -> (request) {}
