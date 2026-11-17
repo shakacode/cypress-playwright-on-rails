@@ -5,6 +5,8 @@ module CypressOnRails
     class_option :install_folder, type: :string, default: 'e2e'
     class_option :install_with, type: :string, default: 'yarn'
     class_option :experimental, type: :boolean, default: false
+    class_option :typescript, type: :boolean, default: false,
+                              desc: 'Playwright only: generate the config, the helpers and the example in TypeScript'
     source_root File.expand_path('../templates', __FILE__)
 
     def install_framework
@@ -34,7 +36,9 @@ module CypressOnRails
         copy_file "spec/cypress/support/commands.js", "#{options.install_folder}/cypress/support/commands.js"
         copy_file "spec/cypress.config.js", "#{options.install_folder}/cypress.config.js"
       end
-      if options.framework == 'playwright'
+      if playwright_typescript?
+        copy_file "spec/playwright/typescript/playwright.config.ts", "#{options.install_folder}/playwright.config.ts"
+      elsif options.framework == 'playwright'
         template "spec/playwright/support/index.js.erb", "#{options.install_folder}/playwright/support/index.js"
         copy_file "spec/playwright.config.js", "#{options.install_folder}/playwright.config.js"
       end
@@ -48,7 +52,11 @@ module CypressOnRails
         copy_file "spec/cypress/support/on-rails.js", "#{options.install_folder}/cypress/support/on-rails.js"
         directory 'spec/cypress/e2e/rails_examples', "#{options.install_folder}/cypress/e2e/rails_examples"
       end
-      if options.framework == 'playwright'
+      if playwright_typescript?
+        copy_file "spec/playwright/typescript/on-rails.ts", "#{options.install_folder}/playwright/support/on-rails.ts"
+        copy_file "spec/playwright/typescript/using_scenarios.spec.ts",
+                  "#{options.install_folder}/playwright/e2e/rails_examples/using_scenarios.spec.ts"
+      elsif options.framework == 'playwright'
         copy_file "spec/playwright/support/on-rails.js", "#{options.install_folder}/playwright/support/on-rails.js"
         directory 'spec/playwright/e2e/rails_examples', "#{options.install_folder}/playwright/e2e/rails_examples"
       end
@@ -60,11 +68,19 @@ module CypressOnRails
                        "\nimport './on-rails'",
                        after: 'import \'./commands\''
       end
-      if options.framework == 'playwright'
+      if options.framework == 'playwright' && !playwright_typescript?
         append_to_file "#{options.install_folder}/playwright/support/index.js",
                        "\nimport './on-rails'",
                        after: '// Import commands.js using ES2015 syntax:'
       end
+    end
+
+    private
+
+    # The TypeScript helpers are imported by the specs directly, so there is no
+    # support/index file to wire them into.
+    def playwright_typescript?
+      options.framework == 'playwright' && options.typescript
     end
   end
 end

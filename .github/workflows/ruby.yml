@@ -74,3 +74,9 @@ jobs:
       run: ./specs_e2e/rails_8/test.sh
       env:
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+    - name: Set up Node for the TypeScript Playwright lane
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Run generated TypeScript Playwright tests
+      run: ./specs_e2e/rails_8/test_playwright_typescript.sh
