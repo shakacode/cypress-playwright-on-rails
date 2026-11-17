@@ -175,6 +175,22 @@ RSpec.describe "release rake helpers" do
       expect(parent_spec.required_ruby_version.to_s).not_to be_empty
       expect(spec.required_ruby_version.to_s).to eq(parent_spec.required_ruby_version.to_s)
     end
+
+    it "loads when Bundler has normalized the parent gemspec of a git checkout" do
+      parent_spec = Dir.chdir(gem_root) { Gem::Specification.load("cypress-on-rails.gemspec") }
+
+      Dir.mktmpdir do |checkout|
+        FileUtils.cp_r(%w[alias_gem lib].map { |dir| File.join(gem_root, dir) }, checkout)
+        # What Bundler::Source::Git writes back for a gem installed with `git:`.
+        File.write(File.join(checkout, "cypress-on-rails.gemspec"), parent_spec.to_ruby)
+
+        spec = Dir.chdir(File.join(checkout, "alias_gem")) do
+          Gem::Specification.load("e2e_on_rails.gemspec")
+        end
+
+        expect(spec.required_ruby_version.to_s).to eq(parent_spec.required_ruby_version.to_s)
+      end
+    end
   end
 
   describe "alias gem publishing" do
